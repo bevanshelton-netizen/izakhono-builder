@@ -44,7 +44,7 @@ Both require the HOST runtime bearer token.
 - Request bodies are size-bounded.
 - Records are written atomically with restrictive file permissions.
 - Idempotency is serialized within the single HOST control-plane process.
-- The runtime worker module and lease/evidence primitives exist but are not started as an always-on service. No concrete runtime adapter or target is registered. Data-import jobs, service startup, backup/restore execution and public edge activation are not yet connected.
+- The runtime and data workers run as bounded background loops inside the single HOST control-plane process only when the approved HTTP adapter URL, server-side token and logical runtime target are configured. The runtime worker deploys and verifies the immutable release; the data worker performs the five South Africa import/acceptance stages and advances the workload to internal READY only after persistent-data health passes. No provider is configured by default. Backup/restore execution and public edge activation remain separate acceptance gates.
 - Do not promote a record to `READY` or public-live based on request acceptance. Use independent engine, data, routing, search, tile, persistence, backup/restore, HTTPS and DNS evidence.
 
 ## NAV South Africa data-import jobs
