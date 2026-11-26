@@ -327,6 +327,40 @@ before the required durable commit and FORTRESS enforcement checks. Synthetic
 copy-on-write tests are useful contract examples but cannot satisfy this
 production acceptance gate.
 
+
+### 7.3 Evidence service boundary and exact-version access
+
+The proposed evidence service API, ingest lifecycle, FORTRESS enforcement sequence,
+exact-version resolution, canonical manifest handling, retention/disposition,
+restore verification and independent auditor boundary are specified in
+`IZAKHONO-AI-WORKFORCE-EVIDENCE-SERVICE-INTERFACE-AND-OWNERSHIP-HANDOFF-V1.md`.
+That document is a logical interface proposal, not a deployed service.
+
+The evidence service does not become a policy authority. It must authenticate
+the caller, derive tenant scope from verified identity, obtain and enforce a
+current audience- and resource-bound FORTRESS decision, resolve one immutable
+object version, verify content length/digest and emit the required canonical
+audit event. A caller-supplied tenant header, storage locator, filename or
+latest alias is never sufficient to select or authorize evidence.
+
+Evidence ingest distinguishes STAGED_VERIFIED from COMMITTED. Staged content
+remains quarantined until the authoritative transaction owner commits the
+operation state, evidence metadata/reference and outbox event under the accepted
+atomicity boundary. A staged object is not a durable operation reference.
+Missing historical versions are not replaced by newer content. Every read
+re-evaluates current authorization; a prior allow decision does not create
+permanent retrieval rights.
+
+Retention, legal hold and physical disposition remain separately governed.
+An ingest caller cannot clear a hold or self-authorize deletion. Independent
+auditors receive separate, tenant-scoped, time-limited, read-only access and
+cannot mutate source evidence or authorize business actions.
+
+All production service owners, storage technology, transaction interfaces,
+cryptographic profile, retention periods, service objectives and migration
+authority remain UNCONFIRMED. The interface proposal authorizes no provisioning,
+database initialization, migration, production write or deployment.
+
 ## 8. AgentSync export manifest
 
 Proposed manifest fields:
