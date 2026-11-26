@@ -51,6 +51,24 @@ export default {
         return json({ works: works?.n ?? 0, editions: editions?.n ?? 0, verifiedIsbns: allocated?.n ?? 0, editionsAwaitingIsbn: pending?.n ?? 0, openApplications: applications?.n ?? 0 });
       }
 
+      if (url.pathname === "/api/work-authors") {
+        if (request.method === "GET") {
+          const result = await db.prepare("SELECT wa.work_id,wa.author_id,wa.contributor_role,wa.display_order,w.title AS work_title,a.display_name AS author_name,a.pen_name FROM work_authors wa JOIN works w ON w.id=wa.work_id JOIN authors a ON a.id=wa.author_id ORDER BY w.title,wa.display_order").all<Row>();
+          return json({ items: result.results ?? [] });
+        }
+        if (request.method === "POST") {
+          const body = await request.json() as Row;
+          if (!body.work_id || !body.author_id) return error("work_id_and_author_id_required");
+          const role = String(body.contributor_role || "author");
+          if (!["author","editor","translator","illustrator","narrator","compiler","other"].includes(role)) return error("invalid_contributor_role");
+          const order = Number(body.display_order ?? 1);
+          if (!Number.isInteger(order) || order < 1 || order > 1000) return error("invalid_display_order");
+          await db.prepare("INSERT INTO work_authors (work_id,author_id,contributor_role,display_order) VALUES (?,?,?,?)").bind(String(body.work_id),String(body.author_id),role,order).run();
+          await audit(db, actor, "link_contributor", "work_author", String(body.work_id) + ":" + String(body.author_id), { role, order });
+          return json({ linked: true }, 201);
+        }
+      }
+
       const resources: Record<string, { table: string; fields: string[] }> = {
         publishers: { table: "publishers", fields: ["legal_name","company_registration","country_code","physical_address","postal_address","contact_name","contact_email","contact_phone","website_url"] },
         imprints: { table: "imprints", fields: ["publisher_id","name","description","active"] },
@@ -58,7 +76,7 @@ export default {
         works: { table: "works", fields: ["publisher_id","imprint_id","title","subtitle","language_code","description","subject_codes","publication_status"] },
         editions: { table: "editions", fields: ["work_id","edition_statement","format_code","language_code","publication_date","publication_place","publisher_display","page_count","duration_seconds","file_master_ref","distribution_channels","status"] },
         applications: { table: "agency_applications", fields: ["agency_name","contact_person","contact_email","submitted_at","follow_up_at","reference_number","status","titles_json","correspondence_notes","evidence_ref","next_action"] },
-        isbns: { table: "isbn_records", fields: ["edition_id","isbn13","allocation_authority","allocation_date","publisher_of_record","verification_status","evidence_ref","barcode_asset_ref"] }
+        isbns: { table: "isbn_records", fields: ["edition_id","isbn13","allocation_authority","allocation_date","publisher_of_record","verification_status","evidence_ref","barcode_asset_ref"] },\n        "legal-deposits": { table: "legal_deposit_records", fields: ["edition_id","jurisdiction","required","due_date","submitted_at","recipient","proof_ref","status","notes"] }
       };
       const resource = url.pathname.match(/^\/api\/(publishers|imprints|authors|works|editions|applications|isbns)$/);
       if (resource) {
