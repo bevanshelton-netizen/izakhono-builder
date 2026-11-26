@@ -64,6 +64,7 @@ export function convertInstitutionRows(rows) {
 function mapInstitutionType(value = "") {
   const normalized = value.toLowerCase();
   if (normalized.includes("university of technology")) return "university-of-technology";
+  if (normalized.includes("private higher education")) return "private-higher-education";
   if (normalized.includes("university")) return "public-university";
   if (normalized.includes("tvet")) return "public-tvet";
   if (normalized.includes("cet")) return "public-cet";
