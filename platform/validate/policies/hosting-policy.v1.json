@@ -1,0 +1,20 @@
+{
+  "policyVersion": "hosting-policy/v1",
+  "description": "Fail-closed baseline for IZAKHONO HOST service definitions and execution-host inventory.",
+  "allowedImageRegistries": ["ghcr.io", "docker.io"],
+  "requiredServiceSecurity": {
+    "runAsNonRoot": true,
+    "privileged": false,
+    "readOnlyRootFilesystem": true
+  },
+  "productionApprovalRequired": true,
+  "publicIngressApprovalRequired": true,
+  "approvedHostRequirements": [
+    "executionResourceId",
+    "productSku",
+    "region",
+    "supportedOperatingSystem",
+    "positiveCapacity"
+  ],
+  "prohibitedImageTags": ["latest"]
+}
