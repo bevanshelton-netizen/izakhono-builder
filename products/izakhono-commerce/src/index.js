@@ -1,3 +1,4 @@
+import { resolveCommerceAdmin } from "./fortress-auth.js";
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 function json(data, status = 200) { return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS }); }
 function fail(status, code, message) { return json({ ok: false, error: { code, message } }, status); }
@@ -57,20 +58,21 @@ export function validateOrderInput(body) {
   const items = [...quantities.entries()].map(([sku, quantity]) => ({ sku, quantity })).sort((a, b) => a.sku.localeCompare(b.sku));
   return { sellerSlug, buyerReference, items };
 }
-function adminAuthorized(request, env) { return safeEqual(request.headers.get("x-izakhono-commerce-admin") || "", env.COMMERCE_ADMIN_KEY || ""); }
 async function requireDb(env) { if (!env.DB) throw new Error("database_unavailable"); return env.DB; }
 async function createSeller(request, env) {
-  if (!adminAuthorized(request, env)) return fail(401, "admin_access_required", "Commerce admin authorization is required.");
+  const auth = await resolveCommerceAdmin(request, env);
+  if (!auth.ok) return fail(auth.status, auth.code, "A valid FORTRESS administrator session is required.");
   const body = await readJson(request);
   const slug = safeText(body?.slug, 60).toLowerCase(), name = safeText(body?.name, 180);
   if (!validSlug(slug) || !name) return fail(422, "invalid_seller", "A valid seller slug and name are required.");
   const db = await requireDb(env), id = makeId("sel");
-  try { await db.prepare("INSERT INTO commerce_sellers (id,slug,name,status) VALUES (?,?,?,'active')").bind(id, slug, name).run(); }
+  try { await db.prepare("INSERT INTO commerce_sellers (id,tenant_id,slug,name,status) VALUES (?,?,?,?, 'active')").bind(id, auth.principal.tenantId, slug, name).run(); }
   catch { return fail(409, "seller_conflict", "The seller slug already exists or could not be created."); }
   return json({ ok: true, seller: { id, slug, name, status: "active" } }, 201);
 }
 async function createBuyer(request, env) {
-  if (!adminAuthorized(request, env)) return fail(401, "admin_access_required", "Commerce admin authorization is required.");
+  const auth = await resolveCommerceAdmin(request, env);
+  if (!auth.ok) return fail(auth.status, auth.code, "A valid FORTRESS administrator session is required.");
   const body = await readJson(request), organisationName = safeText(body?.organisation_name, 180);
   if (!organisationName) return fail(422, "invalid_buyer", "A buyer organisation name is required.");
   const db = await requireDb(env), id = makeId("buy"), apiKey = `izc_${randomSecret()}`;
@@ -81,7 +83,8 @@ async function createBuyer(request, env) {
   return json({ ok: true, buyer: { id, organisation_name: organisationName, status: "active" }, api_key: apiKey }, 201);
 }
 async function createProduct(request, env) {
-  if (!adminAuthorized(request, env)) return fail(401, "admin_access_required", "Commerce admin authorization is required.");
+  const auth = await resolveCommerceAdmin(request, env);
+  if (!auth.ok) return fail(auth.status, auth.code, "A valid FORTRESS administrator session is required.");
   let product;
   try { product = validateProductInput(await readJson(request)); }
   catch (error) {
@@ -89,7 +92,7 @@ async function createProduct(request, env) {
     return fail(422, "invalid_product", error.message);
   }
   const db = await requireDb(env);
-  const seller = await db.prepare("SELECT id,slug,status FROM commerce_sellers WHERE slug=?").bind(product.sellerSlug).first();
+  const seller = await db.prepare("SELECT id,slug,status FROM commerce_sellers WHERE slug=? AND tenant_id=?").bind(product.sellerSlug, auth.principal.tenantId).first();
   if (!seller || seller.status !== "active") return fail(404, "seller_not_found", "An active seller was not found.");
   const id = makeId("prd");
   try {
