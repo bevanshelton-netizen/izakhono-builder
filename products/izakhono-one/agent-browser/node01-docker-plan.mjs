@@ -153,7 +153,11 @@ export function validateNode01DockerPlan(plan) {
     "--tmpfs", `/home/browser:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`]) {
     if (!argv.includes(required)) return { ok: false, reason: "required_docker_hardening_missing" };
   }
-  if (!hasPair("--security-opt", "no-new-privileges") ||
+  if (argv.filter(arg => arg === "--security-opt").length !== 2 ||
+      argv.filter(arg => arg === "--tmpfs").length !== 3 ||
+      argv.filter(arg => arg === "--user").length !== 1 ||
+      argv.filter(arg => arg === "--cap-drop").length !== 1 ||
+      !hasPair("--security-opt", "no-new-privileges") ||
       !hasPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
       !hasPair("--ipc", "private") || !hasPair("--cgroupns", "private") ||
       !hasPair("--network", plan.networkPrerequisite?.networkName) ||
