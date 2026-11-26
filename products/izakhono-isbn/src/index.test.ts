@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import worker, { validIsbn13 } from "./index.js";
+import worker, { normaliseIsbn13, validIsbn13 } from "./index.js";
 
 assert.equal(validIsbn13("9780306406157"), true, "known valid ISBN-13");
 assert.equal(validIsbn13("978-0-306-40615-7"), true, "hyphenated ISBN-13");
+assert.equal(normaliseIsbn13("978-0-306-40615-7"), "9780306406157", "ISBNs are stored in canonical digits-only form");
 assert.equal(validIsbn13("9780306406158"), false, "incorrect checksum");
 assert.equal(validIsbn13("9791090636071"), true, "valid 979 ISBN-13");
 assert.equal(validIsbn13("978030640615"), false, "too short");
@@ -22,7 +23,7 @@ const noDatabase = await worker.fetch(new Request("https://registry.example/api/
 }), { ISBN_ADMIN_TOKEN: "test-token" });
 assert.equal(noDatabase.status, 503, "management API fails closed without database");
 
-console.log("ISBN registry tests passed (11 assertions).");
+console.log("ISBN registry tests passed (12 assertions).");
 }
 
 void main();
