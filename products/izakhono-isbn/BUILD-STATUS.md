@@ -9,7 +9,7 @@
 - Removed caller-controlled audit actor and suppressed raw internal exception details in API responses.
 - Bearer-token protection for management endpoints.
 - CSV catalogue export.
-- Private dashboard UI with work, edition and agency-allocated ISBN entry forms.
+- Private dashboard UI with work, edition, author/pen-name, contributor, agency-allocated ISBN and legal-deposit entry forms.
 - Edition-level catalogue showing the ISBN verification state.
 - Automated GitHub Actions test workflow for ISBN validation and fail-closed API checks.
 - Operating boundary and deployment runbook.
