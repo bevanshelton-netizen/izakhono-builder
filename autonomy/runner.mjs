@@ -127,11 +127,12 @@ while (progressed < manifest.queue.length) {
       evidence: result.evidence ?? evidenceFor(next),
       evidenceSource: result.source ?? null,
       acceptance: result.acceptance ?? null,
+      workerResult: result.workerResult ?? null,
     });
     externalGates.push(next);
   } else {
     const attempts = taskState(next.id).attempts;
-    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', { reason: result.reason ?? 'adapter-failed' });
+    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', { reason: result.reason ?? 'adapter-failed', workerResult: result.workerResult ?? null });
     if (attempts >= manifest.policy.maxRetries) break;
   }
   progressed += 1;
