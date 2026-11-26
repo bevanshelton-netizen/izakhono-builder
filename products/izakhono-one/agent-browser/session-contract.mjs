@@ -301,8 +301,8 @@ export function createBrowserSessionRegistry({
     get(sessionId, identity) {
       const found = getOwned(sessionId, identity);
       if (found.error) return { ok: false, reason: found.error };
-      if (expireIfNeeded(found.session)) return { ok: false, reason: "session_expired" };
-      if (TERMINAL.has(found.session.state)) return { ok: false, reason: "session_terminal" };
+      if (expireIfNeeded(found.session) || found.session.state === "EXPIRED") return { ok: false, reason: "session_expired" };
+      if (["DENIED", "FAILED", "CANCELLED", "CLOSED"].includes(found.session.state)) return { ok: false, reason: "session_terminal" };
       return { ok: true, session: snapshot(found.session) };
     }
   });
