@@ -182,7 +182,7 @@ const server = http.createServer(async (req, res) => {
       const recordId = url.pathname.split('/')[3];
       const workload = await workloadStore.get(recordId);
       if (!workload) return json(res, 404, { ok: false, error: 'Workload not found' });
-      if (workload.state !== 'PROVISIONING' || workload.execution_stage !== 'runtime-deployed-awaiting-data-pipeline' || !workload.runtime_target_id) {
+      if (!['PROVISIONING','IMPORTING_DATA'].includes(workload.state) || workload.execution_stage !== 'runtime-deployed-awaiting-data-pipeline' || !workload.runtime_target_id) {
         return json(res, 409, { ok: false, error: 'NAV data import requires a verified runtime deployment and approved HOST target binding' });
       }
       const result = await navDataJobStore.create({ workloadId: workload.workload_id, workloadRecordId: recordId, releaseDigest: workload.release_digest });
