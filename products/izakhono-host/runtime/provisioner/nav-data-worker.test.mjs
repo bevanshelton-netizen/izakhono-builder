@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createNavDataJobStore} from './nav-data-job-store.mjs';
 import {createNavDataWorker} from './nav-data-worker.mjs';
+import {createWorkloadStore} from './workload-store.mjs';
 const digest='a'.repeat(64);
 const evidence={
 'osm-source':{sourceUrl:'https://download.geofabrik.de/africa/south-africa-latest.osm.pbf',artifactPath:'osm/sa.pbf',checksumAlgorithm:'md5',checksum:'b'.repeat(32),bytes:1024},
@@ -43,4 +44,19 @@ test('marks a NAV data job failed after the fifth bounded attempt',async()=>{con
  for(let attempt=1;attempt<=5;attempt+=1){result=await worker.runOnce();assert.equal(result.terminal,attempt===5);if(result.retryAfter)clock=new Date(Date.parse(result.retryAfter)+1000);}
  const saved=await store.get(job.id);assert.equal(saved.pipeline.state,'FAILED');assert.equal(saved.lease,null);assert.equal(saved.retryAfter,null);assert.equal(saved.attempts,5);
  assert.equal((await worker.runOnce()).processed,false);
+}finally{await rm(root,{recursive:true,force:true});}});
+
+test('promotes the same HOST workload to READY only after full data and persistence acceptance',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-ready-'));try{
+ const workloadStore=createWorkloadStore({filePath:path.join(root,'workloads.json')});
+ const {workload}=await workloadStore.create({workloadId:'izakhono-nav',workloadClass:'navigation-platform',logicalNodeId:'NODE01',runtimeTargetId:'nav-target-a',releaseDigest:digest,healthPath:'/health',internalPort:8080,idempotencyKey:'nav-data-ready-test-001'});
+ await workloadStore.transition(workload.id,'VALIDATING');
+ await workloadStore.transition(workload.id,'PROVISIONING');
+ await workloadStore.transition(workload.id,'IMPORTING_DATA');
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});
+ const {job}=await store.create({workloadId:'izakhono-nav',workloadRecordId:workload.id,releaseDigest:digest});
+ const adapter=Object.fromEntries(Object.entries(methods).map(([stage,method])=>[method,async()=>evidence[stage]]));
+ const worker=createNavDataWorker({store,adapter,workloadStore,now:()=>new Date('2026-11-21T12:00:00.000Z')});
+ const result=await worker.runOnce();assert.equal(result.dataReady,true);
+ const ready=await workloadStore.get(workload.id);assert.equal(ready.state,'READY');assert.equal(ready.public_live,false);
+ assert.deepEqual(ready.acceptance,{runtime:true,data:true,routing:true,search:true,tiles:true,persistence:true,backup_restore:false,https:false,dns:false});
 }finally{await rm(root,{recursive:true,force:true});}});
