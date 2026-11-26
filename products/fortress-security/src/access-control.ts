@@ -8,8 +8,8 @@ export interface FortressPrincipal {
 }
 
 const permissions: Record<FortressRole, ReadonlySet<string>> = {
-  OWNER: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','admin:access','creator:read','creator:write','creator:approve','creator:generate','creator:publish']),
-  SECURITY_ADMIN: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate','creator:publish']),
+  OWNER: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','admin:access','creator:read','creator:write','creator:approve','creator:generate','creator:publish','dns:publish']),
+  SECURITY_ADMIN: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate','creator:publish','dns:publish']),
   ANALYST: new Set(['asset:read','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate']),
   VIEWER: new Set(['asset:read','finding:read','evidence:read','creator:read'])
 };
