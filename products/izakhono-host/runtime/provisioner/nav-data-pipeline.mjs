@@ -55,6 +55,7 @@ function requireApprovedOsmSource(value) {
   let parsed;
   try { parsed = new URL(value); } catch { throw new Error('sourceUrl must be a valid HTTPS URL'); }
   if (parsed.protocol !== 'https:' || parsed.hostname !== 'download.geofabrik.de' ||
+      parsed.port || parsed.username || parsed.password ||
       parsed.pathname !== '/africa/south-africa-latest.osm.pbf' || parsed.search || parsed.hash) {
     throw new Error('sourceUrl must identify the official Geofabrik South Africa OSM PBF extract');
   }
