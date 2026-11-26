@@ -4,7 +4,7 @@
 
 Define one tenant-aware API as the source of truth for IZAKHONO-managed zones and edge policies. DNS provider adapters execute approved changes; the API never equates a queued change with a live DNS answer.
 
-The API and DNS/edge services are packaged as NODE01-managed software workloads. NODE01 owns workload release and execution lifecycle; EDGE owns tenant DNS and edge domain data. See `NODE01-INTEGRATION-V1.md`.
+EDGE is a product workload declared to Runtime Fabric. NODE01 Agent Fabric is the logical software orchestration identity; the NODE01 command gateway is the authenticated entry point; FORTRESS authorizes and audits; Runtime Fabric owns scheduling and durable workload state; HOST is the separate execution boundary. EDGE owns tenant DNS and edge domain data.
 
 ## Core resources
 
@@ -111,11 +111,13 @@ Adapters implement:
 
 The production adapter is PowerDNS. BIND and Knot adapters may be used for migration/testing. Cloudflare is an optional import/transition adapter only and is never the IZAKHONO source of truth.
 
-## NODE01 execution contract
+## NODE01 / Runtime Fabric execution contract
 
-EDGE workload execution must use NODE01's current canonical manifest, immutable artifact, release approval and workload lifecycle interfaces. The adapter is not permitted to invent a parallel deployment API or call an execution host directly. Before implementation, map this specification to the actual NODE01 schema and APIs and add contract tests against their canonical fixtures.
+EDGE workload execution must use the existing `izakhono.runtime-fabric.workload.v1` contract, the NODE01 command gateway's registered adapter, exact FORTRESS authorization and correlated audit acknowledgement, Runtime Fabric scheduling/durable state, and a separately registered HOST execution environment. The fail-closed reference validator and synthetic tests are under `infra/runtime-fabric/controller/izakhono_edge_activation.py`.
 
-NODE01 manages software workload lifecycle. It does not itself supply public IP addresses, network transit, parent-zone delegation or physical compute capacity. These dependencies must be separately provisioned and verified.
+Do not introduce a parallel scheduler, direct-host deployment API, guessed registration endpoint, arbitrary shell-over-HTTP path or a second deployment-state database. The current generic gateway `/deploy` route is not proof of the registered Runtime Fabric adapter.
+
+Runtime Fabric/HOST execution does not itself prove public IP reachability, parent-zone delegation, public DNS authority or production edge health. Those are separate acceptance gates.
 
 ## Security invariants
 
@@ -127,4 +129,4 @@ NODE01 manages software workload lifecycle. It does not itself supply public IP 
 6. No API endpoint exposes arbitrary shell execution.
 7. A change cannot be marked verified without querying the actual authoritative nameservers.
 8. Customer-facing DNS and edge controls cannot modify platform authority zones.
-9. EDGE cannot bypass NODE01/FORTRESS release authorization or immutable artifact pinning.
+9. EDGE cannot bypass NODE01, Runtime Fabric or FORTRESS authorization and audit.
