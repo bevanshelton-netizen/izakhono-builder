@@ -50,6 +50,25 @@ No adapter may promote a workload directly to READY or public-live.
 
 The adapter contract is intentionally provider-neutral. The concrete provider must be selected only after technical, security, data-residency, availability, commercial and operational due diligence. HOST must be able to replace the adapter without changing NAV's logical NODE01 identity, release contract or workload data model.
 
+## Executable HTTP adapter and worker activation
+
+The trusted generic HTTP adapter is implemented in the HOST provisioner:
+- runtime operations use fixed routes under /v1/runtime-targets and require an explicitly approved target response;
+- data operations use fixed routes under /v1/nav-data for the five pipeline stages;
+- provider calls require HTTPS except loopback development, bearer authentication, bounded timeouts, normalized errors and no-store responses;
+- provider URLs, credentials and target bindings are server-side environment configuration only.
+
+The HOST control-plane process starts its bounded runtime and data worker loops only when their complete configuration is present:
+- HOST_NAV_RUNTIME_ADAPTER_URL
+- HOST_NAV_RUNTIME_ADAPTER_TOKEN
+- HOST_NAV_RUNTIME_TARGET_ID
+- optional HOST_NAV_RUNTIME_ADAPTER_ID
+- HOST_NAV_DATA_ADAPTER_URL and HOST_NAV_DATA_ADAPTER_TOKEN (these may use the runtime adapter URL/token when the same trusted service implements both contracts).
+
+The workers run inside the same HOST process as the JSON stores. This preserves the stores' documented single-process/single-writer requirement. Do not scale the file-backed control plane to multiple replicas. A future multi-replica deployment must move workload and data-job state to a transactional shared database before scaling.
+
+The runtime worker verifies the deployed immutable digest and records runtime-deployed-awaiting-data-pipeline. The data worker then runs the Geofabrik source, Valhalla, Nominatim, PMTiles and service-acceptance stages. A workload becomes internally READY only after all five services and persistent-data health are verified. Public-live remains separately gated by backup/restore, HTTPS and DNS evidence.
+
 ## Current status
 
-The contract module, registry, durable lease/evidence primitives and bounded worker pass are implemented with tests. No concrete provider adapter is registered, no always-on worker is enabled, no runtime target is approved or bound for a real release, and no production execution resource has been provisioned by this change.
+The contract module, allow-listed registry, durable lease/evidence primitives, bounded workers and generic authenticated HTTP adapters are implemented with tests. The worker loops remain disabled unless an owner-approved adapter URL, server-side token and logical target binding are configured. No concrete provider target is approved or bound for a real release, and no production execution resource has been provisioned by this change.
