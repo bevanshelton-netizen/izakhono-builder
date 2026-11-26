@@ -6,7 +6,8 @@ import path from 'node:path';
 import {createNavDataJobStore} from './nav-data-job-store.mjs';
 import {createNavDataWorker} from './nav-data-worker.mjs';
 import {createWorkloadStore} from './workload-store.mjs';
-const digest='a'.repeat(64);\nconst sourceDigest='e'.repeat(64);
+const digest='a'.repeat(64);
+const sourceDigest='e'.repeat(64);
 const evidence={
 'osm-source':{sourceUrl:'https://download.geofabrik.de/africa/south-africa-latest.osm.pbf',artifactPath:'osm/sa.pbf',checksumAlgorithm:'md5',checksum:'b'.repeat(32),sha256:sourceDigest,bytes:1024},
 'routing-graph':{artifactPath:'router/graph',buildId:'valhalla-1',checksumAlgorithm:'sha256',checksum:'1'.repeat(64),sourceSha256:sourceDigest,healthCheck:true},
