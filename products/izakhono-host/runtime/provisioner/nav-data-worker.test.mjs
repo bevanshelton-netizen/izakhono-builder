@@ -18,17 +18,17 @@ test('durably executes South Africa data stages through trusted adapter',async()
  const calls=[];const signals=[];const adapter=Object.fromEntries(Object.entries(methods).map(([s,m])=>[m,async({signal})=>{assert.ok(signal instanceof AbortSignal);signals.push(signal);calls.push(s);return evidence[s];}]));
  const worker=createNavDataWorker({store,adapter,now:()=>new Date('2026-11-21T12:00:00.000Z')});const result=await worker.runOnce();assert.equal(result.dataReady,true);assert.equal(result.state,'VERIFYING');assert.deepEqual(calls,Object.keys(methods));assert.equal(new Set(signals).size,1,'all stages share one bounded cancellation signal');
  const saved=await store.get(created.job.id);assert.equal(saved.pipeline.state,'VERIFYING');assert.equal(saved.lease,null);assert.equal(saved.pipeline.stages['osm-source'].evidence.checksum,'b'.repeat(32));
- assert.equal((await store.create({workloadId:'izakhono-nav',releaseDigest:digest})).created,false);
+ assert.equal((await store.create({workloadId:'izakhono-nav',workloadRecordId:'nav-workload-0123456789abcdefabcd',releaseDigest:digest})).created,false);
 }finally{await rm(root,{recursive:true,force:true});}});
 test('requires complete trusted adapter and retries failures without readiness',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
- const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',releaseDigest:digest});
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',workloadRecordId:'nav-workload-0123456789abcdefabcd',releaseDigest:digest});
  assert.throws(()=>createNavDataWorker({store,adapter:{}}),/complete import lifecycle/);
  const adapter=Object.fromEntries(Object.values(methods).map(m=>[m,async()=>{throw new Error('source unavailable');}]));
  const worker=createNavDataWorker({store,adapter,now:()=>new Date('2026-11-21T12:00:00.000Z')});const result=await worker.runOnce();assert.match(result.error,/source unavailable/);
  const saved=await store.get(job.id);assert.equal(saved.pipeline.state,'IMPORTING_DATA');assert.equal(saved.pipeline.stages['osm-source'].status,'pending');assert.equal(saved.lease,null);assert.ok(saved.retryAfter);
 }finally{await rm(root,{recursive:true,force:true});}});
 test('resumes completed stages after a later stage fails',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
- const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',releaseDigest:digest});let fail=true;
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',workloadRecordId:'nav-workload-0123456789abcdefabcd',releaseDigest:digest});let fail=true;
  const adapter=Object.fromEntries(Object.entries(methods).map(([s,m])=>[m,async()=>{if(s==='search-index'&&fail)throw new Error('search import interrupted');return evidence[s];}]));
  let clock=new Date('2026-11-21T12:00:00.000Z');const worker=createNavDataWorker({store,adapter,now:()=>clock});const first=await worker.runOnce();assert.match(first.error,/search import interrupted/);
  let saved=await store.get(job.id);assert.equal(saved.pipeline.stages['osm-source'].status,'succeeded');fail=false;clock=new Date(Date.parse(first.retryAfter)+1000);
@@ -36,7 +36,7 @@ test('resumes completed stages after a later stage fails',async()=>{const root=a
 }finally{await rm(root,{recursive:true,force:true});}});
 
 test('marks a NAV data job failed after the fifth bounded attempt',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
- const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',releaseDigest:digest});
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',workloadRecordId:'nav-workload-0123456789abcdefabcd',releaseDigest:digest});
  const adapter=Object.fromEntries(Object.values(methods).map(m=>[m,async()=>{throw new Error('persistent import failure');}]));
  let clock=new Date('2026-11-21T12:00:00.000Z');const worker=createNavDataWorker({store,adapter,now:()=>clock});
  let result;
