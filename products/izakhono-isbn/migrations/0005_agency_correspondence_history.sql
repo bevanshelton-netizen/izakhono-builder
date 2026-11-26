@@ -42,7 +42,7 @@ INSERT OR IGNORE INTO agency_correspondence (
   'outgoing', '2026-11-26',
   'info@nlsa.ac.za',
   'Escalation: Outstanding ISBN application and publisher registration – IZAKHONO AFRICA (PTY) LTD',
-  NULL,
+  'gmail-message:1a21752f0d53d530',
   'Escalation sent; Motubatse.Kgatle@nlsa.ac.za copied. Requested acknowledgement and status, commercial publisher registration, SELFHELP Stories imprint recognition, ISBN allocation process, metadata/legal-deposit instructions, and a named contact/reference. No reply or ISBN allocation is yet verified.'
 );
 
