@@ -35,7 +35,7 @@ class PostgresEventStore:
         conn = self.connection_factory()
         try:
             with conn.cursor() as cur:
-                cur.execute("""INSERT INTO izakhono_runtime_events (event_id, deployment_id, workload, event_type, state, node, detail, observed_at, evidence) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""", (identifier, event.deployment_id, event.workload, event.event_type, event.state, event.node, event.detail, event.observed_at, event.evidence))
+                cur.execute("""INSERT INTO izakhono_runtime_events (event_id, deployment_id, workload, event_type, state, node, detail, observed_at, evidence) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (event_id) DO NOTHING""", (identifier, event.deployment_id, event.workload, event.event_type, event.state, event.node, event.detail, event.observed_at, event.evidence))
             conn.commit()
             return identifier
         finally: conn.close()
