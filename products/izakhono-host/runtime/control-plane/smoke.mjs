@@ -50,6 +50,10 @@ async function requestSiteWithHostHeader() {
 }
 try {
   await waitForHealth();
+  const initialHealth = await fetch(base+'/health').then(response => response.json());
+  if (initialHealth.navWorkers?.runtimeEnabled !== false || initialHealth.navWorkers?.dataEnabled !== false) {
+    throw new Error('NAV workers must remain disabled until an approved provider binding is configured');
+  }
   const provisioned = await request('/api/sites/provision', {method:'POST',body:JSON.stringify({site_id:'smoke_site',domain:'smoke.example.test',source_ref:'ci'})});
   if (provisioned.site?.domain !== 'smoke.example.test') throw new Error('provision failed');
   const page = await requestSiteWithHostHeader();
