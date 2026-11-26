@@ -10,7 +10,7 @@ const METHODS = Object.freeze({
 
 const MAX_PASS_MS = 120000;
 
-export function createNavDataWorker({ store, adapter, workerId = 'host-nav-data-worker', leaseMs = 180000, now = () => new Date() }) {
+export function createNavDataWorker({ store, adapter, workloadStore = null, workerId = 'host-nav-data-worker', leaseMs = 180000, now = () => new Date() }) {
   if (!store || typeof store.claimNext !== 'function' || typeof store.recordStage !== 'function' || typeof store.release !== 'function') {
     throw new Error('A durable NAV data-job store is required');
   }
@@ -46,12 +46,35 @@ export function createNavDataWorker({ store, adapter, workerId = 'host-nav-data-
           job.pipeline = updated.pipeline;
         }
         assertNavDataReady(job.pipeline);
+        if (workloadStore) {
+          let workload = await workloadStore.get(job.workloadRecordId);
+          if (!workload) throw new Error('HOST workload record is missing for completed NAV data job');
+          if (workload.state === 'IMPORTING_DATA') workload = await workloadStore.transition(workload.id, 'STARTING', { dataJobId: job.id });
+          if (workload?.state === 'STARTING') workload = await workloadStore.transition(workload.id, 'VERIFYING', { dataJobId: job.id });
+          if (workload?.state === 'VERIFYING') {
+            const services = job.pipeline.stages['service-acceptance'].evidence.services;
+            workload = await workloadStore.transition(workload.id, 'READY', { acceptance: {
+              runtime: true, data: true,
+              routing: services['nav-router']?.healthy === true,
+              search: services['nav-search']?.healthy === true,
+              tiles: services['nav-tiles']?.healthy === true,
+              persistence: job.pipeline.stages['service-acceptance'].evidence.persistenceCheck === true
+            }, dataJobId: job.id });
+          }
+          if (workload?.state !== 'READY') throw new Error('NAV data pipeline completed but HOST workload readiness transition did not complete');
+        }
         await store.release(job.id, workerId);
         return { processed: true, jobId: job.id, state: job.pipeline.state, dataReady: true };
       } catch (error) {
         const exhausted = job.attempts >= 5;
         const delay = [1000, 5000, 30000, 120000, 600000][Math.max(0, job.attempts - 1)];
         const retryAfter = exhausted ? null : new Date(now().getTime() + delay).toISOString();
+        if (exhausted && workloadStore && job.workloadRecordId) {
+          const workload = await workloadStore.get(job.workloadRecordId);
+          if (workload && ['IMPORTING_DATA','PROVISIONING','STARTING','VERIFYING'].includes(workload.state)) {
+            await workloadStore.transition(workload.id, 'FAILED', { error: 'NAV_DATA_PIPELINE_RETRY_LIMIT_REACHED', dataJobId: job.id });
+          }
+        }
         await store.release(job.id, workerId, {
           retryAfter,
           failedAt: exhausted ? now().toISOString() : null,
