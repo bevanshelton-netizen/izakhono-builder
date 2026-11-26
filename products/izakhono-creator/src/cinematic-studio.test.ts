@@ -16,3 +16,6 @@ assert.ok(cinematicStudioHtml.includes('Production readiness'), 'Studio must exp
 assert.ok(cinematicStudioHtml.includes('function renderReadiness()'), 'Studio must render readiness actions and evidence counts.');
 assert.ok(cinematicStudioHtml.includes('candidateTaskIds'), 'Studio must display candidate task links from the readiness report.');
 console.log('Cinematic Studio browser contract tests: PASS');
+
+assert.ok(cinematicStudioHtml.includes('Verified production evidence'), 'Studio must expose completed evidence records.');
+assert.ok(cinematicStudioHtml.includes('readinessEvidence'), 'Studio must render the evidence audit list.');
