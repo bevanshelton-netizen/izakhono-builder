@@ -29,6 +29,7 @@ async function audit(db: D1Database, actor: string, action: string, type: string
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (!url.pathname.startsWith("/api/")) return env.ASSETS ? env.ASSETS.fetch(request) : error("not_found", 404);
     if (request.method === "GET" && url.pathname === "/api/health") {
       return json({ ok: true, service: "IZAKHONO ISBN & Publishing Registry", release: "v1-foundation", databaseConfigured: Boolean(env.DB), productionReady: false });
     }
