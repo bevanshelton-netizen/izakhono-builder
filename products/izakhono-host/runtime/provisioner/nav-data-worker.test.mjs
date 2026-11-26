@@ -84,6 +84,8 @@ test('stale data-job lease tokens cannot record stages after reclaim',async()=>{
  const second=await store.claimNext({workerId:'host-data-b',leaseMs:1000,now:new Date('2026-11-21T12:00:02.000Z')});
  assert.notEqual(first.lease.leaseId,second.lease.leaseId);
  await assert.rejects(store.recordStage(job.id,'host-data-a',first.lease.leaseId,'osm-source',evidence['osm-source'],'2026-11-21T12:00:02.000Z'),/lease is missing, expired or owned by another worker/);
+ await assert.rejects(store.assertLease(job.id,'host-data-a',first.lease.leaseId,'2026-11-21T12:00:02.000Z'),/lease is missing, expired or superseded/);
+ await store.assertLease(job.id,'host-data-b',second.lease.leaseId,'2026-11-21T12:00:02.000Z');
  await store.recordStage(job.id,'host-data-b',second.lease.leaseId,'osm-source',evidence['osm-source'],'2026-11-21T12:00:02.000Z');
  await store.release(job.id,'host-data-b',second.lease.leaseId);
 }finally{await rm(root,{recursive:true,force:true});}});
