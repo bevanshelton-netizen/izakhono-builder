@@ -21,6 +21,10 @@ The customer web runtime is owned by IZAKHONO. External services are bounded ada
 
 `docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
 
+## Managed NAV workloads
+
+The native control plane exposes an authenticated, typed NAV workload API for immutable release provisioning, inspection, stop, replacement, backup and restore. It delegates to a replaceable HOST_NAV_PROVIDER_URL adapter and fails closed when no approved provider is configured. Provider credentials must be injected through FORTRESS-controlled secrets; never commit them to source or .env files. See ../izakhono-nav/MANAGED-RUNTIME.md for the contract.
+
 ## Logical node roles and execution hosts
 
 `CLUSTER-NODE-ROLES.md` defines logical workload roles and the resilience model. Role names such as NODE01, NODE02 and NODE03 are software/orchestration identities; they are not physical servers or cloud instances.
