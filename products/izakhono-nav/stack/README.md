@@ -8,7 +8,7 @@ This is NAV's complete owner-controlled runtime stack. It does not require NODE0
 - **nav-router** — Valhalla routing built from the South Africa OpenStreetMap extract.
 - **nav-search** — Nominatim 5.3 address/POI search with Geofabrik replication updates.
 - **nav-tiles** — Martin serving and raster-rendering locally generated PMTiles.
-- **nav-edge** — Caddy serving the NAV web application and the same-origin API.
+- **nav-web** — Caddy serving the NAV web application and the same-origin API.
 
 Only `nav-edge` publishes host ports. Router, search, tiles and engine stay on the private backplane.
 
@@ -23,7 +23,7 @@ cp .env.example .env
 ./scripts/verify.sh
 ```
 
-The bootstrap downloads the South Africa Geofabrik PBF once, verifies its MD5, and reuses the same source data for routing, search and map generation.
+The bootstrap downloads the South Africa Geofabrik PBF to a staging file, verifies the published MD5 before replacing the active extract, and atomically updates the router's data link. The same source data is reused for routing, search and map generation. `scripts/refresh-data.sh` builds replacement PMTiles against a verified candidate extract before promoting either artifact; it preserves last-known-good copies before restart.
 
 ## Readiness language
 
