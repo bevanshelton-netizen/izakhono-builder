@@ -11,7 +11,7 @@ const METHODS = Object.freeze({
 const MAX_PASS_MS = 120000;
 
 export function createNavDataWorker({ store, adapter, workloadStore = null, workerId = 'host-nav-data-worker', leaseMs = 180000, now = () => new Date() }) {
-  if (!store || typeof store.claimNext !== 'function' || typeof store.recordStage !== 'function' || typeof store.release !== 'function') {
+  if (!store || typeof store.claimNext !== 'function' || typeof store.recordStage !== 'function' || typeof store.release !== 'function' || typeof store.assertLease !== 'function') {
     throw new Error('A durable NAV data-job store is required');
   }
   if (!adapter || Object.values(METHODS).some(method => typeof adapter[method] !== 'function')) {
@@ -71,9 +71,9 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
         if (workloadStore) {
           let workload = await workloadStore.get(job.workloadRecordId);
           if (!workload) throw new Error('HOST workload record is missing for completed NAV data job');
-          if (workload.state === 'PROVISIONING' && workload.execution_stage === 'runtime-deployed-awaiting-data-pipeline') workload = await workloadStore.transition(workload.id, 'IMPORTING_DATA', { dataJobId: job.id, recovered: true });
-          if (workload.state === 'IMPORTING_DATA') workload = await workloadStore.transition(workload.id, 'STARTING', { dataJobId: job.id });
-          if (workload?.state === 'STARTING') workload = await workloadStore.transition(workload.id, 'VERIFYING', { dataJobId: job.id });
+          if (workload.state === 'PROVISIONING' && workload.execution_stage === 'runtime-deployed-awaiting-data-pipeline') { await store.assertLease(job.id, workerId, job.lease.leaseId, now().toISOString()); workload = await workloadStore.transition(workload.id, 'IMPORTING_DATA', { dataJobId: job.id, recovered: true }); }
+          if (workload.state === 'IMPORTING_DATA') { await store.assertLease(job.id, workerId, job.lease.leaseId, now().toISOString()); workload = await workloadStore.transition(workload.id, 'STARTING', { dataJobId: job.id }); }
+          if (workload?.state === 'STARTING') { await store.assertLease(job.id, workerId, job.lease.leaseId, now().toISOString()); workload = await workloadStore.transition(workload.id, 'VERIFYING', { dataJobId: job.id }); }
           if (workload?.state === 'VERIFYING') {
             const services = job.pipeline.stages['service-acceptance'].evidence.services;
             workload = await workloadStore.transition(workload.id, 'READY', { acceptance: {
