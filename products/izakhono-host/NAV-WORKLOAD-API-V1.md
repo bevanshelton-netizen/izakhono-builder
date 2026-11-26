@@ -44,15 +44,18 @@ Both require the HOST runtime bearer token.
 - Request bodies are size-bounded.
 - Records are written atomically with restrictive file permissions.
 - Idempotency is serialized within the single HOST control-plane process.
-- The runtime and data workers run as bounded background loops inside the single HOST control-plane process only when the approved HTTP adapter URL, server-side token and logical runtime target are configured. The runtime worker deploys and verifies the immutable release; the data worker performs the five South Africa import/acceptance stages and advances the workload to internal READY only after persistent-data health passes. No provider is configured by default. Backup/restore execution and public edge activation remain separate acceptance gates.
+- The runtime worker starts only when `HOST_NAV_RUNTIME_ADAPTER_URL`, `HOST_NAV_RUNTIME_ADAPTER_TOKEN` and `HOST_NAV_RUNTIME_TARGET_ID` are all configured. The data worker has its own independent configuration gate: `HOST_NAV_DATA_ADAPTER_URL` and `HOST_NAV_DATA_ADAPTER_TOKEN`. Both loops run inside the same HOST process as the file-backed stores.
+- The runtime worker deploys and independently inspects the immutable release. Once healthy, it automatically queues the South Africa data job. The data worker resumes the five import/acceptance stages and advances the workload to internal `READY` only after service and persistent-data evidence passes.
+- No provider is configured by default. Backup/restore execution and public edge activation remain separate acceptance gates.
 - Do not promote a record to `READY` or public-live based on request acceptance. Use independent engine, data, routing, search, tile, persistence, backup/restore, HTTPS and DNS evidence.
 
 ## NAV South Africa data-import jobs
 
-- `POST /api/workloads/{recordId}/data-imports` queues a durable import job only when the workload is in `PROVISIONING`, has an approved `runtime_target_id`, and carries the independently recorded `runtime-deployed-awaiting-data-pipeline` execution stage.
+- `POST /api/workloads/{recordId}/data-imports` queues a durable import job only when the workload has an independently verified runtime deployment and approved `runtime_target_id`.
 - `GET /api/nav-data-jobs` lists durable import jobs.
 - `GET /api/nav-data-jobs/{jobId}` inspects one job.
 - A new job returns `202` and `execution: "queued-awaiting-nav-data-worker"`; idempotent replay returns `200`.
 - Requests without verified runtime deployment and target binding return `409`. Browser requests cannot provide adapter names, commands, source credentials or provider settings.
 - The worker resumes completed stages after failure, stores stage evidence and retries with bounded backoff. It requires a trusted server-side adapter implementing source fetch, Valhalla graph build, Nominatim import, PMTiles build and service inspection.
-- The worker and file-backed job store are packaged, but no import adapter is registered and no worker loop is started. The JSON store is single-process/single-writer; do not run multiple replicas against the same file. No actual data import is claimed.
+- When the runtime worker is enabled with a durable data-job store, it creates the import job automatically after runtime health is independently confirmed. The data worker starts only when its separate adapter URL and server-side token are configured. A manually queued job remains durable while the worker is disabled.
+- The JSON store is single-process/single-writer; do not run multiple replicas against the same file. No actual runtime provisioning or data import is claimed until an approved provider binding is configured and the workers complete their evidence gates.
