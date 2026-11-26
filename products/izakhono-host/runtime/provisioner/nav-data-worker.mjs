@@ -49,16 +49,19 @@ export function createNavDataWorker({ store, adapter, workerId = 'host-nav-data-
         await store.release(job.id, workerId);
         return { processed: true, jobId: job.id, state: job.pipeline.state, dataReady: true };
       } catch (error) {
+        const exhausted = job.attempts >= 5;
         const delay = [1000, 5000, 30000, 120000, 600000][Math.max(0, job.attempts - 1)];
-        const retryAfter = new Date(now().getTime() + delay).toISOString();
+        const retryAfter = exhausted ? null : new Date(now().getTime() + delay).toISOString();
         await store.release(job.id, workerId, {
           retryAfter,
+          failedAt: exhausted ? now().toISOString() : null,
           error: String(error?.message || 'NAV data import failed')
         });
         return {
           processed: true,
           jobId: job.id,
           retryAfter,
+          terminal: exhausted,
           error: String(error?.message || 'NAV data import failed').slice(0, 240)
         };
       }
