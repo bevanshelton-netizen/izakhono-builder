@@ -7,7 +7,8 @@ import {
   assertNavDataReady
 } from './nav-data-pipeline.mjs';
 
-const digest = 'a'.repeat(64);\nconst sourceSha256 = 'e'.repeat(64);
+const digest = 'a'.repeat(64);
+const sourceSha256 = 'e'.repeat(64);
 const source = {
   sourceUrl: 'https://download.geofabrik.de/africa/south-africa-latest.osm.pbf',
   artifactPath: 'osm/south-africa-latest.osm.pbf',
