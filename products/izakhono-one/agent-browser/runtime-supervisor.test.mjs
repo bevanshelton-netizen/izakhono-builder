@@ -36,7 +36,7 @@ function fixture(overrides = {}) {
     requestId: "request-1", method, deadline: time + 4_000,
     policyProfile: "read_only", policyVersion: "v1"
   });
-  return { registry, identity, session, supervisor, calls, ready, request, advance: ms => { time += ms; } };
+  return { registry, identity, session, supervisor, calls, ready, request, getTime: () => time, advance: ms => { time += ms; } };
 }
 
 test("starts only an authorised session and binds the runtime", async () => {
@@ -94,7 +94,7 @@ test("uncertain dispatch is never retried and causes quarantine", async () => {
 test("request deadline aborts and terminates rather than retrying", async () => {
   const f = fixture({ dispatch: async () => new Promise(() => {}) });
   await f.ready();
-  const result = await f.supervisor.execute(f.session.id, f.identity, { ...f.request(), deadline: Date.now() + 25 });
+  const result = await f.supervisor.execute(f.session.id, f.identity, { ...f.request(), deadline: f.getTime() + 25 });
   assert.equal(result.reason, "request_timed_out");
   assert.equal(f.calls.filter(call => call === "dispatch:snapshot").length, 1);
   assert.ok(f.calls.includes("terminate"));
