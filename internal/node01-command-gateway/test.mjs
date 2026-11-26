@@ -76,6 +76,13 @@ try{
   d=await r.json();
   assert.equal(d.data.status,'queued');
 
+  // EDGE must never bypass its Runtime Fabric registration gate through the
+  // generic production deploy command, even when an immutable SHA is supplied.
+  r=await fetch('http://127.0.0.1:18091/api/commands/run',{method:'POST',headers:{'content-type':'application/json','x-admin-secret':'owner-test'},body:JSON.stringify({input:'/deploy izakhono-edge '+sha})});
+  assert.equal(r.status,409);
+  d=await r.json();
+  assert.match(d.error,/not the approved Runtime Fabric release/);
+
   console.log('IZAKHONO_COMMAND_GATEWAY_CONTROL_NODE_TEST=PASS');
 } finally {
   child.kill('SIGTERM');
