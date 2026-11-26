@@ -25,15 +25,19 @@ The prototype serves `site/` on loopback only. It does not open a LAN/public lis
 npm test
 ```
 
-The tests cover loopback start/stop, file delivery, GET/HEAD-only methods, missing files, directory-listing denial and the non-loopback opt-in guard.
+The test suite covers loopback start/stop, static file delivery, method restrictions, missing files, directory-listing denial, non-loopback opt-in protection and owner-controlled resource admission rules.
+
+## Resource governance status
+
+The resource-policy module validates owner-defined budgets and conservatively blocks new workload admission when safety conditions apply. This is **admission control only**; it does not enforce hard CPU, memory or disk quotas. See [RESOURCE-GOVERNANCE.md](docs/RESOURCE-GOVERNANCE.md).
 
 ## Current limitations
 
 - Static files only; no user application runtime or database yet.
 - No graphical control panel; this initial vertical slice uses a foreground CLI.
-- No hard CPU/memory quotas yet.
+- No hard CPU/memory/disk quotas or OS process isolation yet.
 - No LAN/public publishing, relay, domain or TLS automation.
-- No installer, persistence, background service, mobile build or production readiness.
+- No installer, background service, mobile build or production readiness.
 - Resource enforcement and OS lifecycle integration are future milestones.
 
 Do not expose this prototype to a public network. The engine is development software and has not been security-reviewed or externally deployed.
