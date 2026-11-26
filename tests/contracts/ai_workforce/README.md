@@ -124,3 +124,9 @@ services at their enforcement boundaries.
   explicitly authorized disposition. This is a synthetic in-memory model; it
   does not implement an object store, transaction coordinator, encryption,
   signature verification, retention scheduler, backup/restore or legal process.
+- Evidence-storage lifecycle tests model staged immutable objects, quarantine,
+  copy-on-write publication of operation/evidence-reference/outbox records,
+  failed-transaction non-publication, authorized orphan cleanup, legal-hold
+  blocking and restore-time byte/reference digest checks. This is a synthetic
+  in-memory model; it does not prove database atomicity, object-store durability,
+  distributed transaction behavior, backup isolation or production recovery.
