@@ -362,3 +362,14 @@ The executable persistence-boundary contracts define the minimum envelope expect
 - Creation and update timestamps are not substitutes for audit evidence. A mutation must carry an audit-event reference and commit the record change and audit evidence atomically, or use a documented recoverable outbox protocol.
 
 No database engine, migration, authentication middleware, runtime endpoint or adapter is selected by these contracts. Before persistence implementation, inspect and reuse the canonical DATABASE and FORTRESS integration patterns, establish transactional audit semantics, and obtain architecture/security review. PAY remains authoritative for payment state; no local payment ledger is introduced.
+
+
+## 16. Identity integration discovery — implementation gate
+
+Repository inspection identified an important boundary that must remain explicit:
+
+- The currently inspected `products/fortress-security/src/types.ts`, `policy.ts` and `control-plane.ts` implement defensive security-scan scope validation and findings/control-plane reporting. They do not establish a tenant identity, membership, delegation or application authorization API for this marketplace.
+- The existing `src/customer-auth.ts` implements Builder-specific customer password/session operations against a `CustomerAuthDB`. It is not evidence of a canonical FORTRESS principal, tenant-membership or fine-grained authorization service.
+- Therefore, neither implementation is to be silently repurposed as the marketplace's FORTRESS integration. In particular, the defensive scan environment flag is not an application authorization decision.
+
+Before any customer/publisher portal, API or database adapter is implemented, the owner and architecture reviewers must identify the actual canonical FORTRESS identity/authorization service, its supported interface and decision/audit contract, and the approved DATABASE persistence boundary. Until those are verified, marketplace authorization remains an explicit integration dependency and all code remains pure conformance logic.
