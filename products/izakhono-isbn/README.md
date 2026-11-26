@@ -21,15 +21,15 @@ ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN 
 - `GET /api/health` — public health and release state only.
 - `GET /api/dashboard` — counts and agency/application status.
 - `GET /api/catalogue` — edition-level catalogue with ISBN verification state.
-- `GET|POST /api/publishers`
-- `GET|POST /api/imprints`
-- `GET|POST /api/authors`
+- `GET|POST|PATCH /api/publishers`
+- `GET|POST|PATCH /api/imprints`
+- `GET|POST|PATCH /api/authors`
 - `GET|POST /api/work-authors` — link authors and contributors to works
-- `GET|POST /api/legal-deposits` — track statutory deposit records
-- `GET|POST /api/works`
-- `GET|POST /api/editions`
-- `GET|POST /api/applications`
-- `GET|POST /api/isbns`
+- `GET|POST|PATCH /api/legal-deposits` — track statutory deposit records
+- `GET|POST|PATCH /api/works`
+- `GET|POST|PATCH /api/editions`
+- `GET|POST|PATCH /api/applications`
+- `GET|POST|PATCH /api/isbns`
 - `GET /api/export/catalogue.csv`
 
 All non-health routes are protected. Input validation, audit logging and explicit state transitions are mandatory.
