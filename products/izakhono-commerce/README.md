@@ -28,7 +28,7 @@ IZAKHONO COMMERCE is the first-party commercial transaction domain. This initial
 - `POST /api/v1/orders` — `x-izakhono-commerce-buyer-key` and `Idempotency-Key`
 - `GET /api/v1/orders/:order_id` — `x-izakhono-commerce-buyer-key`
 
-Administrative routes require `Authorization: Bearer <FORTRESS access token>` and call the `FORTRESS_IDENTITY` service binding for live session introspection. Only `OWNER` and `SECURITY_ADMIN` principals are permitted. The introspection response must explicitly identify the `izakhono-commerce` audience; sessions for other IZAKHONO services are rejected. Buyer API keys are returned once during onboarding and must be stored securely by the owner.
+Administrative routes require `Authorization: Bearer <FORTRESS access token>` and call the `FORTRESS_COMMERCE_IDENTITY` service binding for live session introspection. Only `OWNER` and `SECURITY_ADMIN` principals are permitted. The introspection response must explicitly identify the `izakhono-commerce` audience; sessions for other IZAKHONO services are rejected. Buyer API keys are returned once during onboarding and must be stored securely by the owner.
 
 ## Domain boundaries
 
