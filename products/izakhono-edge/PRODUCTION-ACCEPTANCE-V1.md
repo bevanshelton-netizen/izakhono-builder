@@ -1,20 +1,24 @@
 # IZAKHONO EDGE — Production Acceptance v1
 
-This checklist is mandatory before calling the IZAKHONO DNS or edge platform production-ready.
+This checklist is mandatory before calling IZAKHONO DNS or edge production-ready. NODE01 is the software runtime/orchestration layer; execution capacity and public network resources are separate dependencies.
 
-## A. Infrastructure identity and ownership
+## A. NODE01 software release and execution binding
 
-- [ ] Execution host identities are recorded and authorized.
-- [ ] At least two independent public network/failure domains are available for authoritative DNS.
-- [ ] Public IP ownership/lease and routing are recorded.
-- [ ] Firewall policy is reviewed; management ports are private.
+- [ ] EDGE workloads conform to the current canonical NODE01 manifest schema.
+- [ ] Workload artifacts have immutable digests and source provenance.
+- [ ] Exact repository, commit, workload, environment and action scope are verified.
+- [ ] FORTRESS/owner approval is valid, time-bounded and replay-resistant.
+- [ ] NODE01 records workload lifecycle, health, audit and rollback evidence.
+- [ ] Workloads are bound to approved execution capacity with identified ownership and administrative authority.
+- [ ] Public IPs, routing and firewall policy are verified; management ports remain private.
 - [ ] Backup and restore destinations are verified.
 - [ ] No undocumented paid infrastructure has been provisioned.
 
 ## B. Authoritative DNS
 
-For each node, from at least two independent external networks:
+For each DNS workload instance, from at least two independent external networks:
 
+- [ ] Primary and secondary are distinct instances and independently placed across network/failure domains.
 - [ ] UDP/53 SOA query succeeds.
 - [ ] TCP/53 SOA query succeeds.
 - [ ] AA flag is set.
@@ -77,6 +81,6 @@ A domain migration proceeds one domain at a time:
 
 **NOT READY FOR PUBLIC CUTOVER.**
 
-Repository configuration exists, but the account inventory currently shows no enrolled SentinelX execution host and no connected infrastructure integrations. Public IPs, independent DNS nodes, registrar access, DNS delegation and live edge health have not been demonstrated in this session.
+The software architecture and repository assets are present, but public DNS endpoints, independent execution/network failure domains, registrar delegation, live TLS, WAF/cache behavior and public edge health have not been demonstrated. Repository/CI evidence is not a substitute for live production acceptance.
 
 No public DNS or registrar changes are authorized by this checklist.
