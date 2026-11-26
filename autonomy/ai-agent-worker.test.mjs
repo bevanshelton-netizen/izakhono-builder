@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'izakhono-agent-test-'));
-process.env.IZAKHONO_AGENT_STATE_PATH = path.join(dir, 'state.json');
-process.env.IZAKHONO_AGENT_QUEUE_PATH = path.join(dir, 'queue.json');
+process.env.IZAKHONO_AGENT_STATE_PATH = path.join(dir, 'private', 'state.json');
+process.env.IZAKHONO_AGENT_QUEUE_PATH = path.join(dir, 'private', 'queue.json');
 process.env.IZAKHONO_BUILD_ARTIFACT_ROOT = path.join(dir, 'artifacts');
 process.env.IZAKHONO_AGENT_MAX_STEPS_PER_RUN = '25';
 
