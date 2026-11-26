@@ -35,7 +35,7 @@ jobs:
       - name: Python runtime acceptance tests
         run: |
           set -euo pipefail
-          python -m pytest -q infra/runtime-fabric/controller/test_runtime_fabric_controller.py infra/runtime-fabric/acceptance/test_kora_mail_live_gate.py infra/runtime-fabric/activation/test_kora_production_activate.py
+          python -m pytest -q infra/runtime-fabric/controller/test_runtime_fabric_controller.py infra/runtime-fabric/controller/test_dns_publication_intent.py infra/runtime-fabric/acceptance/test_kora_mail_live_gate.py infra/runtime-fabric/activation/test_kora_production_activate.py
 
       - name: Bash syntax
         run: |
