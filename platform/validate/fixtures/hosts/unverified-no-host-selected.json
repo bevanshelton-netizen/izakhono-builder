@@ -1,0 +1,30 @@
+{
+  "apiVersion": "hosting.izakhono.africa/v1",
+  "kind": "ExecutionHostInventory",
+  "hostId": "host-unselected-fixture",
+  "resourceKind": "execution-host",
+  "provider": "not-selected",
+  "productSku": null,
+  "region": null,
+  "environment": "staging",
+  "approvalState": "unverified",
+  "executionResourceId": null,
+  "hostType": "unknown",
+  "operatingSystem": {
+    "name": null,
+    "version": null,
+    "supportStatus": "unknown"
+  },
+  "capacity": {
+    "vcpus": null,
+    "memoryGiB": null,
+    "storageGiB": null
+  },
+  "network": {
+    "staticIPv4": null,
+    "publicAddressesVerified": false
+  },
+  "roles": [],
+  "evidenceReferences": [],
+  "approvalReference": null
+}
