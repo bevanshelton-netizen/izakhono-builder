@@ -5,11 +5,12 @@ import { DatabaseSync } from "node:sqlite";
 const root = new URL("../migrations/", import.meta.url);
 const db = new DatabaseSync(":memory:");
 try {
-  for (const name of ["0001_initial.sql", "0002_seed_initial_publisher_and_application.sql", "0003_isbn_integrity_guards.sql"]) {
+  for (const name of ["0001_initial.sql", "0002_seed_initial_publisher_and_application.sql", "0003_isbn_integrity_guards.sql", "0004_seed_selfhelp_first_season.sql"]) {
     db.exec(fs.readFileSync(new URL(name, root), "utf8"));
   }
   const seeded = db.prepare("SELECT legal_name FROM publishers WHERE id=?").get("pub-izakhono-africa");
   assert.equal(seeded.legal_name, "IZAKHONO AFRICA (PTY) LTD");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM works WHERE id LIKE 'work-the-%'").get().n, 6);
 
   function addEdition(id) {
     db.prepare("INSERT INTO editions (id,work_id,edition_statement,format_code) VALUES (?,?,?,?)")
@@ -44,7 +45,7 @@ try {
   assert.throws(() => insertIsbn("isbn-missing-date", "test-missing-date", "9780201633610", { date: "" }), /verified_isbn_requires_allocation_date/);
 
   assert.throws(() => db.prepare("UPDATE isbn_records SET isbn13=? WHERE id=?").run("9780306406158", "isbn-valid-978"), /isbn13_checksum_invalid/);
-  console.log("ISBN registry SQLite migration tests passed (8 assertions).");
+  console.log("ISBN registry SQLite migration tests passed (9 assertions).");
 } finally {
   db.close();
 }
