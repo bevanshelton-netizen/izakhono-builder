@@ -5,8 +5,9 @@ import { runNodeAdapter } from './node-adapter.mjs';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 
 const root = process.cwd();
-const statePath = process.env.IZAKHONO_AGENT_STATE_PATH || path.join(root, 'autonomy', 'agent-state.json');
-const queuePath = process.env.IZAKHONO_AGENT_QUEUE_PATH || path.join(root, 'autonomy', 'agent-queue.json');
+const dataRoot = process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, '.izakhono-private');
+const statePath = process.env.IZAKHONO_AGENT_STATE_PATH || path.join(dataRoot, 'agent-state.json');
+const queuePath = process.env.IZAKHONO_AGENT_QUEUE_PATH || path.join(dataRoot, 'agent-queue.json');
 
 function readJson(file, fallback) {
   if (!fs.existsSync(file)) return fallback;
@@ -95,11 +96,59 @@ function applyResult(step, result) {
 }
 
 export async function runAgentWorker() {
+  const lockPath = process.env.IZAKHONO_AGENT_LOCK_PATH || `${statePath}.worker.lock`;
+  let lockFd;
+  try {
+    lockFd = fs.openSync(lockPath, 'wx', 0o600);
+    fs.writeFileSync(lockFd, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }) + '\n');
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      return {
+        schema: 'izakhono.agent-worker/v1',
+        status: 'busy',
+        progressed: 0,
+        plans: [],
+        reason: 'another-worker-holds-exclusive-lock',
+      };
+    }
+    throw error;
+  }
+
+  try {
   const state = readJson(statePath, { schema: 'izakhono.agent-state/v1', plans: {} });
   const queue = readJson(queuePath, { schema: 'izakhono.agent-queue/v1', items: [] });
   let progressed = 0;
 
-  for (const item of queue.items.filter((entry) => entry.status === 'queued' || entry.status === 'running')) {
+  const interrupted = [];
+  for (const item of queue.items.filter((entry) => entry.status === 'running')) {
+    const plan = state.plans[item.planId];
+    if (!plan || plan.status !== 'running') continue;
+    for (const step of plan.steps) {
+      if (step.status === 'running') {
+        step.status = 'interrupted';
+        step.reason = 'worker-process-ended-before-step-finalization';
+        interrupted.push({ planId: plan.planId, stepId: step.id });
+      }
+    }
+    plan.status = 'interrupted';
+    plan.interruptedAt = new Date().toISOString();
+    plan.recoveryRequired = true;
+    item.status = 'interrupted';
+    item.reason = 'worker-process-ended-before-plan-finalization';
+  }
+  if (interrupted.length) {
+    writeJson(statePath, state);
+    writeJson(queuePath, queue);
+    return {
+      schema: 'izakhono.agent-worker/v1',
+      status: 'recovery_required',
+      progressed: 0,
+      interrupted,
+      plans: Object.values(state.plans).map((plan) => ({ planId: plan.planId, status: plan.status })),
+    };
+  }
+
+  for (const item of queue.items.filter((entry) => entry.status === 'queued')) {
     const plan = state.plans[item.planId];
     if (!plan || plan.status === 'completed' || plan.status === 'blocked') continue;
     if (plan.approvalRequired && !plan.approved) {
@@ -158,6 +207,10 @@ export async function runAgentWorker() {
     progressed,
     plans: Object.values(state.plans).map((plan) => ({ planId: plan.planId, status: plan.status })),
   };
+  } finally {
+    fs.closeSync(lockFd);
+    fs.unlinkSync(lockPath);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
