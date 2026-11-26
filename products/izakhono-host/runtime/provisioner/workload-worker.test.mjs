@@ -77,7 +77,7 @@ test('worker refuses an unregistered adapter and schedules a bounded retry', asy
     assert.equal(saved.state, 'FAILED');
     assert.equal(saved.last_execution_error, 'WORKLOAD_EXECUTION_RETRY_LIMIT_REACHED');
     assert.equal(saved.worker_lease, undefined);
-    assert.equal(saved.retry_after, undefined);
+    assert.equal(saved.retry_after, null);
     assert.equal((await worker.runOnce()).processed, false);
   } finally {
     await rm(root, { recursive: true, force: true });
