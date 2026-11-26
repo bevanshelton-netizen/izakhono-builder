@@ -1,0 +1,61 @@
+{
+  "apiVersion": "hosting.izakhono.africa/v1",
+  "kind": "ServiceDefinition",
+  "metadata": {
+    "name": "caddy",
+    "version": "1.0.0-fixture",
+    "owner": "platform-web",
+    "annotations": {
+      "purpose": "schema-policy-test-fixture",
+      "deployable": "false"
+    }
+  },
+  "spec": {
+    "image": {
+      "reference": "ghcr.io/izakhono-fixtures/caddy",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "runtime": {
+      "type": "container",
+      "replicas": 1,
+      "resources": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      }
+    },
+    "network": {
+      "ingress": [
+        {
+          "name": "https-private-test",
+          "protocol": "tcp",
+          "port": 8443,
+          "exposure": "private"
+        }
+      ]
+    },
+    "storage": {
+      "mounts": []
+    },
+    "dependencies": [],
+    "health": {
+      "readiness": {
+        "type": "http",
+        "path": "/health",
+        "timeoutSeconds": 5
+      }
+    },
+    "security": {
+      "runAsNonRoot": true,
+      "privileged": false,
+      "readOnlyRootFilesystem": true,
+      "secretReferences": []
+    },
+    "backup": {
+      "required": false
+    },
+    "rollout": {
+      "strategy": "replace-after-validation",
+      "automaticRollback": false
+    }
+  }
+}
