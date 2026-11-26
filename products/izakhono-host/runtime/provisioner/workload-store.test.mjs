@@ -82,6 +82,15 @@ test('stale workload lease tokens cannot write after a later worker reclaims the
       store.releaseClaim(workload.id, 'host-worker-a', {}, '2026-11-21T00:00:02.000Z', first.worker_lease.lease_id),
       /superseded/
     );
+    await assert.rejects(
+      store.transition(workload.id, 'VALIDATING', { workerId: 'host-worker-a' }, '2026-11-21T00:00:02.000Z', {
+        workerId: 'host-worker-a', leaseId: first.worker_lease.lease_id
+      }),
+      /lease is missing, expired or superseded/
+    );
+    await store.transition(workload.id, 'VALIDATING', { workerId: 'host-worker-b' }, '2026-11-21T00:00:02.000Z', {
+      workerId: 'host-worker-b', leaseId: second.worker_lease.lease_id
+    });
     await store.recordExecution(workload.id, 'host-worker-b', 'CURRENT_WRITE', {}, '2026-11-21T00:00:02.000Z', second.worker_lease.lease_id);
     await store.releaseClaim(workload.id, 'host-worker-b', {}, '2026-11-21T00:00:02.000Z', second.worker_lease.lease_id);
   } finally {
