@@ -73,3 +73,19 @@ npx wrangler deploy --config products/izakhono-creator/wrangler.jsonc
 - **End-to-end verified:** a real project completed the acceptance sequence using the owned broker and a healthy worker.
 
 Never promote one status into another without evidence.
+## 7. Node/FFmpeg distribution-export worker boundary
+
+The repository contains a reusable Node/container export executor and a production-graph integration function. These are source modules, not a deployed service or a reachable API endpoint. The Cloudflare request Worker must not attempt to spawn FFmpeg.
+
+Before connecting a real project to this worker, implement and verify a deployment-specific adapter with all of the following properties:
+
+- **Authenticated job intake:** accept only a trusted service identity; never expose the Creator service secret, Media Fabric key or storage credentials to the browser.
+- **Canonical graph loading:** load the project and its production graph from the existing Creator D1 store; reject missing projects, malformed graphs and mismatched project IDs.
+- **Version-checked persistence:** commit the worker's updated graph only if the stored production version still equals the version loaded before rendering. A concurrent edit must fail closed rather than overwrite newer approvals, tasks or assets.
+- **Scoped source resolution:** resolve the master only from its canonical project asset storage key, read the actual bytes and verify the approved SHA-256 before FFmpeg starts.
+- **Scoped output storage:** write only beneath the same project's exports namespace; use an idempotent job/output identity and prevent overwriting an existing unrelated object.
+- **Failure recovery:** distinguish render failure, QA failure, storage failure and graph-persistence conflict. Do not mark a task or asset complete unless stored bytes and the corresponding graph evidence agree. Define cleanup/reconciliation for an uploaded object whose graph commit fails.
+- **Operational limits:** enforce worker identity, execution timeout, output-size limits, disk-space limits, concurrency limits and auditable logs that exclude secrets.
+- **End-to-end verification:** run a non-production project through source resolution, FFmpeg, ffprobe, hash-bound QA, object storage and version-checked graph persistence; retrieve and play the resulting MP4 independently.
+
+The current executeProductionDistributionExport function accepts injected runtime, storage and source-resolution callbacks, but it does not itself provide authenticated job intake, D1 compare-and-swap persistence, object-store reconciliation or a deployed worker host. Those remain explicit release blockers. Do not infer that the Facebook export endpoint exists or that a real film has been rendered from the passing source CI checks.
