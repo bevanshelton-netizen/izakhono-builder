@@ -202,6 +202,7 @@ export function createBrowserSessionRegistry({
       if (request.method !== "navigate" && request.url !== undefined) return { ok: false, reason: "unexpected_request_argument" };
       if (request.method !== "extract_text" && request.textOffset !== undefined) return { ok: false, reason: "unexpected_request_argument" };
       if (request.method !== "wait" && request.timeoutMs !== undefined) return { ok: false, reason: "unexpected_request_argument" };
+      if (byteLength(request) > MAX_MESSAGE_BYTES) return { ok: false, reason: "request_too_large" };
       if (request.method === "navigate" && (typeof request.url !== "string" || request.url.length > 2048)) {
         return { ok: false, reason: "invalid_navigation_target" };
       }
@@ -213,7 +214,6 @@ export function createBrowserSessionRegistry({
           (!Number.isInteger(request.timeoutMs) || request.timeoutMs < 0 || request.timeoutMs > maxRequestMs)) {
         return { ok: false, reason: "invalid_wait_timeout" };
       }
-      if (byteLength(request) > MAX_MESSAGE_BYTES) return { ok: false, reason: "request_too_large" };
       session.pendingRequest = { requestId: request.requestId, method: request.method, deadline: request.deadline };
       transition(session, "RUNNING");
       emit(session, "request.accepted", { request_id: request.requestId, method: request.method });
@@ -302,6 +302,7 @@ export function createBrowserSessionRegistry({
       const found = getOwned(sessionId, identity);
       if (found.error) return { ok: false, reason: found.error };
       if (expireIfNeeded(found.session)) return { ok: false, reason: "session_expired" };
+      if (TERMINAL.has(found.session.state)) return { ok: false, reason: "session_terminal" };
       return { ok: true, session: snapshot(found.session) };
     }
   });
