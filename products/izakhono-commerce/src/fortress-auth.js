@@ -3,12 +3,12 @@ const ALLOWED_ADMIN_ROLES = new Set(["OWNER", "SECURITY_ADMIN"]);
 export async function resolveCommerceAdmin(request, env) {
   const authorization = request.headers.get("authorization") || "";
   const match = authorization.match(/^Bearer ([A-Za-z0-9._~-]{20,8192})$/);
-  if (!match || !env.FORTRESS_IDENTITY || typeof env.FORTRESS_IDENTITY.fetch !== "function") {
+  if (!match || !env.FORTRESS_COMMERCE_IDENTITY || typeof env.FORTRESS_COMMERCE_IDENTITY.fetch !== "function") {
     return { ok: false, status: 401, code: "fortress_session_required" };
   }
   let response;
   try {
-    response = await env.FORTRESS_IDENTITY.fetch(new Request("https://fortress.internal/api/fortress/session", {
+    response = await env.FORTRESS_COMMERCE_IDENTITY.fetch(new Request("https://fortress.internal/api/fortress/session", {
       method: "GET",
       headers: { authorization: `Bearer ${match[1]}` }
     }));
