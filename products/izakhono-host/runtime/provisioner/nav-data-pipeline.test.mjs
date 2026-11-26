@@ -62,10 +62,10 @@ test('requires the correct evidence type for routing and search imports', () => 
     source
   );
   assert.throws(() => recordNavDataStage(withSource, 'routing-graph', {
-    artifactPath: 'router/valhalla-tiles.tar', buildId: ' ', importId: 'wrong-evidence-type', healthCheck: true
+    artifactPath: 'router/valhalla-tiles.tar', buildId: ' ', importId: 'wrong-evidence-type', checksumAlgorithm: 'sha256', checksum: '1'.repeat(64), sourceSha256, healthCheck: true
   }), /buildId is required/);
   assert.throws(() => recordNavDataStage(withSource, 'search-index', {
-    artifactPath: 'search/nominatim-db', buildId: 'wrong-evidence-type', importId: ' ', healthCheck: true
+    artifactPath: 'search/nominatim-db', buildId: 'wrong-evidence-type', importId: ' ', checksumAlgorithm: 'sha256', checksum: '2'.repeat(64), sourceSha256, healthCheck: true
   }), /importId is required/);
 });
 
