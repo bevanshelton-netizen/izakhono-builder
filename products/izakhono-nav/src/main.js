@@ -175,3 +175,4 @@ function render(){
  document.querySelectorAll("[data-mode]").forEach(x=>x.addEventListener("click",()=>{mode=x.dataset.mode;panel=mode==="safety"?"safety":mode==="fleet"?"fleet":"";render()}));
 }
 render();
+refreshEngineStatus();
