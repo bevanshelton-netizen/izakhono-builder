@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "smoke": "node smoke.mjs"
+    "smoke": "node smoke.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check server.mjs && node --check nav-workloads.mjs && node --check nav-provider-http.mjs && npm test && npm run smoke"
   }
 }
