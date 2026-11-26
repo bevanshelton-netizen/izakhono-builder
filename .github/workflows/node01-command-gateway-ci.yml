@@ -1,0 +1,28 @@
+name: NODE01 Command Gateway CI
+
+on:
+  pull_request:
+    paths:
+      - "internal/node01-command-gateway/**"
+      - ".github/workflows/node01-command-gateway-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "internal/node01-command-gateway/**"
+      - ".github/workflows/node01-command-gateway-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gateway-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax validation
+        run: node --check internal/node01-command-gateway/server.mjs
+      - name: Gateway integration and registration-gate tests
+        run: node internal/node01-command-gateway/test.mjs
