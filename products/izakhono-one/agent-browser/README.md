@@ -34,3 +34,9 @@ npm run browser-policy
 The session registry and runtime supervisor are dependency-free reference contracts. The supervisor requires a trusted signature verifier and a controller-signed isolation attestation before it marks a runtime ready. The attestation must bind the session, runtime instance and policy version and assert the full isolation control set.
 
 The isolation policy is a fail-closed acceptance gate, not a sandbox implementation. Test signatures and fake drivers are used only in unit tests. No production controller, signing key, container, Chromium process, seccomp profile, firewall, DNS proxy or network egress control has been deployed. Do not interpret a passing fake-driver test as evidence of operating-system isolation.
+
+## OCI runtime launch specification
+
+`oci-runtime-spec.mjs` generates a pinned-image, non-root, read-only-root, no-host-mounts, no-capabilities, no-new-privileges, seccomp-referenced, resource-bounded, proxy-only OCI launch specification. The validator rejects unsafe host mounts, direct egress, incomplete namespaces, retained capabilities, mutable image references and unsafe cleanup/retry policy.
+
+This is not a container engine adapter and has not launched a container. No image was selected or pulled, no runtime was installed, and no network/firewall/seccomp controls were applied to a host.
