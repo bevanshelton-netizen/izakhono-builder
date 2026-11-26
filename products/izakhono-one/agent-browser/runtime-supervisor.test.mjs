@@ -3,6 +3,16 @@ import assert from "node:assert/strict";
 import { createBrowserSessionRegistry } from "./session-contract.mjs";
 import { createBrowserRuntimeSupervisor } from "./runtime-supervisor.mjs";
 
+function readyAttestation(runtimeInstanceId, sessionId, policyVersion) {
+  return {
+    sessionId, runtimeInstanceId, policyVersion,
+    networkMode: "isolated-egress-proxy-only",
+    controls: {"dedicated_runtime_identity":true,"non_root_user":true,"read_only_root_filesystem":true,"ephemeral_browser_profile":true,"no_host_mounts":true,"no_host_ipc":true,"no_privileged_mode":true,"drop_all_capabilities":true,"no_new_privileges":true,"seccomp_enforced":true,"egress_firewall_enforced":true,"dns_ip_pinning_enforced":true,"metadata_ip_blocked":true,"private_address_space_blocked":true,"resource_limits_enforced":true,"process_tree_supervision":true,"runtime_deadline_enforced":true,"profile_destroy_on_exit":true,"bridge_authenticated":true},
+    issuedAt: 1000, expiresAt: 9000000000000,
+    controllerIdentity: "test-runtime-controller", signature: "test-signature"
+  };
+}
+
 function fixture(overrides = {}) {
   let time = 1_800_000_000_000;
   let sequence = 0;
@@ -16,7 +26,7 @@ function fixture(overrides = {}) {
   registry.authorise(session.id, identity, { allowed: true });
   const driver = {
     async create() { calls.push("create"); return { runtimeInstanceId: "runtime-1" }; },
-    async probeReady() { calls.push("probeReady"); return true; },
+    async probeReady(runtimeId, context) { calls.push("probeReady"); return readyAttestation(runtimeId, context.sessionId, "v1"); },
     async dispatch(_id, request, { signal }) {
       calls.push(`dispatch:${request.method}`);
       if (overrides.dispatch) return overrides.dispatch({ request, signal, calls });
@@ -26,7 +36,7 @@ function fixture(overrides = {}) {
     async destroyProfile() { calls.push("destroyProfile"); return overrides.destroyProfile !== false; },
     async closeIpc() { calls.push("closeIpc"); return overrides.closeIpc !== false; }
   };
-  const supervisor = createBrowserRuntimeSupervisor({ registry, driver, now: () => time });
+  const supervisor = createBrowserRuntimeSupervisor({ registry, driver, verifyIsolationSignature: a => a.signature === "test-signature", now: () => time });
   const ready = async () => {
     const result = await supervisor.start(session.id, identity);
     assert.equal(result.ok, true);
@@ -127,7 +137,7 @@ test("runtime creation failure does not dispatch or claim a ready session", asyn
     registry: f.registry,
     driver: {
       async create() { return { runtimeInstanceId: "runtime-bad" }; },
-      async probeReady() { return false; },
+      async probeReady(runtimeId, context) { return { ...readyAttestation(runtimeId, context.sessionId, "v1"), controls: {} }; },
       async dispatch() { throw new Error("must_not_dispatch"); },
       async terminateProcessTree() { return true; },
       async destroyProfile() { return true; },
