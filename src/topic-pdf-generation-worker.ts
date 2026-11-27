@@ -282,6 +282,8 @@ export async function topicPdfOwnerReviewRoute(
   const reviewerRole = String(body?.reviewerRole || '').trim().slice(0, 160);
   const decision = String(body?.decision || '');
   const notes = String(body?.notes || '').trim().slice(0, 3000);
+  const specialistReviewerName = String(body?.specialistReviewerName || '').trim().slice(0, 120);
+  const specialistCredentials = String(body?.specialistCredentials || '').trim().slice(0, 240);
   if (!reviewerName || !reviewerRole || !['changes_required','approved','rejected'].includes(decision)) {
     return new Response(JSON.stringify({ ok: false, error: 'Reviewer name, role and a valid decision are required.' }), { status: 400, headers: { 'content-type': 'application/json' } });
   }
@@ -296,13 +298,16 @@ export async function topicPdfOwnerReviewRoute(
   const plan = safeObject(job.plan_json) || {};
   const specialistRequired = plan.risk?.requiresSpecialistReview === true;
   const allGates = rights && factual && editorial && (!specialistRequired || specialist);
+  if (decision === 'approved' && specialistRequired && (!specialistReviewerName || !specialistCredentials)) {
+    return new Response(JSON.stringify({ ok: false, error: 'A named specialist reviewer and their relevant credentials must be recorded for this high-stakes guide.' }), { status: 409, headers: { 'content-type': 'application/json' } });
+  }
   if (decision === 'approved' && !allGates) {
     return new Response(JSON.stringify({ ok: false, error: 'Approval is blocked until every required rights, factual, specialist and editorial gate is explicitly passed.' }), { status: 409, headers: { 'content-type': 'application/json' } });
   }
   const now = new Date().toISOString();
   await env.DB.prepare(
-    'INSERT INTO topic_pdf_review_decisions(id,job_id,reviewer_name,reviewer_role,decision,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,notes,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-  ).bind('tpdfr_' + crypto.randomUUID().replaceAll('-', ''), job.id, reviewerName, reviewerRole, decision, rights ? 1 : 0, factual ? 1 : 0, specialist ? 1 : 0, editorial ? 1 : 0, notes, now).run();
+    'INSERT INTO topic_pdf_review_decisions(id,job_id,reviewer_name,reviewer_role,decision,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,notes,specialist_reviewer_name,specialist_credentials,specialist_reviewed_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+  ).bind('tpdfr_' + crypto.randomUUID().replaceAll('-', ''), job.id, reviewerName, reviewerRole, decision, rights ? 1 : 0, factual ? 1 : 0, specialist ? 1 : 0, editorial ? 1 : 0, notes, specialistReviewerName || null, specialistCredentials || null, specialist ? now : null, now).run();
   const status = decision === 'approved' ? 'approved' : decision === 'rejected' ? 'blocked' : 'quality_review';
   await env.DB.prepare(
     'UPDATE topic_pdf_generation_jobs SET status=?,reviewer_name=?,reviewer_role=?,reviewed_at=?,lease_until=NULL,updated_at=? WHERE id=?',
