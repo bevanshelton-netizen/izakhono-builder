@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "products/topic-pdfs/**"
+      - "src/topic-pdf-request-api.ts"
+      - "src/topic-pdf-request-api.test.ts"
+      - "src/customer-auth.ts"
+      - "src/sovereign.ts"
       - ".github/workflows/topic-pdf-catalogue-ci.yml"
   push:
     branches: [main]
@@ -26,6 +30,8 @@ jobs:
         run: node products/topic-pdfs/validate-catalog.mjs
       - name: Test on-demand topic generation core
         run: npx --yes tsx@4.20.3 products/topic-pdfs/src/generation-core.test.ts
+      - name: Test authenticated customer request API guards
+        run: npx --yes tsx@4.20.3 src/topic-pdf-request-api.test.ts
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
