@@ -3,6 +3,7 @@ import { handleCinematicApi } from './cinematic-api';
 import { compileCinematicBrief } from './cinematic-brief-compiler';
 import { saveProject } from './project-store';
 import { buildProductionManifest } from './cinematic-production-manifest';
+import { resolveOriginalSourceImage } from './cinematic-source-media';
 
 async function run() {
   const missingSecret = await handleCinematicApi(
@@ -135,6 +136,23 @@ async function run() {
   assert.equal(sourceAfterReview.sourceEvidence.rightsReviewStatus, 'unverified', 'original intake evidence remains immutable after review');
   assert.equal(sourceAfterReview.rightsReviews.length, 1, 'review is stored separately from immutable intake evidence');
   assert.equal(buildProductionManifest(afterRightsReview).entries.find(entry => entry.id === sourcePayload.asset.id)?.state, 'complete', 'a latest hash-matched verified decision clears the source-rights manifest gate');
+  const reviewedSourceAsset = afterRightsReview.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
+  const readSourceObject = async (key: string) => {
+    const bytes = sourceObjects.get(key);
+    return bytes ? { body: new Response(bytes).body } : null;
+  };
+  const resolvedSource = await resolveOriginalSourceImage('qa-project', reviewedSourceAsset, readSourceObject);
+  assert.equal(resolvedSource.sha256, sourcePayload.asset.contentHash, 'source resolver re-hashes the private object before returning it');
+  assert.ok(resolvedSource.dataUri.startsWith('data:image/png;base64,'), 'verified source resolver returns a typed image data URI');
+  const originalSourceBytes = sourceObjects.get(sourcePayload.asset.storageKey)!;
+  sourceObjects.set(sourcePayload.asset.storageKey, new Uint8Array([...originalSourceBytes.slice(0, -1), originalSourceBytes.at(-1)! ^ 0xff]));
+  await assert.rejects(
+    () => resolveOriginalSourceImage('qa-project', reviewedSourceAsset, readSourceObject),
+    /SHA-256/,
+    'source resolver rejects changed private object bytes even when rights evidence previously passed',
+  );
+  sourceObjects.set(sourcePayload.asset.storageKey, originalSourceBytes);
+
   const rejectedDuplicateRightsReview = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
@@ -155,6 +173,13 @@ async function run() {
   assert.equal(rejectedRightsResponse?.status, 200, 'a subsequent rejection is retained rather than overwriting the earlier decision');
   const afterRejection = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
   assert.equal(buildProductionManifest(afterRejection).entries.find(entry => entry.id === sourcePayload.asset.id)?.state, 'missing', 'latest rejected rights decision blocks source readiness despite an earlier verification');
+  const rejectedSourceAsset = afterRejection.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
+  await assert.rejects(
+    () => resolveOriginalSourceImage('qa-project', rejectedSourceAsset, readSourceObject),
+    /latest verified rights evidence/,
+    'source resolver refuses to read an asset after the latest rights decision is rejected',
+  );
+
   const wrongHashReview = { ...rightsReviewEvidence, reviewId: 'rights-review-wrong-hash', assetContentHash: 'f'.repeat(64) };
   const wrongHashResponse = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
     method: 'POST',
