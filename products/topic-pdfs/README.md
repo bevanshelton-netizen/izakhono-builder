@@ -126,6 +126,17 @@ These documents define the proposed customer experience, brand and trust require
 
 The initial 25-topic queue is not a restriction. The platform is being designed to accept a new topic brief at any time, define audience/outcome/language/jurisdiction, assess risk, and route it through research, original drafting, review and PDF production. See `ON-DEMAND-GENERATION-ENGINE.md` for the pipeline and release controls. The deterministic request/risk/review-gate core and an authenticated customer request API adapter are implemented. The API requires an existing active customer bearer session and is disabled unless the server-side TOPIC_PDF_REQUESTS_ENABLED flag is explicitly set to true. Its D1 migration is prepared but not applied. Live model/research execution, background job processing, PDF generation for customer jobs, payments and delivery are not yet operational.
 
+## Customer storefront and accounts
+
+- Customer workspace: `public/topic-guides/index.html`, `app.js`, `styles.css`, served at `/topic-guides/` with a restrictive same-origin Content Security Policy.
+- Customer account API: `src/topic-pdf-customer-auth-api.ts` supports registration, one-time email verification, sign-in, sign-out and session inspection. Sessions are held in Secure, HttpOnly, SameSite=Strict cookies; bearer tokens are accepted for controlled integrations.
+- Authentication uses the existing customer tenancy tables and password hashing/session helpers. Registration stores only a password hash and a digest of the one-time verification token.
+- Privacy-preserving HMAC rate limits are persisted in `topic_pdf_auth_rate_limits`; the raw IP/email values are not stored in the rate-limit table.
+- Transactional email uses a configurable IZAKHONO-owned email adapter contract. It must be configured with `TOPIC_PDF_EMAIL_URL`, `TOPIC_PDF_EMAIL_KEY`, `TOPIC_PDF_PUBLIC_BASE_URL` and `TOPIC_PDF_AUTH_RATE_LIMIT_SECRET`, then explicitly enabled with `TOPIC_PDF_CUSTOMER_AUTH_ENABLED=true`.
+- The customer request API accepts the HttpOnly session cookie and supports a private request list/status view.
+
+Customer sign-up and login remain disabled until the transactional email adapter and rate-limit secret are provisioned and verified. No email provider credentials have been configured in this build.
+
 ## On-demand execution and review services
 
 The Worker now has a scheduled, D1-backed generation processor and owner-only editorial review endpoints:
@@ -142,7 +153,7 @@ The Worker now has a scheduled, D1-backed generation processor and owner-only ed
 
 The processor is fail-closed. It does nothing unless `TOPIC_PDF_PIPELINE_ENABLED=true` and the research adapter plus existing IZAKHONO SUPER AI URL/internal/workflow credentials are configured. Research adapter contract: POST to `TOPIC_PDF_RESEARCH_URL` with a bearer `TOPIC_PDF_RESEARCH_KEY`; return JSON containing 2-30 current HTTPS sources with title, publisher, URL and claim support. The worker then requests a structured original manuscript from the configured IZAKHONO SUPER AI `/api/v1/generate` endpoint. The generated result is always an unapproved editorial draft.
 
-Database migrations `0032`, `0033` and `0034` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up/session issuance, customer sign-up/session issuance, customer-facing request/status UI, deployment of the private renderer, creation/configuration of the private R2 bucket binding, secure download fulfilment, payment checkout and end-to-end production verification remain outstanding. Do not represent the product as live or saleable.
+Database migrations `0032`, `0033` and `0034` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up/session issuance, customer account recovery/deletion, deployment of the private renderer, creation/configuration of the private R2 bucket binding, secure customer download fulfilment, payment checkout and end-to-end production verification remain outstanding. Do not represent the product as live or saleable.
 
 ## Current build artefacts
 
