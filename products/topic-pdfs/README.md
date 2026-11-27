@@ -122,8 +122,15 @@ Build a repeatable, quality-controlled publishing system before attempting volum
 
 These documents define the proposed customer experience, brand and trust requirements, product presentation, acquisition channels, launch sequence and measurement approach. They are planning and implementation specifications, not approval to launch publicly, process live payments, or incur costs. Final brand identity and all commercial commitments remain subject to the owner's approval.
 
+## On-demand generation
+
+The initial 25-topic queue is not a restriction. The platform is being designed to accept a new topic brief at any time, define audience/outcome/language/jurisdiction, assess risk, and route it through research, original drafting, review and PDF production. See `ON-DEMAND-GENERATION-ENGINE.md` for the pipeline and release controls. The deterministic request/risk/review-gate core is implemented; live model/research execution, public request API, authentication, PDF job processing, payments and delivery are not yet operational.
+
 ## Current build artefacts
 
+- On-demand generation pipeline: `ON-DEMAND-GENERATION-ENGINE.md`
+- Generation request/risk/release-gate core: `src/generation-core.ts` and `src/generation-core.test.ts`
+- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
 - Catalogue validator: `validate-catalog.mjs`
