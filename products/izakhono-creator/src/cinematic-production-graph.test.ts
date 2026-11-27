@@ -119,15 +119,35 @@ const qaVerifiedDistribution: CinematicProduction = {
     },
   } : asset),
 };
-if (!buildProductionManifest(qaVerifiedDistribution).summary.readyForDistribution) throw new Error('Hash-bound, complete Facebook QA evidence should unlock distribution readiness when all approvals and master evidence exist');
+
+if (buildProductionManifest(qaVerifiedDistribution).summary.readyForDistribution) throw new Error('Machine QA alone must not unlock distribution without human review');
+const manifestReview = {
+  schema: 'izakhono.creator/human-media-review-v1' as const,
+  profileId: 'facebook-reels-1080x1920-v1',
+  reviewId: 'manifest-human-review',
+  assetContentHash: 'e'.repeat(64),
+  passed: true,
+  recordedAt: '2026-11-25T00:10:00.000Z',
+  recordedBy: 'human-reviewer',
+  checks: [
+    { id: 'full-playback-integrity', passed: true, finding: 'Full playback checked.' },
+    { id: 'dialogue-music-effects', passed: true, finding: 'Audio clarity and sync checked.' },
+    { id: 'captions-safe-areas', passed: true, finding: 'Captions and safe areas checked.' },
+    { id: 'continuity-titles-credits', passed: true, finding: 'Continuity and credits checked.' },
+    { id: 'private-upload-playback', passed: true, finding: 'Private staging playback checked.' },
+  ],
+};
+const humanReviewedDistribution = recordHumanMediaReview(qaVerifiedDistribution, 'export-1', manifestReview);
+if (!buildProductionManifest(humanReviewedDistribution).summary.readyForDistribution) throw new Error('Machine QA plus hash-bound human review should unlock distribution readiness when approvals and master evidence exist');
+
 const mismatchedQaHash: CinematicProduction = {
-  ...qaVerifiedDistribution,
-  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, assetContentHash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' } } : asset),
+  ...humanReviewedDistribution,
+  assets: humanReviewedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, assetContentHash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' } } : asset),
 };
 if (buildProductionManifest(mismatchedQaHash).summary.readyForDistribution) throw new Error('QA evidence for different bytes must not unlock distribution');
 const missingFastStartQa: CinematicProduction = {
-  ...qaVerifiedDistribution,
-  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: asset.mediaQa!.checks.filter(check => check.id !== 'mp4-fast-start') } } : asset),
+  ...humanReviewedDistribution,
+  assets: humanReviewedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: asset.mediaQa!.checks.filter(check => check.id !== 'mp4-fast-start') } } : asset),
 };
 if (buildProductionManifest(missingFastStartQa).summary.readyForDistribution) throw new Error('Facebook QA without fast-start verification must not unlock distribution');
 const duplicateQaCheck: CinematicProduction = {
