@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Request an original, practical guide on the topic you need to understand.">
+  <title>Request a Topic Guide</title>
+  <link rel="stylesheet" href="/topic-guides/styles.css">
+  <script src="/topic-guides/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/topic-guides/"><span class="brand-mark">T</span><span><strong>TOPIC GUIDES</strong><small>Practical knowledge. Clear next steps.</small></span></a>
+    <div class="header-note">Independent digital publishing · Working brand</div>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">A guide built around your question</p>
+      <h1>What would you like to understand?</h1>
+      <p class="intro">Request a focused, original guide on virtually any lawful topic. Tell us what you need to learn, who the guide is for and which language or country matters.</p>
+      <div class="hero-points"><span>Any topic</span><span>Clear scope</span><span>Research-led drafts</span><span>Human review before publication</span></div>
+    </section>
+
+    <section id="auth-panel" class="panel auth-panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Your account</p><h2>Sign in or create an account</h2></div>
+        <p>Requests and their progress are private to your account.</p>
+      </div>
+      <div class="auth-grid">
+        <form id="login-form" class="form-card">
+          <h3>Sign in</h3>
+          <label>Email address<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="12" maxlength="128"></label>
+          <button type="submit">Sign in securely</button>
+          <p class="form-note">Your session is stored in a secure, HttpOnly cookie.</p>
+        </form>
+        <form id="register-form" class="form-card">
+          <h3>Create an account</h3>
+          <label>Your name<input name="displayName" autocomplete="name" required maxlength="120"></label>
+          <label>Email address<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label>Organisation (optional)<input name="organization" autocomplete="organization" maxlength="180"></label>
+          <label>Password (12 characters minimum)<input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label>
+          <button type="submit">Create account</button>
+          <p class="form-note">We'll send a one-time email verification link before enabling sign-in.</p>
+        </form>
+      </div>
+    </section>
+
+    <section id="account-panel" class="panel" hidden>
+      <div class="account-bar">
+        <div><p class="eyebrow">Your workspace</p><h2 id="welcome">Your topic requests</h2><p id="account-email" class="muted"></p></div>
+        <button id="logout-button" class="button-secondary" type="button">Sign out</button>
+      </div>
+      <div class="request-layout">
+        <form id="request-form" class="form-card request-form">
+          <p class="eyebrow">Start a new guide</p>
+          <h3>Describe the topic</h3>
+          <label>Topic or question<input name="topic" required maxlength="240" placeholder="e.g. How to start a small business in Kenya"></label>
+          <label>What should the reader be able to understand or do?<textarea name="readerOutcome" required minlength="10" maxlength="500" rows="3" placeholder="Describe the practical outcome you want from the guide."></textarea></label>
+          <label>Who is the guide for?<input name="audience" required maxlength="240" placeholder="e.g. First-time business owners"></label>
+          <div class="field-row">
+            <label>Language<input name="language" required maxlength="80" value="English"></label>
+            <label>Country or jurisdiction (optional)<input name="countryOrJurisdiction" maxlength="120" placeholder="e.g. Kenya"></label>
+          </div>
+          <label>Guide depth<select name="depth"><option value="quick">Quick overview</option><option value="practical" selected>Practical guide</option><option value="comprehensive">Comprehensive guide</option></select></label>
+          <div class="checks"><label class="check"><input type="checkbox" name="includeWorksheets" checked> Include worksheets where useful</label><label class="check"><input type="checkbox" name="includeExamples" checked> Include practical examples</label></div>
+          <button type="submit">Submit topic request</button>
+          <p class="form-note">The standard guide target is US$7. Submitting a request does not charge you or guarantee publication. High-stakes subjects may require specialist review.</p>
+        </form>
+        <aside class="requests-card">
+          <div class="requests-heading"><div><p class="eyebrow">Progress</p><h3>Your requests</h3></div><button id="refresh-button" class="button-secondary" type="button">Refresh</button></div>
+          <div id="request-list" class="request-list"><p class="muted">Loading your requests…</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="trust-strip">
+      <div><strong>Original writing</strong><span>Guides are developed for a defined reader need.</span></div>
+      <div><strong>Evidence and review</strong><span>Sources, factual checks and human editorial approval matter.</span></div>
+      <div><strong>Honest publication status</strong><span>A generated draft is not automatically approved or for sale.</span></div>
+    </section>
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+  </main>
+  <footer><span>TOPIC GUIDES · A working publishing concept</span><span>Target price: US$7 per standard approved guide</span></footer>
+</body>
+</html>
