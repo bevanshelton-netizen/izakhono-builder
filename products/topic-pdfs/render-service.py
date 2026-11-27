@@ -28,7 +28,7 @@ def clean_text(value: Any, limit: int = 20_000) -> str:
     return value.replace("\x00", "").strip()[:limit]
 
 
-def manuscript_to_markdown(manuscript: dict[str, Any]) -> str:
+def manuscript_to_markdown(manuscript: dict[str, Any], publication: bool = False) -> str:
     title = clean_text(manuscript.get("title"), 180) or "Untitled topic guide"
     subtitle = clean_text(manuscript.get("subtitle"), 260)
     author = clean_text(manuscript.get("author"), 120) or "Bevan Shelton"
@@ -39,12 +39,17 @@ def manuscript_to_markdown(manuscript: dict[str, Any]) -> str:
     if not isinstance(sections, list) or not 5 <= len(sections) <= 40:
         raise ValueError("Manuscript must contain 5-40 sections.")
 
+    if publication:
+        if manuscript.get("rightsReviewed") is not True or manuscript.get("factualReviewPassed") is not True or manuscript.get("editorialApproval") is not True:
+            raise ValueError("Publication rendering requires recorded rights, factual and editorial approval.")
+        if manuscript.get("specialistReviewRequired") is True and (manuscript.get("specialistReviewPassed") is not True or not clean_text(manuscript.get("specialistReviewerName"), 120) or not clean_text(manuscript.get("specialistCredentials"), 240)):
+            raise ValueError("Publication rendering requires recorded qualified specialist review.")
     lines = [
         "# " + title,
         "## " + subtitle,
         "**Author:** " + author,
         "**Edition:** " + " · ".join(part for part in [language, geography, version] if part),
-        "**Status:** EDITORIAL DRAFT — NOT FOR SALE",
+        *( [] if publication else ["**Status:** EDITORIAL DRAFT — NOT FOR SALE"] ),
         "",
         "---",
         "",
@@ -80,22 +85,25 @@ def manuscript_to_markdown(manuscript: dict[str, Any]) -> str:
             f"  Accessed: {clean_text(source.get('accessedAt'), 40)}",
             "",
         ])
-    lines.extend([
-        "## Editorial status",
-        "",
-        "This document is an editorial draft for review. It has not been approved for sale or public distribution. Claims, sources, rights, language quality and jurisdictional relevance require human review.",
-    ])
+    if publication:
+        lines.extend(["## Publication edition", "", "This is the approved publication edition. The publication version and release status are recorded by the publisher."])
+    else:
+        lines.extend([
+            "## Editorial status",
+            "",
+            "This document is an editorial draft for review. It has not been approved for sale or public distribution. Claims, sources, rights, language quality and jurisdictional relevance require human review.",
+        ])
     return "\n".join(lines) + "\n"
 
 
-def render_manuscript(manuscript: dict[str, Any]) -> bytes:
-    markdown = manuscript_to_markdown(manuscript)
+def render_manuscript(manuscript: dict[str, Any], publication: bool = False) -> bytes:
+    markdown = manuscript_to_markdown(manuscript, publication=publication)
     with tempfile.TemporaryDirectory(prefix="izakhono-topic-pdf-") as directory:
         source = Path(directory) / "manuscript.md"
-        output = Path(directory) / "editorial-draft.pdf"
+        output = Path(directory) / ("publication-edition.pdf" if publication else "editorial-draft.pdf")
         source.write_text(markdown, encoding="utf-8")
         result = subprocess.run(
-            ["python3", str(RENDERER), str(source), str(output)],
+            ["python3", str(RENDERER), str(source), str(output)] + (["--publication"] if publication else []),
             check=False,
             capture_output=True,
             text=True,
@@ -112,12 +120,14 @@ def render_manuscript(manuscript: dict[str, Any]) -> bytes:
 class Handler(BaseHTTPRequestHandler):
     server_version = "IZAKHONO-TopicPDF-Renderer/1.0"
 
-    def _send(self, status: int, body: bytes, content_type: str = "application/json") -> None:
+    def _send(self, status: int, body: bytes, content_type: str = "application/json", extra_headers: dict[str, str] | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -125,13 +135,15 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != "/health":
             self._send(404, b'{"ok":false,"error":"Not found."}')
             return
-        self._send(200, b'{"ok":true,"service":"topic-pdf-renderer","mode":"draft-only"}')
+        mode = "draft-and-publication" if os.environ.get("TOPIC_PDF_RELEASE_RENDER_TOKEN") else "draft-only"
+        self._send(200, json.dumps({"ok": True, "service": "topic-pdf-renderer", "mode": mode}).encode())
 
     def do_POST(self) -> None:
-        if self.path != "/render":
+        if self.path not in {"/render", "/render-publication"}:
             self._send(404, b'{"ok":false,"error":"Not found."}')
             return
-        token = os.environ.get("TOPIC_PDF_RENDER_TOKEN", "")
+        publication = self.path == "/render-publication"
+        token = os.environ.get("TOPIC_PDF_RELEASE_RENDER_TOKEN" if publication else "TOPIC_PDF_RENDER_TOKEN", "")
         if not token or self.headers.get("Authorization", "") != "Bearer " + token:
             self._send(401, b'{"ok":false,"error":"Unauthorized."}')
             return
@@ -148,8 +160,8 @@ class Handler(BaseHTTPRequestHandler):
             manuscript = payload.get("manuscript") if isinstance(payload, dict) else None
             if not isinstance(manuscript, dict):
                 raise ValueError("manuscript object is required.")
-            pdf = render_manuscript(manuscript)
-            self._send(200, pdf, "application/pdf")
+            pdf = render_manuscript(manuscript, publication=publication)
+            self._send(200, pdf, "application/pdf", {"X-Topic-PDF-Mode": "publication" if publication else "editorial-draft"})
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
             self._send(400, json.dumps({"ok": False, "error": str(error)}).encode())
         except Exception as error:
@@ -161,8 +173,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    if not os.environ.get("TOPIC_PDF_RENDER_TOKEN"):
-        raise SystemExit("TOPIC_PDF_RENDER_TOKEN must be configured.")
+    if not (os.environ.get("TOPIC_PDF_RENDER_TOKEN") or os.environ.get("TOPIC_PDF_RELEASE_RENDER_TOKEN")):
+        raise SystemExit("At least one private PDF renderer token must be configured.")
     host = os.environ.get("TOPIC_PDF_RENDER_HOST", "127.0.0.1")
     port = int(os.environ.get("TOPIC_PDF_RENDER_PORT", "8788"))
     ThreadingHTTPServer((host, port), Handler).serve_forever()
