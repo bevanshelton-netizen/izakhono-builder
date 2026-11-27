@@ -150,6 +150,7 @@ The Worker now has a scheduled, D1-backed generation processor and owner-only ed
 - `/api/owner/topic-pdfs/requests/:id` — owner-only manuscript, evidence, event and review-decision inspection.
 - `/api/owner/topic-pdfs/requests/:id/preview` — owner-only streaming of the private, watermarked editorial PDF.
 - `/api/owner/topic-pdfs/requests/:id/review` — records reviewer identity/role, gate decisions and specialist credentials for high-stakes guides.
+- `/api/owner/topic-pdfs/publications/:id/preview` — owner-only inline preview of the sale-edition candidate with R2 metadata and integrity checks.
 - `/api/owner/topic-pdfs/publications/:id/publish` — explicit owner release action. It checks the latest review decision and private R2 candidate metadata/integrity before changing the publication to `published`.
 - Worker cron: every five minutes; at most one generation job is claimed per tick.
 - Customer request idempotency keys are persisted and unique per customer.
