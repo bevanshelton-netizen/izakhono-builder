@@ -18,27 +18,31 @@
 - Added idempotent initial publisher, imprint, author, work, edition, application, first-season catalogue and NLSA correspondence seed: `postgresql/0002_seed_initial_catalogue.sql`.
 - Added PostgreSQL database-level ISBN-13 checksum guard and immutable agency-correspondence trigger.
 - Added provider-neutral TypeScript persistence contract: `src/storage/contract.ts`.
-- Added local PostgreSQL 17 development Compose service, bound only to `127.0.0.1:5432`, with persistent local volume and a health check; credentials are supplied through an ignored `.env` file and are not committed.
-- Added CI checks for the PostgreSQL schema and provider-neutral contract.
-- These are schema and contract foundations only. The PostgreSQL driver/adapter is not implemented, API routes are not wired to it, and no PostgreSQL instance has been provisioned.
+- Added PostgreSQL parameter-binding compatibility adapter: `src/postgresql-adapter.ts`, with adapter unit tests.
+- Added Node.js 22 HTTP runtime, PostgreSQL driver manifest and container build: `runtime/`.
+- Connected the existing registry API handler to the PostgreSQL adapter through the Node runtime without changing the domain/API route implementation.
+- Added opt-in local Compose runtime profile, with PostgreSQL and application ports bound to loopback only; local secrets are supplied through an ignored `.env` file.
+- Added CI checks for the PostgreSQL schema, adapter tests and runtime syntax.
+- The self-hosted runtime path is now implemented in source, but live PostgreSQL integration, local container startup and end-to-end API tests have not yet been evidenced.
 
 ## Latest verification
 - The architecture/documentation commit `af4d83b1ba5d16606093399fa974ded9a9e6c96a` completed all 18 checks successfully, including the repository Worker build. That preview is a repository artifact, not the self-owned registry runtime.
-- New PostgreSQL portability files and CI checks are committed after that SHA; their CI run is pending and must pass before this latest work is considered verified.
+- The CI run for commit `c8ef320bf30b7d56e6703146648b949e9dbc24f7` exposed a dashboard syntax-check command failure before the registry test suite could run. The workflow command was corrected and adapter/runtime checks were added; the updated branch CI must complete successfully before verification can be claimed.
+- No live PostgreSQL server or Docker container has been started in this environment.
 
 ## Not complete / not claimed
 - No official ISBN has been allocated or verified.
 - No NLSA publisher prefix or publisher registration has been confirmed.
 - No self-owned production PostgreSQL instance, application runtime, DNS service or public edge has been provisioned. A local-only PostgreSQL Compose definition is provided for development; it has not been started or tested in this environment.
 - No self-hosted production deployment or production URL is claimed.
-- PostgreSQL API adapter, integration tests, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
+- Live PostgreSQL integration/API tests, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
 - NODE01 production runtime evidence and operational integration remain outstanding.
 - No hosting, hardware, bandwidth or subscription expenditure is authorised by this work.
 
 ## Release gates
-1. Implement the PostgreSQL adapter and wire the registry API to the provider-neutral contract.
-2. Run live PostgreSQL schema, API, ISBN integrity and correspondence immutability integration tests.
-3. Select and verify an execution substrate and resource budget.
+1. Run live PostgreSQL schema, API, ISBN integrity and correspondence immutability integration tests against the supplied local Compose stack.
+2. Add data migration tooling and a tested rollback plan for any transition from the D1 prototype.
+3. Select and verify an IZAKHONO Edge execution substrate and resource budget.
 4. Configure organisation-controlled access, secret handling, monitoring and encrypted off-node backups.
 5. Demonstrate restore and rollback.
 6. Implement owned DNS/TLS/WAF/ingress and complete operational acceptance.
