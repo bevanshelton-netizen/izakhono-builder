@@ -124,7 +124,7 @@ These documents define the proposed customer experience, brand and trust require
 
 ## On-demand generation
 
-The initial 25-topic queue is not a restriction. The platform is being designed to accept a new topic brief at any time, define audience/outcome/language/jurisdiction, assess risk, and route it through research, original drafting, review and PDF production. See `ON-DEMAND-GENERATION-ENGINE.md` for the pipeline and release controls. The deterministic request/risk/review-gate core and an authenticated customer request API adapter are implemented. The API requires an existing active customer bearer session and is disabled unless the server-side TOPIC_PDF_REQUESTS_ENABLED flag is explicitly set to true. Its D1 migration is prepared but not applied. Live model/research execution, background job processing, PDF generation for customer jobs, payments and delivery are not yet operational.
+The initial 25-topic queue is not a restriction. The platform is being designed to accept a new topic brief at any time, define audience/outcome/language/jurisdiction, assess risk, and route it through research, original drafting, review and PDF production. See `ON-DEMAND-GENERATION-ENGINE.md` for the pipeline and release controls. The deterministic request/risk/review-gate core, authenticated customer request API, customer account workspace, D1-backed generation processor, owner review queue and private editorial PDF rendering path are implemented in code. Customer registration and generation remain disabled until their provider configuration and migrations are ready. The customer library and entitlement-gated private download route are implemented, but no payment webhook or entitlement grant is active; only published products with a trusted active entitlement can be delivered.
 
 ## Customer storefront and accounts
 
@@ -134,6 +134,8 @@ The initial 25-topic queue is not a restriction. The platform is being designed 
 - Privacy-preserving HMAC rate limits are persisted in `topic_pdf_auth_rate_limits`; the raw IP/email values are not stored in the rate-limit table.
 - Transactional email uses a configurable IZAKHONO-owned email adapter contract. It must be configured with `TOPIC_PDF_EMAIL_URL`, `TOPIC_PDF_EMAIL_KEY`, `TOPIC_PDF_PUBLIC_BASE_URL` and `TOPIC_PDF_AUTH_RATE_LIMIT_SECRET`, then explicitly enabled with `TOPIC_PDF_CUSTOMER_AUTH_ENABLED=true`.
 - The customer request API accepts the HttpOnly session cookie and supports a private request list/status view.
+- Customer library: `/api/topic-pdfs/library` lists only published guides with an active customer entitlement.
+- Secure download: `/api/topic-pdfs/download/:slug` streams from private R2 only after active-session, customer-ownership, active-entitlement and published-status checks; each download is audited in D1. Customer routes cannot grant or alter entitlements.
 
 Customer sign-up and login remain disabled until the transactional email adapter and rate-limit secret are provisioned and verified. No email provider credentials have been configured in this build.
 
@@ -153,14 +155,14 @@ The Worker now has a scheduled, D1-backed generation processor and owner-only ed
 
 The processor is fail-closed. It does nothing unless `TOPIC_PDF_PIPELINE_ENABLED=true` and the research adapter plus existing IZAKHONO SUPER AI URL/internal/workflow credentials are configured. Research adapter contract: POST to `TOPIC_PDF_RESEARCH_URL` with a bearer `TOPIC_PDF_RESEARCH_KEY`; return JSON containing 2-30 current HTTPS sources with title, publisher, URL and claim support. The worker then requests a structured original manuscript from the configured IZAKHONO SUPER AI `/api/v1/generate` endpoint. The generated result is always an unapproved editorial draft.
 
-Database migrations `0032`, `0033` and `0034` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up/session issuance, customer account recovery/deletion, deployment of the private renderer, creation/configuration of the private R2 bucket binding, secure customer download fulfilment, payment checkout and end-to-end production verification remain outstanding. Do not represent the product as live or saleable.
+Database migrations `0032`–`0037` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up remains disabled pending email configuration. Customer account recovery/deletion, deployment of the private renderer, creation/configuration of the private R2 bucket binding, payment checkout/webhooks/refunds, trusted entitlement grants, a non-watermarked sale edition renderer, and end-to-end production verification remain outstanding. The fulfilment endpoint is intentionally fail-closed until those release and payment gates are complete. Do not represent the product as live or saleable.
 
 ## Current build artefacts
 
 - On-demand generation pipeline: `ON-DEMAND-GENERATION-ENGINE.md`
 - Generation request/risk/release-gate core: `src/generation-core.ts` and `src/generation-core.test.ts`
 - Authenticated customer request API adapter: `../../src/topic-pdf-request-api.ts` and guard tests: `../../src/topic-pdf-request-api.test.ts` (disabled by default; requires migration and explicit feature activation)
-- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`, private PDF metadata: `../../migrations/0035_topic_pdf_render_storage.sql`, customer-auth throttling: `../../migrations/0036_topic_pdf_customer_auth_limits.sql`
+- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`, private PDF metadata: `../../migrations/0035_topic_pdf_render_storage.sql`, customer-auth throttling: `../../migrations/0036_topic_pdf_customer_auth_limits.sql`, purchase entitlements and download audit: `../../migrations/0037_topic_pdf_customer_fulfilment.sql`
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
 - Catalogue validator: `validate-catalog.mjs`
