@@ -82,7 +82,7 @@ async function allowedAttempt(env: AuthEnv, scope: string, value: string, limit:
 
 function authReady(env: AuthEnv): boolean {
   return env.TOPIC_PDF_CUSTOMER_AUTH_ENABLED === 'true' &&
-    Boolean(env.TOPIC_PDF_EMAIL_URL && env.TOPIC_PDF_EMAIL_KEY && env.TOPIC_PDF_PUBLIC_BASE_URL && env.TOPIC_PDF_AUTH_RATE_LIMIT_SECRET);
+    Boolean(env.TOPIC_PDF_EMAIL_URL && env.TOPIC_PDF_EMAIL_KEY && env.TOPIC_PDF_PUBLIC_BASE_URL && String(env.TOPIC_PDF_AUTH_RATE_LIMIT_SECRET || '').length >= 32);
 }
 
 async function sendVerificationEmail(env: AuthEnv, email: string, displayName: string, token: string): Promise<void> {
