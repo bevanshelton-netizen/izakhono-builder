@@ -17,16 +17,17 @@ import {
   type ReviewCaseStatus,
   type ReviewDecisionKind,
   type ReviewTenantScope,
+  type ReviewEvidenceRequest,
 } from './publisher-review-queue-contracts';
 
-export type FortressIdentityRole = 'OWNER' | 'SECURITY_ADMIN' | 'ANALYST' | 'VIEWER';
+export type FortressIdentityRole = 'owner' | 'administrator' | 'technician' | 'auditor' | 'viewer';
 export interface VerifiedReviewSession {
   principalRef: string;
   tenant: ReviewTenantScope;
   role: FortressIdentityRole;
 }
 export interface ReviewSessionVerifier {
-  /** Resolve a bearer/session credential through FORTRESS GET /api/fortress/session. */
+  /** Verify the credential using the owner-approved FORTRESS identity/session adapter. */
   verifySession(sessionCredential: string): Promise<VerifiedReviewSession | null>;
 }
 export interface AuthorizationRequest {
@@ -94,6 +95,18 @@ export interface TransitionReviewCommand {
   idempotencyKey: string;
   correlationRef: string;
 }
+export interface RequestEvidenceCommand {
+  sessionCredential: string;
+  caseId: string;
+  requestId: string;
+  kind: ReviewEvidenceRequest['kind'];
+  dueAt: string;
+  reasonCode: string;
+  reviewerNoteRef: string | null;
+  expectedVersion: number;
+  idempotencyKey: string;
+  correlationRef: string;
+}
 export type ReviewServiceErrorCode =
   | 'REVIEW_SESSION_INVALID'
   | 'REVIEW_AUTHORIZATION_DENIED'
@@ -103,7 +116,8 @@ export type ReviewServiceErrorCode =
   | 'REVIEW_VERSION_CONFLICT'
   | 'REVIEW_IDEMPOTENCY_KEY_REQUIRED'
   | 'REVIEW_AUTHORIZATION_RESPONSE_INVALID'
-  | 'REVIEW_DECISION_INVALID';
+  | 'REVIEW_DECISION_INVALID'
+  | 'REVIEW_EVIDENCE_REQUEST_INVALID';
 export class ReviewServiceError extends Error {
   constructor(readonly code: ReviewServiceErrorCode, message = code) { super(message); this.name = 'ReviewServiceError'; }
 }
@@ -152,6 +166,68 @@ export class PublisherReviewService {
     const errors = validateReviewCase(record, this.clock());
     if (errors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', errors.join(','));
     return record;
+  }
+  async requestEvidence(command: RequestEvidenceCommand): Promise<ReviewCommitResult> {
+    if (!nonBlank(command.idempotencyKey) || command.idempotencyKey.length > 200) throw new ReviewServiceError('REVIEW_IDEMPOTENCY_KEY_REQUIRED');
+    if (!nonBlank(command.caseId) || !nonBlank(command.correlationRef) || !nonBlank(command.requestId)
+      || !Number.isFinite(Date.parse(command.dueAt)) || !command.reasonCode.startsWith('EVIDENCE_')) {
+      throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
+    }
+    const session = await this.resolveSession(command.sessionCredential);
+    const permission = 'publishing:review:request_evidence';
+    const authorization = await this.ports.authorization.authorize({
+      tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
+      resourceRef: `publisher-review:${command.caseId}`, permission, purpose: 'publisher_review',
+    });
+    if (!authorization.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
+    if (!this.validAuthorization(authorization, session.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    const current = await this.ports.store.getCase(session.tenant, command.caseId);
+    if (!current || !sameTenant(current.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
+    const now = this.clock();
+    const caseErrors = validateReviewCase(current, now);
+    if (caseErrors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', caseErrors.join(','));
+    if (current.status !== 'in_review' || current.evidenceRequests.some(item => item.requestId === command.requestId)
+      || Date.parse(command.dueAt) <= Date.parse(now)) {
+      throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
+    }
+    const request: ReviewEvidenceRequest = {
+      requestId: command.requestId, kind: command.kind, status: 'requested',
+      requestedByPrincipalRef: session.principalRef, requestedAt: now, dueAt: command.dueAt,
+      evidenceRef: null, reviewedByPrincipalRef: null, authorizationDecisionRef: null,
+      reviewedAt: null, reasonCode: command.reasonCode,
+    };
+    const nextCase: PublisherReviewCase = {
+      ...current, status: 'awaiting_evidence', evidenceRequests: [...current.evidenceRequests, request],
+      updatedAt: now, version: current.version + 1,
+    };
+    const requestFingerprint = await fingerprint({
+      sessionCredential: command.sessionCredential, caseId: command.caseId, action: 'request_evidence',
+      reasonCode: command.reasonCode, reviewerNoteRef: command.reviewerNoteRef,
+      expectedVersion: command.expectedVersion, idempotencyKey: command.idempotencyKey,
+    }, session);
+    if (command.expectedVersion !== current.version) throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
+    const decision: Omit<ImmutableReviewDecision, 'auditEventRef'> = {
+      decisionId: `decision:${requestFingerprint.slice(0, 32)}`, caseId: current.caseId,
+      tenant: session.tenant, kind: 'request_evidence', actorPrincipalRef: session.principalRef,
+      authorizationDecisionRef: authorization.decisionRef, reasonCode: command.reasonCode,
+      reviewerNoteRef: command.reviewerNoteRef, evidenceRequestIds: [request.requestId],
+      caseVersion: nextCase.version, occurredAt: now,
+    };
+    const audit: ReviewAuditDraft = {
+      tenant: session.tenant, actorPrincipalRef: session.principalRef,
+      authorizationDecisionRef: authorization.decisionRef, action: 'request_evidence',
+      resourceRef: `publisher-review:${command.caseId}`, reasonCode: command.reasonCode,
+      occurredAt: now, correlationRef: command.correlationRef,
+    };
+    const commit = await this.ports.store.commitMutation({
+      tenant: session.tenant, caseId: command.caseId, expectedVersion: command.expectedVersion,
+      nextCase, decision, audit, idempotencyKey: command.idempotencyKey, requestFingerprint,
+    });
+    if (commit.status === 'conflict') throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
+    if (!sameTenant(commit.reviewCase.tenant, session.tenant) || !sameTenant(commit.decision.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
+    const decisionErrors = validateImmutableReviewDecision(commit.decision);
+    if (decisionErrors.length) throw new ReviewServiceError('REVIEW_DECISION_INVALID', decisionErrors.join(','));
+    return commit;
   }
   async transition(command: TransitionReviewCommand): Promise<ReviewCommitResult> {
     if (!nonBlank(command.idempotencyKey) || command.idempotencyKey.length > 200) throw new ReviewServiceError('REVIEW_IDEMPOTENCY_KEY_REQUIRED');
@@ -214,7 +290,7 @@ export class PublisherReviewService {
     const session = await this.ports.sessions.verifySession(credential);
     if (!session || !nonBlank(session.principalRef) || !nonBlank(session.tenant.platformId)
       || !nonBlank(session.tenant.entityId)
-      || !['OWNER', 'SECURITY_ADMIN', 'ANALYST', 'VIEWER'].includes(session.role)) {
+      || !['owner', 'administrator', 'technician', 'auditor', 'viewer'].includes(session.role)) {
       throw new ReviewServiceError('REVIEW_SESSION_INVALID');
     }
     return session;
