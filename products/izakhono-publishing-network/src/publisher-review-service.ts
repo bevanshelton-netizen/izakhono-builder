@@ -43,6 +43,8 @@ export interface AuthorizationDecision {
   decisionRef: string;
   principalRef: string;
   permission: string;
+  tenant: ReviewTenantScope;
+  resourceRef: string;
   policyVersion: string;
   decidedAt: string;
 }
@@ -164,7 +166,7 @@ export class PublisherReviewService {
       purpose: 'publisher_review',
     });
     if (!auth.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
-    if (!this.validAuthorization(auth, session.principalRef, 'publishing:review:read')) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    if (!this.validAuthorization(auth, session.principalRef, 'publishing.review.read', session.tenant, `publisher-review:${caseId}`)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
     const record = await this.ports.store.getCase(session.tenant, caseId);
     if (!record || !sameTenant(record.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const errors = validateReviewCase(record, this.clock());
@@ -174,18 +176,20 @@ export class PublisherReviewService {
   async requestEvidence(command: RequestEvidenceCommand): Promise<ReviewCommitResult> {
     if (!nonBlank(command.idempotencyKey) || command.idempotencyKey.length > 200) throw new ReviewServiceError('REVIEW_IDEMPOTENCY_KEY_REQUIRED');
     if (!nonBlank(command.caseId) || !nonBlank(command.correlationRef) || !nonBlank(command.requestId)
-      || !Number.isFinite(Date.parse(command.dueAt)) || !command.reasonCode.startsWith('EVIDENCE_')
+      || !['legal_identity', 'authorized_representative', 'domain_control', 'editorial_policy', 'sample_content', 'traffic_metrics', 'audience_metrics', 'other'].includes(command.kind)
+      || !nonBlank(command.reasonCode) || command.reasonCode.length > 128 || !command.reasonCode.startsWith('EVIDENCE_')
+      || !Number.isFinite(Date.parse(command.dueAt))
       || (command.reviewerNoteRef !== null && !/^ref:[A-Za-z0-9._:/-]{3,200}$/.test(command.reviewerNoteRef))) {
       throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
     }
     const session = await this.resolveSession(command.sessionCredential);
-    const permission = 'publishing:review:request_evidence';
+    const permission = 'publishing.review.request_evidence';
     const authorization = await this.ports.authorization.authorize({
       tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
       resourceRef: `publisher-review:${command.caseId}`, permission, purpose: 'publisher_review',
     });
     if (!authorization.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
-    if (!this.validAuthorization(authorization, session.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    if (!this.validAuthorization(authorization, session.principalRef, permission, session.tenant, `publisher-review:${command.caseId}`)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
     const requestFingerprint = await fingerprint(command, session, {
       requestId: command.requestId, kind: command.kind, dueAt: command.dueAt,
     });
@@ -238,12 +242,13 @@ export class PublisherReviewService {
     if (!nonBlank(command.caseId) || !nonBlank(command.correlationRef)) throw new ReviewServiceError('REVIEW_ACTION_INVALID');
     const session = await this.resolveSession(command.sessionCredential);
     const permission = permissionByAction[command.action];
+    if (!permission) throw new ReviewServiceError('REVIEW_ACTION_INVALID');
     const authorization = await this.ports.authorization.authorize({
       tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
       resourceRef: `publisher-review:${command.caseId}`, permission, purpose: 'publisher_review',
     });
     if (!authorization.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
-    if (!this.validAuthorization(authorization, session.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    if (!this.validAuthorization(authorization, session.principalRef, permission, session.tenant, `publisher-review:${command.caseId}`)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
     // Check the tenant-scoped receipt after authorization but before stale-version validation.
     const requestFingerprint = await fingerprint(command, session);
     const prior = await this.ports.store.lookupIdempotency(session.tenant, command.idempotencyKey, requestFingerprint);
@@ -304,10 +309,11 @@ export class PublisherReviewService {
     return session;
   }
   private clock(): string { return (this.ports.now ?? (() => new Date().toISOString()))(); }
-  private validAuthorization(auth: AuthorizationDecision, principalRef: string, permission: string): boolean {
+  private validAuthorization(auth: AuthorizationDecision, principalRef: string, permission: string, tenant: ReviewTenantScope, resourceRef: string): boolean {
     return auth.allowed && nonBlank(auth.decisionRef) && auth.principalRef === principalRef
-      && auth.permission === permission && nonBlank(auth.policyVersion)
-      && Number.isFinite(Date.parse(auth.decidedAt));
+      && auth.permission === permission && sameTenant(auth.tenant, tenant) && auth.resourceRef === resourceRef
+      && nonBlank(auth.policyVersion) && Number.isFinite(Date.parse(auth.decidedAt))
+      && Date.parse(auth.decidedAt) <= Date.parse(this.clock());
   }
   private toReviewAuthorization(auth: AuthorizationDecision): ReviewAuthorization {
     return { principalRef: auth.principalRef, decisionRef: auth.decisionRef, permission: auth.permission, policyVersion: auth.policyVersion, decidedAt: auth.decidedAt };
