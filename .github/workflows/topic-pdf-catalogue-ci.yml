@@ -24,3 +24,12 @@ jobs:
           node-version: 22
       - name: Validate topic candidate catalogue
         run: node products/topic-pdfs/validate-catalog.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PDF renderer dependency
+        run: python -m pip install reportlab
+      - name: Render first guide as a non-sale editorial proof
+        run: |
+          python products/topic-pdfs/render-pdf.py products/topic-pdfs/drafts/TPDF-001-household-budget.md /tmp/TPDF-001-editorial-proof.pdf
+          test -s /tmp/TPDF-001-editorial-proof.pdf
