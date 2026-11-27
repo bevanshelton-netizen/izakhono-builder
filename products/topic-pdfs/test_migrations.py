@@ -50,6 +50,26 @@ class TopicPdfMigrationTests(unittest.TestCase):
                 ("job_2", "{}", "{}", "requested", "standard", "customer_1", "fingerprint_2", "request-key-0001"),
             )
 
+    def test_customer_entitlements_are_unique_and_auditable(self):
+        self.db.execute("INSERT INTO builder_customers(id) VALUES('customer_1')")
+        self.db.execute(
+            "INSERT INTO topic_pdf_generation_jobs(id,request_json,plan_json,status,risk_level,request_fingerprint) VALUES('job_ent','{}','{}','approved','standard','fingerprint_ent')"
+        )
+        self.db.execute(
+            "INSERT INTO topic_pdf_publications(id,job_id,slug,title,language,geography,version,storage_key,status) VALUES('pub_ent','job_ent','guide-test-12345678','Guide','English','International','1.0','private/guide.pdf','published')"
+        )
+        self.db.execute(
+            "INSERT INTO topic_pdf_customer_entitlements(id,customer_id,publication_id,payment_provider,payment_reference,status,purchased_at) VALUES('ent_1','customer_1','pub_ent','stripe','pi_test_1','active','2026-11-27T00:00:00.000Z')"
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "INSERT INTO topic_pdf_customer_entitlements(id,customer_id,publication_id,payment_provider,payment_reference,status,purchased_at) VALUES('ent_2','customer_1','pub_ent','stripe','pi_test_2','active','2026-11-27T00:00:00.000Z')"
+            )
+        self.db.execute(
+            "INSERT INTO topic_pdf_download_events(id,entitlement_id,customer_id,publication_id,accessed_at) VALUES('dl_1','ent_1','customer_1','pub_ent','2026-11-27T00:01:00.000Z')"
+        )
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM topic_pdf_download_events WHERE entitlement_id='ent_1'").fetchone()[0], 1)
+
     def test_audit_and_review_records_reference_jobs(self):
         self.db.execute(
             "INSERT INTO topic_pdf_generation_jobs(id,request_json,plan_json,status,risk_level,request_fingerprint) VALUES('job_3','{}','{}','quality_review','standard','fingerprint_3')"
