@@ -11,41 +11,151 @@
     "source_commit_sha",
     "manifest_digest",
     "status",
-    "artifact",
-    "evidence",
     "completed_at",
     "signer_key_id",
     "signature"
   ],
   "properties": {
-    "schema_version": { "const": "izakhono.host.build-result.v1" },
-    "request_id": { "type": "string", "minLength": 8, "maxLength": 128 },
-    "project_id": { "type": "string", "minLength": 3, "maxLength": 80 },
-    "source_commit_sha": { "type": "string", "pattern": "^([a-f0-9]{40}|[a-f0-9]{64})$" },
-    "manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
-    "status": { "type": "string", "enum": ["completed", "failed", "rejected"] },
+    "schema_version": {
+      "const": "izakhono.host.build-result.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "source_commit_sha": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed",
+        "rejected"
+      ]
+    },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["media_type", "digest", "reference"],
+      "required": [
+        "media_type",
+        "digest",
+        "reference"
+      ],
       "properties": {
-        "media_type": { "const": "application/vnd.oci.image.manifest.v1+json" },
-        "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
-        "reference": { "type": "string", "minLength": 8, "maxLength": 512, "pattern": "^registry://[A-Za-z0-9._/-]+@sha256:[a-f0-9]{64}$" }
+        "media_type": {
+          "const": "application/vnd.oci.image.manifest.v1+json"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 512,
+          "pattern": "^registry://[A-Za-z0-9._/-]+@sha256:[a-f0-9]{64}$"
+        }
       }
     },
     "evidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sbom_reference", "provenance_reference"],
+      "required": [
+        "sbom_reference",
+        "provenance_reference"
+      ],
       "properties": {
-        "sbom_reference": { "type": "string", "minLength": 8, "maxLength": 512, "pattern": "^evidence://[A-Za-z0-9._/-]+$" },
-        "provenance_reference": { "type": "string", "minLength": 8, "maxLength": 512, "pattern": "^evidence://[A-Za-z0-9._/-]+$" }
+        "sbom_reference": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 512,
+          "pattern": "^evidence://[A-Za-z0-9._/-]+$"
+        },
+        "provenance_reference": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 512,
+          "pattern": "^evidence://[A-Za-z0-9._/-]+$"
+        }
       }
     },
-    "completed_at": { "type": "string", "format": "date-time" },
-    "signer_key_id": { "type": "string", "minLength": 3, "maxLength": 160 },
-    "signature": { "type": "string", "minLength": 32, "maxLength": 2048, "contentEncoding": "base64" },
-    "correlation_id": { "type": "string", "minLength": 8, "maxLength": 128 }
-  }
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signer_key_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 2048,
+      "contentEncoding": "base64"
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Z0-9_]+$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "completed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "artifact",
+          "evidence"
+        ]
+      },
+      "else": {
+        "required": [
+          "failure"
+        ]
+      }
+    }
+  ]
 }
