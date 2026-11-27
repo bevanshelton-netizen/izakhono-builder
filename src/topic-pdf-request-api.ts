@@ -57,7 +57,7 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
 
   if (req.method === 'GET' && item) {
     const row = await env.DB.prepare(
-      'SELECT id,status,risk_level,CASE WHEN pdf_storage_key IS NULL THEN 0 ELSE 1 END AS pdf_ready,created_at,updated_at FROM topic_pdf_generation_jobs WHERE id=? AND requested_by=? LIMIT 1',
+      "SELECT id,json_extract(request_json,'$.topic') AS topic,status,risk_level,CASE WHEN pdf_storage_key IS NULL THEN 0 ELSE 1 END AS pdf_ready,created_at,updated_at FROM topic_pdf_generation_jobs WHERE id=? AND requested_by=? LIMIT 1",
     ).bind(item[1], customer.id).first<any>();
     if (!row) return response({ ok: false, error: 'Request not found.' }, 404);
     return response({ ok: true, request: row });
