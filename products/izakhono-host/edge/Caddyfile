@@ -8,7 +8,7 @@
 
 :80 {
   @stalwart_acme {
-    host mail.izakhono.africa
+    host mail.izakhonoafrica.co.za
     path /.well-known/acme-challenge/*
   }
   handle @stalwart_acme {
@@ -27,11 +27,11 @@
   handle @contact {
     reverse_proxy contact-gateway:8090
   }
-  @webmail host webmail.izakhono.africa
+  @webmail host webmail.izakhonoafrica.co.za
   handle @webmail {
     reverse_proxy roundcube:80
   }
-  @mailhost host mail.izakhono.africa
+  @mailhost host mail.izakhonoafrica.co.za
   handle @mailhost {
     respond "Mail protocols are served over SMTP/IMAP TLS." 404
   }
