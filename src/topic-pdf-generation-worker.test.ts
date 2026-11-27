@@ -70,6 +70,43 @@ async function main() {
   );
   assert.equal(noSaleCandidate?.status, 409);
 
+  const releaseDb = {
+    prepare(sql: string) {
+      return {
+        bind(..._values: unknown[]) { return this; },
+        async first<T>() {
+          let row: any = null;
+          if (sql.includes('SELECT p.id,p.job_id,p.status,p.sale_storage_key')) {
+            row = { id: 'pub_12345678', job_id: 'job_12345678', status: 'approved', sale_storage_key: 'topic-pdfs/job_12345678/sale-edition/release.pdf', sale_sha256: 'sha-test', sale_bytes: 100, job_status: 'approved', plan_json: JSON.stringify({ risk: { requiresSpecialistReview: false } }) };
+          } else if (sql.includes('SELECT decision,rights_reviewed')) {
+            row = { decision: 'approved', rights_reviewed: 1, factual_review_passed: 1, specialist_review_passed: 0, editorial_approved: 1 };
+          } else if (sql.includes('SELECT status FROM topic_pdf_publications')) {
+            row = { status: 'published' };
+          }
+          return row as T | null;
+        },
+        async run() { return {}; },
+      };
+    },
+  };
+  const releaseBucket = {
+    async get() {
+      return {
+        size: 100,
+        customMetadata: { status: 'sale-edition-candidate-not-published', sha256: 'sha-test' },
+        body: new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array([1])); controller.close(); } }),
+      };
+    },
+  };
+  const published = await topicPdfOwnerReviewRoute(
+    new Request(publishUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmPublication: true }) }),
+    { DB: releaseDb, TOPIC_PDF_BUCKET: releaseBucket },
+    publishUrl,
+    async () => true,
+  );
+  assert.equal(published?.status, 200);
+  assert.equal((await published!.json() as any).publication.status, 'published');
+
   const unrelated = await topicPdfOwnerReviewRoute(
     new Request('https://example.test/other'),
     { DB: db },
