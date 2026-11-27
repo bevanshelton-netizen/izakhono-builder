@@ -71,6 +71,63 @@ async function run() {
   };
   const env = { DB, CREATOR_GENERATION_SECRET: 'server-only-secret' };
   await saveProject(env, { id: 'qa-project', brief: graph.brief, packageData: { cinematicProduction: graph } });
+  const sourceObjects = new Map<string, Uint8Array>();
+  const sourceEnv = {
+    ...env,
+    ASSETS: {
+      async put(key: string, body: ReadableStream | null) {
+        assert.ok(body, 'source upload stream is supplied to private object storage');
+        const reader = body!.getReader();
+        const chunks: Uint8Array[] = [];
+        while (true) { const next = await reader.read(); if (next.done) break; chunks.push(next.value); }
+        const total = chunks.reduce((sum, part) => sum + part.length, 0);
+        const joined = new Uint8Array(total);
+        let offset = 0;
+        for (const part of chunks) { joined.set(part, offset); offset += part.length; }
+        sourceObjects.set(key, joined);
+      },
+      async get() { return null; },
+    },
+  };
+  const sourceBytes = new TextEncoder().encode('mock image source bytes');
+  const sourceResponse = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/source-media', {
+    method: 'POST',
+    headers: {
+      'content-type': 'image/png', 'content-length': String(sourceBytes.length),
+      'x-creator-filename': 'cape-town-reference.png', 'x-creator-uploader-id': 'producer-1',
+      'x-creator-licence': 'Original photograph supplied by production owner',
+      'x-creator-consent-status': 'not_applicable',
+      'x-creator-generation-secret': 'server-only-secret',
+    }, body: sourceBytes,
+  }), sourceEnv);
+  assert.equal(sourceResponse?.status, 201, 'authenticated source media is ingested into private object storage');
+  const sourcePayload = await sourceResponse!.json() as { asset: { id: string; storageKey: string; contentHash: string; sourceEvidence: { sha256: string; consentStatus: string } } };
+  assert.equal(sourcePayload.asset.sourceEvidence.sha256, sourcePayload.asset.contentHash, 'source evidence hash matches graph asset hash');
+  assert.equal(sourceObjects.has(sourcePayload.asset.storageKey), true, 'original bytes are stored under a project-scoped private key');
+  assert.equal(sourcePayload.asset.sourceEvidence.consentStatus, 'not_applicable', 'consent status is explicitly recorded, not inferred');
+  const sourcePersisted = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
+  const sourceAsset = sourcePersisted.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
+  assert.equal(sourceAsset.sourceEvidence.receivedBy, 'producer-1', 'source provenance is retained in the canonical graph');
+  const sourceEvidenceForgery = {
+    ...sourcePersisted,
+    assets: sourcePersisted.assets.map((asset: any) => asset.id === sourcePayload.asset.id
+      ? { ...asset, sourceEvidence: { ...asset.sourceEvidence, receivedBy: 'spoofed' } } : asset),
+  };
+  const sourceForgeryResponse = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project', {
+    method: 'PATCH', headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ production: sourceEvidenceForgery }),
+  }), sourceEnv);
+  assert.equal(sourceForgeryResponse?.status, 409, 'generic graph PATCH cannot alter source intake evidence');
+  const missingConsent = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/source-media', {
+    method: 'POST',
+    headers: {
+      'content-type': 'image/png', 'content-length': String(sourceBytes.length),
+      'x-creator-filename': 'no-consent.png', 'x-creator-uploader-id': 'producer-1',
+      'x-creator-licence': 'Declared source licence', 'x-creator-consent-status': 'provided',
+      'x-creator-generation-secret': 'server-only-secret',
+    }, body: sourceBytes,
+  }), sourceEnv);
+  assert.equal(missingConsent?.status, 400, 'provided consent requires traceable consent record IDs');
   const checks = [
     'container-mp4', 'duration-positive', 'video-stream-present', 'video-stream-count',
     'video-h264', 'video-dimensions', 'video-pixel-format', 'video-frame-rate',
