@@ -39,7 +39,7 @@ class TopicPdfMigrationTests(unittest.TestCase):
         self.assertTrue({"customer_id", "publication_id", "payment_reference", "status", "purchased_at"}.issubset(entitlement_columns))
         self.assertIsNotNone(self.db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topic_pdf_download_events'").fetchone())
         publication_columns = {row[1] for row in self.db.execute("PRAGMA table_info(topic_pdf_publications)")}
-        self.assertTrue({"sale_storage_key", "sale_sha256", "sale_bytes", "sale_rendered_at", "published_at", "published_by"}.issubset(publication_columns))
+        self.assertTrue({"sale_storage_key", "sale_sha256", "sale_bytes", "sale_rendered_at", "published_at", "published_by", "sale_render_last_error"}.issubset(publication_columns))
 
     def test_customer_idempotency_key_is_unique(self):
         values = ("job_1", "{}", "{}", "requested", "standard", "customer_1", "fingerprint_1", "request-key-0001")
