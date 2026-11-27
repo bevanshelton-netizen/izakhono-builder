@@ -115,7 +115,17 @@ export function renderDeviceDashboard(nonce = '') {
   };
   var printReceipt=function(row){
     var w=window.open('','_blank');if(!w){showMessage('activityMessage','Allow pop-ups to print a receipt.',true);return}
-    w.opener=null;var doc=w.document;doc.open();doc.write('<!doctype html><html><head><title>I-PAY receipt</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:15px system-ui;max-width:520px;margin:40px auto;padding:20px;color:#111}.brand{font-weight:900;font-size:22px}.muted{color:#555}.line{border-top:1px solid #ddd;margin:20px 0}.amount{font-size:28px;font-weight:900}</style></head><body><div class="brand">I-PAY</div><p class="muted">Transaction receipt · Merchant copy</p><div class="line"></div><p>Reference<br><b>'+escapeHtml(row.id||'')+'</b></p><p>Description<br><b>'+escapeHtml(row.description||'Payment')+'</b></p><p>Status<br><b>'+escapeHtml(row.status||'Unknown')+'</b></p><p>Provider<br><b>'+escapeHtml(row.provider||'—')+'</b></p><p>Date<br><b>'+escapeHtml(row.created_at||'—')+'</b></p><div class="line"></div><div class="amount">'+escapeHtml(money(row.amount)+' '+(row.currency||'ZAR'))+'</div><p class="muted">This receipt reflects the transaction status recorded by I-PAY. It is not proof of settlement unless the status explicitly confirms settlement.</p></body></html>');w.onload=function(){w.print()};doc.close();
+    w.opener=null;var doc=w.document;doc.open();doc.write('<!doctype html><html><head><title>I-PAY receipt</title></head><body></body></html>');doc.close();
+    var style=doc.createElement('style');style.textContent='body{font:15px system-ui;max-width:520px;margin:40px auto;padding:20px;color:#111}.brand{font-weight:900;font-size:22px}.muted{color:#555}.line{border-top:1px solid #ddd;margin:20px 0}.amount{font-size:28px;font-weight:900}';doc.head.appendChild(style);
+    var brand=doc.createElement('div');brand.className='brand';brand.textContent='I-PAY';doc.body.appendChild(brand);
+    var note=doc.createElement('p');note.className='muted';note.textContent='Transaction receipt · Merchant copy';doc.body.appendChild(note);
+    var divider=doc.createElement('div');divider.className='line';doc.body.appendChild(divider);
+    var addField=function(label,value){var p=doc.createElement('p');p.appendChild(doc.createTextNode(label));p.appendChild(doc.createElement('br'));var strong=doc.createElement('b');strong.textContent=String(value||'—');p.appendChild(strong);doc.body.appendChild(p)};
+    addField('Reference',row.id);addField('Description',row.description||'Payment');addField('Status',row.status||'Unknown');addField('Provider',row.provider||'—');addField('Date',row.created_at||'—');
+    var divider2=doc.createElement('div');divider2.className='line';doc.body.appendChild(divider2);
+    var amount=doc.createElement('div');amount.className='amount';amount.textContent=money(row.amount)+' '+(row.currency||'ZAR');doc.body.appendChild(amount);
+    var disclaimer=doc.createElement('p');disclaimer.className='muted';disclaimer.textContent='This receipt reflects the transaction status recorded by I-PAY. It is not proof of settlement unless the status explicitly confirms settlement.';doc.body.appendChild(disclaimer);
+    w.onload=function(){w.print()};
   };
   var escapeHtml=function(value){return String(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
   $('connectForm').addEventListener('submit',async function(event){
