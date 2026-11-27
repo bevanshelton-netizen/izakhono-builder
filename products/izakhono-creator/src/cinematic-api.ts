@@ -16,6 +16,7 @@ import {
 } from './cinematic-production-graph';
 import { findAssetByExternalId, getAsset, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
 import { buildProductionReadinessReport } from './cinematic-production-readiness';
+import { resolveOriginalSourceImage } from './cinematic-source-media';
 import { chooseProvider, createAdapters, type GenerationRequest, type ProviderEnv } from './provider-router';
 
 type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; CREATOR_IMAGE_PROVIDER?: string; CREATOR_IMAGE_ASSET_HOSTS?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
@@ -248,37 +249,26 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       if (typeof body?.sourceAssetId === 'string') {
         if (!env.ASSETS) return response({ error: 'Creator R2 asset storage is required to resolve a selected keyframe asset.' }, 503);
         const canonicalSource = graph.assets.find(asset => asset.id === body.sourceAssetId);
-        let objectKey: string;
-        let mime: string;
-        let expectedHash: string | undefined;
         if (canonicalSource) {
-          if (canonicalSource.role !== 'source' || canonicalSource.kind !== 'image'
-            || canonicalSource.status !== 'completed' || !canonicalSource.storageKey
-            || !hasVerifiedSourceRights(canonicalSource)) {
-            return response({ error: 'Original source keyframes must be completed image assets with a latest hash-matched verified rights decision.' }, 409);
+          try {
+            const resolved = await resolveOriginalSourceImage(id, canonicalSource, key => env.ASSETS!.get(key));
+            sourceImage = resolved.dataUri;
+          } catch (error) {
+            return response({ error: error instanceof Error ? error.message : 'Original source image could not be verified.' }, 409);
           }
-          objectKey = canonicalSource.storageKey;
-          mime = canonicalSource.mimeType || '';
-          expectedHash = canonicalSource.contentHash;
         } else {
           const selected = await findAssetByIdForProject(env, body.sourceAssetId, id);
           if (!selected || selected.kind !== 'image' || selected.status !== 'completed' || !selected.objectKey) return response({ error: 'sourceAssetId must reference a completed image asset in this project.' }, 400);
-          objectKey = selected.objectKey;
-          mime = String((selected.metadata as Record<string, unknown> | undefined)?.contentType || 'image/png');
+          const object = await env.ASSETS.get(selected.objectKey);
+          if (!object) return response({ error: 'Selected keyframe asset is missing from Creator R2 storage.' }, 404);
+          const bytes = await new Response(object.body).arrayBuffer();
+          if (!bytes.byteLength || bytes.byteLength > 12_000_000) return response({ error: 'Selected keyframe image is empty or exceeds the video worker payload limit.' }, 413);
+          const mime = String((selected.metadata as Record<string, unknown> | undefined)?.contentType || 'image/png');
+          if (!['image/png', 'image/jpeg', 'image/webp'].includes(mime)) return response({ error: 'Selected keyframe image has an unsupported MIME type.' }, 415);
+          let binary = '';
+          for (const byte of new Uint8Array(bytes)) binary += String.fromCharCode(byte);
+          sourceImage = `data:${mime};base64,${btoa(binary)}`;
         }
-        const object = await env.ASSETS.get(objectKey);
-        if (!object) return response({ error: 'Selected keyframe asset is missing from Creator R2 storage.' }, 404);
-        const bytes = await new Response(object.body).arrayBuffer();
-        if (!bytes.byteLength || bytes.byteLength > 12_000_000) return response({ error: 'Selected keyframe image is empty or exceeds the video worker payload limit.' }, 413);
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(mime)) return response({ error: 'Selected keyframe image has an unsupported MIME type.' }, 415);
-        if (expectedHash) {
-          const digest = await crypto.subtle.digest('SHA-256', bytes);
-          const actualHash = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
-          if (actualHash !== expectedHash.toLowerCase()) return response({ error: 'Stored original source bytes no longer match their reviewed SHA-256; re-ingest and review the source before use.' }, 409);
-        }
-        let binary = '';
-        for (const byte of new Uint8Array(bytes)) binary += String.fromCharCode(byte);
-        sourceImage = `data:${mime};base64,${btoa(binary)}`;
       }
       if (shot.aspectRatio !== '9:16') return response({ error: 'The currently staged owned video runtime requires a 9:16 vertical shot.' }, 409);
       if (typeof sourceImage !== 'string' || sourceImage.length > 16000000 || !['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'].some(prefix => sourceImage.startsWith(prefix))) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage or completed sourceAssetId keyframe (maximum 16 MB) is required.' }, 400);
