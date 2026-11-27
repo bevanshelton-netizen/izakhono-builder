@@ -52,6 +52,8 @@ jobs:
         run: node products/izakhono-isbn/src/postgresql-contract.test.mjs
       - name: Install the PostgreSQL runtime driver for CI integration tests
         run: npm install --prefix products/izakhono-isbn/runtime --ignore-scripts --no-audit --no-fund
+      - name: Test D1-to-PostgreSQL migration validation and transaction modes
+        run: node --test products/izakhono-isbn/migration/d1-export-to-postgres.test.mjs
       - name: Run live PostgreSQL schema and API integration tests
         env:
           PGHOST: 127.0.0.1
