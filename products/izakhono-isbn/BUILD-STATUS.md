@@ -22,8 +22,9 @@
 - Added Node.js 22 HTTP runtime, PostgreSQL driver manifest and container build: `runtime/`.
 - Connected the existing registry API handler to the PostgreSQL adapter through the Node runtime without changing the domain/API route implementation.
 - Added opt-in local Compose runtime profile, with PostgreSQL and application ports bound to loopback only; local secrets are supplied through an ignored `.env` file.
-- Added CI checks for the PostgreSQL schema, adapter tests and runtime syntax.
-- The self-hosted runtime path is now implemented in source, but live PostgreSQL integration, local container startup and end-to-end API tests have not yet been evidenced.
+- Added live PostgreSQL schema/seed/API integration tests to CI using a PostgreSQL 17 service container; the tests cover catalogue reads, dashboard counts, author create/update, ISBN checksum enforcement and immutable correspondence.
+- Added CI container-image build validation for the self-hosted Node.js runtime.
+- The self-hosted runtime path is implemented in source. Its live CI result is pending; no local production-like stack or public service has been deployed.
 
 ## Latest verification
 - The architecture/documentation commit `af4d83b1ba5d16606093399fa974ded9a9e6c96a` completed all 18 checks successfully, including the repository Worker build. That preview is a repository artifact, not the self-owned registry runtime.
@@ -35,7 +36,7 @@
 - No NLSA publisher prefix or publisher registration has been confirmed.
 - No self-owned production PostgreSQL instance, application runtime, DNS service or public edge has been provisioned. A local-only PostgreSQL Compose definition is provided for development; it has not been started or tested in this environment.
 - No self-hosted production deployment or production URL is claimed.
-- Live PostgreSQL integration/API tests, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
+- CI live PostgreSQL integration and container build results must pass before this branch is verified. Local deployment, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
 - NODE01 production runtime evidence and operational integration remain outstanding.
 - No hosting, hardware, bandwidth or subscription expenditure is authorised by this work.
 
