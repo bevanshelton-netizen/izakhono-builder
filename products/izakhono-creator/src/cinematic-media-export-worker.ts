@@ -133,6 +133,7 @@ export type ProductionExportPersistence = {
  * If step 2 fails, the asset remains visible but delivery readiness stays blocked;
  * retrying this function is safe because the first PATCH preserves the same asset IDs.
  */
+
 export async function persistProductionExportResult(
   apiBaseUrl: string,
   projectId: string,
@@ -149,28 +150,71 @@ export async function persistProductionExportResult(
     throw new Error('Worker result project and asset identity must match the persistence target.');
   }
   const asset = result.production.assets.find(item => item.id === result.asset.id);
-  if (!asset || asset.contentHash?.toLowerCase() !== result.export.contentHash.toLowerCase()) {
-    throw new Error('Worker result asset hash does not match its media QA evidence.');
+  if (!asset || asset.contentHash?.toLowerCase() !== result.export.contentHash.toLowerCase()
+    || asset.mediaQa?.assetContentHash.toLowerCase() !== result.export.mediaQa.assetContentHash.toLowerCase()
+    || JSON.stringify(asset.mediaQa) !== JSON.stringify(result.export.mediaQa)) {
+    throw new Error('Worker result asset hash and QA evidence must agree exactly.');
   }
-  const { mediaQa: _workerQa, ...assetWithoutQa } = asset;
-  const graphWithoutQa: CinematicProduction = {
-    ...result.production,
-    assets: result.production.assets.map(item => item.id === asset.id ? assetWithoutQa : item),
-  };
   const projectUrl = new URL(`/api/cinematic/projects/${encodeURIComponent(projectId)}`, base);
   const headers = { 'content-type': 'application/json', 'x-creator-generation-secret': serviceSecret };
-  const graphResponse = await fetcher(projectUrl, {
-    method: 'PATCH', headers, body: JSON.stringify({ production: graphWithoutQa }),
-  });
-  if (!graphResponse.ok) {
-    throw new Error(`Creator API rejected the production export graph with HTTP ${graphResponse.status}.`);
+  const currentResponse = await fetcher(projectUrl, { method: 'GET', headers });
+  if (!currentResponse.ok) throw new Error(`Creator API project read failed with HTTP ${currentResponse.status}.`);
+  const currentPayload = await currentResponse.json() as { production?: CinematicProduction };
+  const current = currentPayload.production;
+  if (!current || current.id !== projectId) throw new Error('Creator API did not return the canonical production graph.');
+
+  const existing = current.assets.find(item => item.id === asset.id);
+  if (existing?.mediaQa) {
+    if (existing.contentHash?.toLowerCase() !== result.export.contentHash.toLowerCase()
+      || JSON.stringify(existing.mediaQa) !== JSON.stringify(result.export.mediaQa)) {
+      throw new Error('A different export or QA record already exists for this asset ID.');
+    }
+    return { graphStatus: currentResponse.status, qaStatus: currentResponse.status };
   }
+
+  let graphToPersist = current;
+  if (existing) {
+    if (existing.contentHash?.toLowerCase() !== asset.contentHash?.toLowerCase()
+      || existing.storageKey !== asset.storageKey || existing.status !== asset.status) {
+      throw new Error('An incomplete export asset exists with conflicting hash, storage key or status.');
+    }
+  } else {
+    const masterId = asset.parentAssetIds[0];
+    const master = current.assets.find(item => item.id === masterId);
+    const task = current.tasks.find(item => item.id === result.production.tasks.find(candidate => candidate.outputAssetIds.includes(asset.id))?.id);
+    if (!master || master.role !== 'master' || master.status !== 'completed'
+      || master.contentHash !== result.production.assets.find(item => item.id === masterId)?.contentHash
+      || !task || task.kind !== 'export' || !task.inputAssetIds.includes(master.id)
+      || !getRunnableTasks(current).some(item => item.id === task.id)) {
+      throw new Error('The canonical project no longer satisfies the master/export task preconditions.');
+    }
+    const { mediaQa: _qa, ...assetWithoutQa } = asset;
+    const completedTask = result.production.tasks.find(item => item.id === task.id)!;
+    graphToPersist = {
+      ...current,
+      assets: [...current.assets, assetWithoutQa],
+      tasks: current.tasks.map(item => item.id === task.id ? {
+        ...item,
+        status: completedTask.status,
+        evidence: completedTask.evidence,
+        outputAssetIds: [...new Set([...item.outputAssetIds, asset.id])],
+      } : item),
+    };
+  }
+
+  if (!existing) {
+    const graphResponse = await fetcher(projectUrl, {
+      method: 'PATCH', headers, body: JSON.stringify({ production: graphToPersist }),
+    });
+    if (!graphResponse.ok) throw new Error(`Creator API rejected the production export graph with HTTP ${graphResponse.status}.`);
+  }
+
   const qaUrl = new URL(`/api/cinematic/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(asset.id)}/media-qa`, base);
   const qaResponse = await fetcher(qaUrl, {
     method: 'POST', headers, body: JSON.stringify({ evidence: result.export.mediaQa }),
   });
   if (!qaResponse.ok) {
-    throw new Error(`Creator API rejected the media QA evidence with HTTP ${qaResponse.status}; the export graph is saved but distribution remains gated.`);
+    throw new Error(`Creator API rejected media QA evidence with HTTP ${qaResponse.status}; the export asset remains recorded but distribution stays gated.`);
   }
-  return { graphStatus: graphResponse.status, qaStatus: qaResponse.status };
+  return { graphStatus: existing ? currentResponse.status : 200, qaStatus: qaResponse.status };
 }
