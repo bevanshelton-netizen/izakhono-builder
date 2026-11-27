@@ -274,6 +274,24 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
   for (const ref of project.references) requireRefs([ref.assetId], assetIds, `references.${ref.id}.assetId`, 'asset');
   for (const asset of project.assets) {
     requireRefs(asset.parentAssetIds, assetIds, `assets.${asset.id}.parentAssetIds`, 'parent asset');
+    if (asset.sourceEvidence) {
+      const evidence = asset.sourceEvidence;
+      if (asset.role !== 'source' || evidence.schema !== 'izakhono.creator/source-media-evidence-v1' || evidence.origin !== 'user_upload') {
+        issues.push({ code: 'INVALID_SOURCE_EVIDENCE', path: `assets.${asset.id}.sourceEvidence`, message: 'Source intake evidence must belong to a user-uploaded source asset.', severity: 'error' });
+      }
+      if (!asset.storageKey?.startsWith(`projects/${project.id}/source/`) || asset.status !== 'completed') {
+        issues.push({ code: 'SOURCE_MEDIA_NOT_STORED', path: `assets.${asset.id}`, message: 'Ingested source media must be stored under its project source namespace before it is marked completed.', severity: 'error' });
+      }
+      if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || evidence.sha256.toLowerCase() !== asset.contentHash.toLowerCase()) {
+        issues.push({ code: 'SOURCE_HASH_MISMATCH', path: `assets.${asset.id}.sourceEvidence.sha256`, message: 'Source intake SHA-256 must match the asset content hash.', severity: 'error' });
+      }
+      if (!Number.isSafeInteger(evidence.byteSize) || evidence.byteSize < 1 || evidence.mimeType !== asset.mimeType || !evidence.originalFilename.trim() || !evidence.receivedBy.trim() || !evidence.licenceDeclaration.trim() || !Number.isFinite(Date.parse(evidence.receivedAt))) {
+        issues.push({ code: 'INCOMPLETE_SOURCE_EVIDENCE', path: `assets.${asset.id}.sourceEvidence`, message: 'Source intake evidence requires valid size, MIME type, filename, uploader, licence declaration and timestamp.', severity: 'error' });
+      }
+      if (evidence.consentStatus === 'provided' && asset.provenance.consentRecordIds.length === 0) {
+        issues.push({ code: 'MISSING_SOURCE_CONSENT_RECORDS', path: `assets.${asset.id}.provenance.consentRecordIds`, message: 'Provided source consent must reference at least one consent record.', severity: 'error' });
+      }
+    }
     if (asset.sceneId && !sceneIds.has(asset.sceneId)) issues.push({ code: 'UNKNOWN_ASSET_SCENE', path: `assets.${asset.id}.sceneId`, message: 'Asset references a scene that does not exist.', severity: 'error' });
     if (asset.shotId && !shotIds.has(asset.shotId)) issues.push({ code: 'UNKNOWN_ASSET_SHOT', path: `assets.${asset.id}.shotId`, message: 'Asset references a shot that does not exist.', severity: 'error' });
     if (asset.shotId && asset.sceneId && project.shots.some(shot => shot.id === asset.shotId && shot.sceneId !== asset.sceneId)) issues.push({ code: 'ASSET_SCENE_SHOT_MISMATCH', path: `assets.${asset.id}`, message: 'Asset sceneId must match the scene that owns its shotId.', severity: 'error' });
