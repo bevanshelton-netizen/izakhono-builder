@@ -42,13 +42,16 @@ test("rejects verified ISBN without allocation date", () => {
 });
 test("dry-run rolls back; apply commits; insertion order preserves dependencies", async () => {
   const calls = [];
-  const pool = { query: async (sql, values) => { calls.push({sql,values}); return { rows: [], rowCount: 1 }; } };
+  const client = { query: async (sql, values) => { calls.push({sql,values}); return { rows: [], rowCount: 1 }; }, release: () => calls.push({sql: "RELEASE"}) };
+  const pool = { connect: async () => client };
   const dry = await importExport(pool, valid);
   assert.equal(dry.mode, "dry-run-rolled-back");
-  assert.equal(calls.at(-1).sql, "ROLLBACK");
+  assert.equal(calls.find(x => x.sql === "ROLLBACK").sql, "ROLLBACK");
+  assert.equal(calls.at(-1).sql, "RELEASE");
   calls.length = 0;
   const applied = await importExport(pool, valid, { apply: true });
   assert.equal(applied.mode, "applied");
-  assert.equal(calls.at(-1).sql, "COMMIT");
+  assert.equal(calls.find(x => x.sql === "COMMIT").sql, "COMMIT");
+  assert.equal(calls.at(-1).sql, "RELEASE");
   assert.ok(INSERT_ORDER.indexOf("publishers") < INSERT_ORDER.indexOf("works"));
 });
