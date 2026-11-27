@@ -18,6 +18,7 @@
 - Added idempotent initial publisher, imprint, author, work, edition, application, first-season catalogue and NLSA correspondence seed: `postgresql/0002_seed_initial_catalogue.sql`.
 - Added PostgreSQL database-level ISBN-13 checksum guard and immutable agency-correspondence trigger.
 - Added provider-neutral TypeScript persistence contract: `src/storage/contract.ts`.
+- Added local PostgreSQL 17 development Compose service, bound only to `127.0.0.1:5432`, with persistent local volume and a health check; credentials are supplied through an ignored `.env` file and are not committed.
 - Added CI checks for the PostgreSQL schema and provider-neutral contract.
 - These are schema and contract foundations only. The PostgreSQL driver/adapter is not implemented, API routes are not wired to it, and no PostgreSQL instance has been provisioned.
 
@@ -28,7 +29,7 @@
 ## Not complete / not claimed
 - No official ISBN has been allocated or verified.
 - No NLSA publisher prefix or publisher registration has been confirmed.
-- No self-owned PostgreSQL instance, application runtime, DNS service or public edge has been provisioned.
+- No self-owned production PostgreSQL instance, application runtime, DNS service or public edge has been provisioned. A local-only PostgreSQL Compose definition is provided for development; it has not been started or tested in this environment.
 - No self-hosted production deployment or production URL is claimed.
 - PostgreSQL API adapter, integration tests, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
 - NODE01 production runtime evidence and operational integration remain outstanding.
