@@ -100,14 +100,10 @@ fi
 
 if [ "${PDNS_API_ENABLED:-yes}" = "yes" ] && [ "$DNS_MODE" = "primary" ]; then
   : "${PDNS_API_KEY:?PDNS_API_KEY is required when the primary API is enabled}"
-  case "$PDNS_API_KEY" in
-    *'
-'*|*'
-'*)
-      echo "PDNS_API_KEY must not contain newline characters" >&2
-      exit 64
-      ;;
-  esac
+  if printf '%s' "$PDNS_API_KEY" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+    echo "PDNS_API_KEY must not contain control characters" >&2
+    exit 64
+  fi
   cat >> "$CONFIG" <<EOF
 api=yes
 api-key=$PDNS_API_KEY
