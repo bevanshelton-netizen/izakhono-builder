@@ -179,7 +179,7 @@ async function login(req: Request, env: AuthEnv): Promise<Response> {
   }
   const customer = await env.DB.prepare(
     'SELECT id,email,display_name,organization,password_hash,password_scheme,status FROM builder_customers WHERE email=? LIMIT 1',
-  ).bind(email).first<any>();
+  ).bind(email).first();
   if (!customer || customer.password_scheme !== 'pbkdf2-sha256-v1' || !(await verifyCustomerPassword(password, customer.password_hash))) {
     return json({ ok: false, error: 'Email or password is incorrect.' }, 401);
   }
