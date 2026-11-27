@@ -11,9 +11,12 @@ CREATE TABLE IF NOT EXISTS topic_pdf_customer_entitlements (
   status TEXT NOT NULL CHECK(status IN ('active','refunded','revoked')),
   purchased_at TEXT NOT NULL,
   revoked_at TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(customer_id, publication_id)
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_topic_pdf_one_active_entitlement
+  ON topic_pdf_customer_entitlements(customer_id, publication_id)
+  WHERE status='active';
 
 CREATE INDEX IF NOT EXISTS idx_topic_pdf_entitlements_customer_status
   ON topic_pdf_customer_entitlements(customer_id, status, purchased_at DESC);
