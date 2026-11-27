@@ -2,10 +2,10 @@
  * PostgreSQL transaction adapter for IZAKHONO DEPLOY.
  *
  * Reuses the existing Runtime Fabric deployment row (metadata.deploy_control)
- * and the existing FORTRESS izakhono_deploy_audit_events table. It creates no tables,
+ * and the DEPLOY-owned izakhono_deploy_audit_events table. It creates no tables,
  * runs no DDL, and never opens a second connection inside a transaction.
  *
- * Both tables MUST be on the same approved PostgreSQL database. If the FORTRESS
+ * Both tables MUST be on the same approved PostgreSQL database. If the DEPLOY
  * audit table is absent or the database binding is wrong, the operation fails
  * and the Runtime Fabric row update rolls back. Do not use this adapter against
  * production until database ownership, migration authority and DSN binding are
