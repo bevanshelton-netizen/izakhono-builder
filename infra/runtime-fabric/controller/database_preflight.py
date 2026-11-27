@@ -20,7 +20,7 @@ REQUIRED_COLUMNS = {
         "application_id", "environment_id", "updated_at",
     },
     "izakhono_deploy_audit_events": {
-        "event_id", "job_id", "tenant_id", "operation_id", "event_type",
+        "event_id", "deployment_id", "tenant_id", "operation_id", "event_type",
         "actor", "adapter", "state", "observed_at", "data",
     },
     "izakhono_runtime_schema_migrations": {
@@ -99,7 +99,7 @@ def inspect_runtime_database(
                            EXISTS (
                                SELECT 1 FROM pg_trigger t
                                 WHERE t.tgrelid = audit.oid
-                                  AND t.tgname = 'izakhono_deploy_audit_events_no_mutation'
+                                  AND t.tgname = 'izakhono_deploy_audit_no_mutation'
                                   AND t.tgenabled IN ('O', 'A')
                                   AND NOT t.tgisinternal
                            )
