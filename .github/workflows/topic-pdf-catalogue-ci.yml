@@ -24,6 +24,8 @@ jobs:
           node-version: 22
       - name: Validate topic candidate catalogue
         run: node products/topic-pdfs/validate-catalog.mjs
+      - name: Test on-demand topic generation core
+        run: npx --yes tsx@4.20.3 products/topic-pdfs/src/generation-core.test.ts
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
