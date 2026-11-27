@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
+import { processOneApprovedTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 
 class FakeDB {
   calls = 0;
@@ -34,6 +34,9 @@ async function main() {
   });
   assert.deepEqual(configured, { processed: false, reason: 'queue-empty' });
   assert.equal(db.calls, 1);
+
+  const noRenderer = await processOneApprovedTopicPdfJob({ DB: db, TOPIC_PDF_PIPELINE_ENABLED: 'true' });
+  assert.deepEqual(noRenderer, { processed: false, reason: 'private-renderer-or-object-storage-not-configured' });
 
   const url = new URL('https://example.test/api/owner/topic-pdfs/review-queue');
   const unauthorized = await topicPdfOwnerReviewRoute(
