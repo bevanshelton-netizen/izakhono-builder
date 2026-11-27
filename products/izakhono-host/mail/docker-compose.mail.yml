@@ -3,7 +3,7 @@ services:
     image: stalwartlabs/stalwart:v0.16
     container_name: izakhono-mailserver
     restart: unless-stopped
-    hostname: ${MAIL_HOSTNAME:-mail.izakhono.africa}
+    hostname: ${MAIL_HOSTNAME:-mail.izakhonoafrica.co.za}
     environment:
       TZ: ${TZ:-Africa/Johannesburg}
       STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:?set STALWART_RECOVERY_ADMIN}
@@ -21,7 +21,7 @@ services:
     networks:
       izakhono-mail:
         aliases:
-          - ${MAIL_HOSTNAME:-mail.izakhono.africa}
+          - ${MAIL_HOSTNAME:-mail.izakhonoafrica.co.za}
     healthcheck:
       test: ["CMD", "sh", "-c", "wget -qO- http://127.0.0.1:8080/healthz/live >/dev/null 2>&1"]
       interval: 15s

@@ -8,7 +8,8 @@ on:
       - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.js'
       - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.test.js'
       - 'infra/izakhono-ci/**'
-      - 'products/izakhono-mail/runtime-v1/**'
+      - 'products/izakhono-mail/**'
+      - 'products/izakhono-host/mail/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/izakhono-mail-ci.yml'
@@ -19,7 +20,8 @@ on:
       - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.js'
       - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.test.js'
       - 'infra/izakhono-ci/**'
-      - 'products/izakhono-mail/runtime-v1/**'
+      - 'products/izakhono-mail/**'
+      - 'products/izakhono-host/mail/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/izakhono-mail-ci.yml'
@@ -51,6 +53,11 @@ jobs:
 
       - name: Validate IZAKHONO MAIL engine
         run: npm run mail:validate
+
+      - name: Validate Stalwart mailbox provisioning product
+        run: |
+          npm --prefix products/izakhono-mail run check
+          npm --prefix products/izakhono-mail test
 
       - name: Validate NODE01 SMTP boundary
         run: node --check infra/mail-stack/engine/node01-mail-server.mjs

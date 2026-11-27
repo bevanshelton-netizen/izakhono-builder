@@ -15,9 +15,9 @@ HOSTNAME="${MAIL_HOSTNAME:-$(read_env MAIL_HOSTNAME)}"
 DOMAIN="${MAIL_DOMAIN:-$(read_env MAIL_DOMAIN)}"
 WEBMAIL="${WEBMAIL_HOSTNAME:-$(read_env WEBMAIL_HOSTNAME)}"
 DKIM_SELECTOR="${DKIM_SELECTOR:-$(read_env DKIM_SELECTOR)}"
-HOSTNAME="${HOSTNAME:-mail.izakhono.africa}"
-DOMAIN="${DOMAIN:-izakhono.africa}"
-WEBMAIL="${WEBMAIL:-webmail.izakhono.africa}"
+HOSTNAME="${HOSTNAME:-mail.izakhonoafrica.co.za}"
+DOMAIN="${DOMAIN:-izakhonoafrica.co.za}"
+WEBMAIL="${WEBMAIL:-webmail.izakhonoafrica.co.za}"
 
 fail=0
 check() {
@@ -47,7 +47,6 @@ else
   fail=1
 fi
 
-# shellcheck disable=SC2016
 check "PTR resolves to ${HOSTNAME}" bash -c 'ip=$(dig +short A "$1" | head -n1); test -n "$ip" && dig +short -x "$ip" | grep -qi "$2."' _ "$HOSTNAME" "$HOSTNAME"
 
 for port in 25 465 587 993; do
