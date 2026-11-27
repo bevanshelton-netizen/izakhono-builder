@@ -7,6 +7,7 @@ import worker from "../src/index.ts";
 import { createPostgresD1Adapter } from "../src/postgresql-adapter.ts";
 
 const { Pool } = pg;
+pg.types.setTypeParser(20, value => Number(value));
 const required = ["DATABASE_URL", "ISBN_ADMIN_TOKEN"];
 for (const key of required) if (!process.env[key]) {
   console.error(`Missing required environment variable: ${key}`);
@@ -30,9 +31,9 @@ const server = createServer(async (incoming, outgoing) => {
     const url = new URL(incoming.url || "/", `http://${host}`);
     if (!url.pathname.startsWith("/api/") && incoming.method === "GET") {
       const requested = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname.slice(1));
-      const safe = normalize(requested).replace(/^([.][.][/\\\\])+/, "");
       try {
-        const path = join(publicDir, safe);
+        const path = normalize(join(publicDir, requested));
+        if (!path.startsWith(publicDir)) { outgoing.writeHead(404); outgoing.end("Not found"); return; }
         const body = await readFile(path);
         outgoing.writeHead(200, { "content-type": mime[extname(path)] || "application/octet-stream", "x-content-type-options":"nosniff" });
         outgoing.end(body);
