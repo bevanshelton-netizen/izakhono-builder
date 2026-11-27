@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Private, self-hostable Topic PDF rendering adapter.
 
-Run behind an IZAKHONO private network or localhost reverse proxy. The service
-only renders editorial drafts and always retains the renderer's NOT FOR SALE
-watermark. It does not publish, store, sell or deliver PDFs.
+Run behind an IZAKHONO private network or localhost reverse proxy. The service renders watermarked editorial proofs and, on a separate bearer token and endpoint, non-watermarked publication-edition candidates after recorded human review gates. It does not publish, store, sell or deliver PDFs.
 """
 from __future__ import annotations
 
