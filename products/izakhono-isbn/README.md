@@ -8,15 +8,18 @@ This system manages publisher identity, imprints, authors, works, edition metada
 
 ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN record must retain its allocation authority, evidence reference, format, edition and verification status.
 
-## Runtime and software-node architecture
+## Runtime and infrastructure direction
 
-- Registry application: Cloudflare Worker + D1 SQLite.
+- **Target direction:** IZAKHONO-owned infrastructure platform (**IZAKHONO Edge**), with self-managed DNS, ingress/TLS, WAF, application runtime, PostgreSQL, object storage, monitoring and backups.
+- **Architecture decision:** `products/izakhono-platform/IZAKHONO-EDGE-ARCHITECTURE-ADR-0001.md`.
+- **Current implementation status:** this registry's existing Worker + D1 adapter is transitional prototype code. It is not the self-owned production platform and must not be represented as deployed self-hosted infrastructure.
+- Provider-specific runtime and database code must be isolated from registry business rules. The planned migration target is a provider-neutral application contract backed by PostgreSQL.
 - **NODE01 is an IZAKHONO software node, not a physical server.** It is governed by the repository's software-node contract in `autonomy/software-node.mjs`; it can be instantiated in an available software execution substrate and is promoted only after runtime evidence.
-- NODE01's software-node identity/control plane and this registry's Cloudflare Worker runtime are distinct components. Do not assume a local software-node process can be deployed unchanged inside the Cloudflare Worker runtime.
-- No physical-server enrolment is required merely to define NODE01. Any additional execution substrate, hosting, database or paid service must be separately configured and must not be provisioned without explicit cost approval.
+- NODE01's software-node identity/control plane and the registry application runtime are distinct components. Do not assume a local software-node process can be deployed unchanged into a hosted Worker runtime.
+- No physical-server enrolment is required merely to define NODE01. Any additional execution substrate, hosting, database, hardware or paid service must be separately configured and must not be provisioned without explicit cost approval.
 - No paid service or infrastructure is provisioned by this change.
-- D1 database and Worker secrets must be configured by an authorised operator before production deployment.
-- All management endpoints require `Authorization: Bearer <ISBN_ADMIN_TOKEN>`. Keep the token in a Worker secret; never commit it.
+- Until the provider-neutral runtime is implemented and verified, the existing Worker adapter still requires its D1 binding and secret for its own tests/preview. It is not the target production dependency.
+- All management endpoints require `Authorization: Bearer <ISBN_ADMIN_TOKEN>`. Keep the token in a secret store; never commit it.
 - Production must additionally be placed behind an organisation-controlled access policy. Do not expose an unauthenticated registry.
 
 ## API
@@ -49,11 +52,11 @@ All non-health routes are protected. Input validation, audit logging and explici
 
 The database preserves dated outgoing and incoming agency correspondence as separate records linked to the application. The protected `/api/correspondence` endpoint allows retrieval and appending new evidence; it intentionally exposes no edit or delete operation. Database triggers reject updates and deletions so the correspondence ledger remains immutable; corrections must be added as new records. Initial application (6 October 2026), follow-up (14 October 2026) and escalation (26 November 2026) are seeded. An outgoing email is not evidence of agency acknowledgement or ISBN allocation; attach agency replies and allocation documents when received.
 
-## Local development
+## Local development (transitional Worker adapter)
 
-1. Create a D1 database and bind it as `DB` in `wrangler.jsonc`.
-2. Apply migrations in order: `0001_initial.sql`, `0002_seed_initial_publisher_and_application.sql`, `0003_isbn_integrity_guards.sql`, then `0004_seed_selfhelp_first_season.sql`, `0005_agency_correspondence_history.sql`. The fifth migration adds an append-only correspondence history and seeds the 6 October, 14 October and 26 November 2026 NLSA outgoing messages. The third migration adds database-level ISBN checksum/canonical-format and verification-evidence guards; the Worker also normalises accepted ISBNs to digits-only before storage.
+1. Create a D1 database and bind it as `DB` in `wrangler.jsonc` only if you are testing the transitional Worker adapter.
+2. Apply migrations in order: `0001_initial.sql`, `0002_seed_initial_publisher_and_application.sql`, `0003_isbn_integrity_guards.sql`, `0004_seed_selfhelp_first_season.sql`, `0005_agency_correspondence_history.sql`.
 3. Set `ISBN_ADMIN_TOKEN` as a local secret.
 4. Run `npx wrangler dev --config products/izakhono-isbn/wrangler.jsonc`.
 
-Do not deploy until database binding, secret, access controls, backups and acceptance tests have been verified.
+Do not deploy the transitional adapter as the long-term production service. The self-owned runtime, PostgreSQL migration, access controls, backups, restore tests and operational acceptance gates must be completed before production use.
