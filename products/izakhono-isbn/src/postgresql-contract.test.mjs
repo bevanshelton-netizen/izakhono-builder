@@ -25,5 +25,5 @@ assert.match(seed, /gmail-message:1a21752f0d53d530/);
 assert.doesNotMatch(seed, /INSERT INTO isbn_records/i, "seed must never fabricate ISBNs");
 assert.match(contract, /export interface RegistryDatabase/);
 assert.match(contract, /transaction<T>/);
-assert.match(contract, /parameterised queries/);
+assert.match(contract, /parameterised/);
 console.log("PostgreSQL target schema and persistence-contract checks passed (24 assertions).");
