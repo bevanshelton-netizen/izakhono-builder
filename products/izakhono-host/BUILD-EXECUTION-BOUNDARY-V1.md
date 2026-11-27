@@ -57,7 +57,18 @@ The initial request schema is intentionally narrow:
 
 The executor derives the build invocation from a versioned, reviewed profile. It does not accept a caller-supplied Dockerfile path outside the checked-out context, command string, entrypoint override, mount list or runtime flags.
 
-## 5. Rootless BuildKit deployment requirements
+## 5. Versioned typed contracts (B1 foundation)
+
+The first machine-readable contracts are now defined:
+
+- `contracts/build-request.v1.schema.json` — strict request schema. It requires a registered project ID, repository identity, immutable full commit SHA, SHA-256 manifest digest, allowlisted build profile, resource class, network policy, artifact policy, requester and expiry.
+- `contracts/build-result.v1.schema.json` — strict signed result envelope. A completed build must carry an OCI media type, immutable artifact digest/reference, SBOM reference, provenance reference, signer key ID and signature. A failed or rejected build must carry a bounded failure code/message instead of pretending an artifact exists.
+
+Both schemas reject undeclared properties. Neither contains a free-form shell/command field. The contract CI parses both JSON schemas and checks the critical closed-schema and artifact/evidence requirements.
+
+These files define the wire contract only. Runtime JSON Schema enforcement, signature verification, broker authorization and replay protection still need implementation and tests before any build request can be executed.
+
+## 6. Rootless BuildKit deployment requirements
 
 The proposed implementation uses the upstream `moby/buildkit:rootless` image only after its digest is pinned and its behavior is validated on the target host.
 
@@ -75,7 +86,7 @@ Required checks before activation:
 
 A rootless image label alone is not proof of isolation. Kernel, user namespace, storage driver, daemon flags and mount configuration must all be tested together.
 
-## 6. Artifact handoff to Builder Alpha
+## 7. Artifact handoff to Builder Alpha
 
 The handoff is a one-way, immutable contract:
 
@@ -88,7 +99,7 @@ The handoff is a one-way, immutable contract:
 
 A worker-reported `succeeded` status is not acceptance evidence. An artifact with missing or mismatched digest/provenance is rejected.
 
-## 7. Required automated test matrix
+## 8. Required automated test matrix
 
 | Test | Expected result |
 |---|---|
@@ -109,7 +120,7 @@ A worker-reported `succeeded` status is not acceptance evidence. An artifact wit
 | Failure recovery | Daemon restart does not duplicate accepted artifacts or lose audit trail |
 | Builder Alpha handoff | Alpha independently verifies and rejects tampered artifacts |
 
-## 8. B0 audit — existing Builder Alpha (source inspection)
+## 9. B0 audit — existing Builder Alpha (source inspection)
 
 The existing `.github/workflows/izakhono-build-to-alpha.yml` is the authoritative current Alpha build-and-health workflow. Source inspection confirms:
 
@@ -129,7 +140,7 @@ The existing `.github/workflows/izakhono-build-to-alpha.yml` is the authoritativ
 
 This audit is source-level evidence only. It does not prove that a current workflow run succeeded or that the workflow has been changed to use HOST.
 
-## 9. Rollout sequence
+## 10. Rollout sequence
 
 - **B0 — Existing pipeline audit:** identify Builder Alpha's current manifest validation, image build, runtime test and artifact interfaces. Preserve its existing acceptance logic; do not create a parallel Builder product.
 - **B1 — Contract and policy:** define typed request/result schemas, authorization, idempotency, quotas and audit events.
@@ -138,12 +149,12 @@ This audit is source-level evidence only. It does not prove that a current workf
 - **B4 — Artifact handoff:** integrate immutable OCI output and evidence into the existing Builder Alpha test path; no deployment authority.
 - **B5 — Owner acceptance:** demonstrate reproducible builds, verified artifacts, cleanup, recovery and cost ceilings before enabling real project builds.
 
-## 10. Current status and explicit exclusions
+## 11. Current status and explicit exclusions
 
 This document defines the required boundary. It does **not** claim that BuildKit is deployed, that a sandbox has passed escape testing, that artifacts are being handed to Builder Alpha, or that customer code can currently be built by HOST.
 
 No build executor, privileged runtime, public endpoint, paid infrastructure or deployment permission is activated by this change. The next implementation change must begin with an audit of the actual Builder Alpha source and a testable typed contract, followed by the isolated executor. Do not connect the executor to production projects until B3 passes.
 
-## 11. Definition of done
+## 12. Definition of done
 
 The build boundary is accepted only when all B0–B5 gates have machine-readable evidence, the executor runs rootless under enforced resource limits, no host container socket is present, egress is controlled, cleanup is verified after success/failure/cancellation, artifacts are digest- and provenance-verified by Builder Alpha, and owner-approved cost ceilings are enforced.
