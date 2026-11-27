@@ -64,3 +64,19 @@ jobs:
         run: node --check products/izakhono-isbn/runtime/server.mjs
       - name: Build self-hosted registry container image
         run: docker build -f products/izakhono-isbn/runtime/Dockerfile -t izakhono-isbn-registry:ci .
+      - name: Smoke-test the self-hosted container against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://izakhono:test-password@127.0.0.1:5432/izakhono_isbn
+          ISBN_ADMIN_TOKEN: ci-test-admin-token
+        run: |
+          docker run --rm -d --name izakhono-isbn-runtime-ci --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e ISBN_ADMIN_TOKEN="$ISBN_ADMIN_TOKEN" \
+            izakhono-isbn-registry:ci
+          trap 'docker stop izakhono-isbn-runtime-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/api/health >/tmp/izakhono-health.json; then break; fi
+            sleep 2
+          done
+          node -e 'const h=require("/tmp/izakhono-health.json"); if(h.ok!==true || h.databaseConfigured!==true) process.exit(1);'
+          curl -fsS -H "Authorization: Bearer $ISBN_ADMIN_TOKEN" http://127.0.0.1:8080/api/dashboard | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(Number(x.works)!==7||Number(x.editions)!==1||Number(x.verifiedIsbns)!==0)process.exit(1);console.log("Self-hosted container HTTP/PostgreSQL smoke test passed.");});'
