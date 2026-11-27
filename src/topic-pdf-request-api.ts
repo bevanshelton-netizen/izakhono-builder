@@ -78,14 +78,28 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
   const plan = planTopicPdfGeneration(validated.request);
   const canonical = JSON.stringify({ customerId: customer.id, request: validated.request });
   const requestFingerprint = await fingerprint(canonical);
-  const idempotencyKey = (req.headers.get('idempotency-key') || '').trim().slice(0, 120);
+  const idempotencyKey = (req.headers.get('idempotency-key') || '').trim();
+  if (idempotencyKey && (idempotencyKey.length < 8 || idempotencyKey.length > 120 || !/^[a-zA-Z0-9._:-]+$/.test(idempotencyKey))) {
+    return response({ ok: false, error: 'Idempotency-Key must be 8-120 letters, numbers or . _ : - characters.' }, 400);
+  }
 
   if (idempotencyKey) {
     const existing = await env.DB.prepare(
-      'SELECT id,status,risk_level,created_at FROM topic_pdf_generation_jobs WHERE requested_by=? AND request_fingerprint=? LIMIT 1',
-    ).bind(customer.id, requestFingerprint).first<any>();
-    if (existing) return response({ ok: true, duplicate: true, request: existing }, 200);
+      'SELECT id,status,risk_level,request_fingerprint,created_at FROM topic_pdf_generation_jobs WHERE requested_by=? AND idempotency_key=? LIMIT 1',
+    ).bind(customer.id, idempotencyKey).first<any>();
+    if (existing) {
+      if (existing.request_fingerprint !== requestFingerprint) {
+        return response({ ok: false, error: 'This idempotency key was already used for a different request.' }, 409);
+      }
+      delete existing.request_fingerprint;
+      return response({ ok: true, duplicate: true, request: existing }, 200);
+    }
   }
+
+  const sameRequest = await env.DB.prepare(
+    'SELECT id,status,risk_level,created_at FROM topic_pdf_generation_jobs WHERE requested_by=? AND request_fingerprint=? LIMIT 1',
+  ).bind(customer.id, requestFingerprint).first<any>();
+  if (sameRequest) return response({ ok: true, duplicate: true, request: sameRequest }, 200);
 
   const recent = await env.DB.prepare(
     "SELECT COUNT(*) AS total FROM topic_pdf_generation_jobs WHERE requested_by=? AND created_at >= datetime('now','-1 hour')",
@@ -98,7 +112,7 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
   const now = new Date().toISOString();
   const status = plan.status === 'blocked' ? 'blocked' : 'requested';
   await env.DB.prepare(
-    'INSERT INTO topic_pdf_generation_jobs(id,request_json,plan_json,status,risk_level,requested_by,request_fingerprint,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)',
+    'INSERT INTO topic_pdf_generation_jobs(id,request_json,plan_json,status,risk_level,requested_by,request_fingerprint,idempotency_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
   ).bind(
     id,
     JSON.stringify(validated.request),
@@ -107,6 +121,7 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
     plan.risk.level,
     customer.id,
     requestFingerprint,
+    idempotencyKey || null,
     now,
     now,
   ).run();
