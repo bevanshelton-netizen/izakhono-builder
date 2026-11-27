@@ -46,7 +46,7 @@ jobs:
       - name: Test on-demand generation worker and review guards
         run: npx --yes tsx@4.20.3 src/topic-pdf-generation-worker.test.ts
       - name: Typecheck topic PDF request and worker services
-        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/topic-pdf-request-api.ts src/topic-pdf-generation-worker.ts
+        run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/topic-pdf-request-api.ts src/topic-pdf-generation-worker.ts
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
