@@ -33,7 +33,7 @@ jobs:
             "Artifact-only handoff" \
             "Fail closed" \
             "Required automated test matrix" \
-            "B0 audit" \\
+            "B0 audit" \
             "Definition of done"; do
             grep -Fq "$required" "$doc" || { echo "Missing build boundary invariant: $required" >&2; exit 1; }
           done
