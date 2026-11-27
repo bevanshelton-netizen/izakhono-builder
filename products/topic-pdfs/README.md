@@ -117,6 +117,7 @@ Build a repeatable, quality-controlled publishing system before attempting volum
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
 - Catalogue validator: `validate-catalog.mjs`
+- Reusable ReportLab proof renderer: `render-pdf.py` (stamps every page EDITORIAL DRAFT — NOT FOR SALE)
 - Release checklist: `RELEASE-CHECKLIST.md`
 - First product record: `products/TPDF-001-household-budget.json`
 - First editorial draft: `drafts/TPDF-001-household-budget.md`
