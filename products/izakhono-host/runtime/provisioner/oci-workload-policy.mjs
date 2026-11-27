@@ -23,6 +23,9 @@ export function createOciWorkloadPolicy(config) {
   const networks = new Set(config.allowedNetworkProfiles || []);
   const limits = config.limits || {};
   if (!classes.size || !digests.size || !networks.size) throw new Error('OCI_POLICY_ALLOWLISTS_REQUIRED');
+  for (const [key, value] of Object.entries({ maxCpuMillicores: limits.maxCpuMillicores, maxMemoryMiB: limits.maxMemoryMiB, maxDiskMiB: limits.maxDiskMiB })) {
+    if (!Number.isSafeInteger(value) || value < 1) throw new Error('OCI_POLICY_LIMIT_INVALID:' + key);
+  }
   for (const digest of digests) if (typeof digest !== 'string' || !DIGEST.test(digest)) throw new Error('OCI_POLICY_DIGEST_INVALID');
   if (typeof config.verifyProvenance !== 'function') throw new Error('OCI_PROVENANCE_VERIFIER_REQUIRED');
 
