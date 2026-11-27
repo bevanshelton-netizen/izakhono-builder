@@ -1,8 +1,8 @@
 import { PublisherEvidenceService, EvidenceServiceError, type EvidenceActor, type PublisherEvidenceRecord, type PublisherEvidenceStore, type EvidenceMutation, type EvidenceMutationResult } from './publisher-evidence-service';
 const expect=(ok:boolean,message:string)=>{if(!ok)throw new Error(message)};
 const tenant={platformId:'platform:1',entityId:'tenant:1'};
-const publisher:EvidenceActor={principalRef:'principal:publisher',tenant,role:'publisher'};
-const reviewer:EvidenceActor={principalRef:'principal:reviewer',tenant,role:'administrator'};
+const publisher:EvidenceActor={principalRef:'principal:publisher',tenant,publisherId:'publisher:1',role:'publisher'};
+const reviewer:EvidenceActor={principalRef:'principal:reviewer',tenant,publisherId:null,role:'administrator'};
 const now='2026-11-27T12:00:00.000Z';
 class Store implements PublisherEvidenceStore {
  record:PublisherEvidenceRecord={evidenceId:'evidence:1',requestId:'request:1',publisherId:'publisher:1',tenant,kind:'domain_control',opaqueRef:'ref:placeholder',status:'awaiting_submission',submittedBy:'',submittedAt:'',reviewedBy:null,reviewedAt:null,reviewDecisionRef:null,reasonCode:null,version:1};
