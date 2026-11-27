@@ -72,4 +72,8 @@ test('requires an explicit provenance verifier and non-empty allow-lists', () =>
     approvedWorkloadClasses: ['izakhono-nav'], allowedImageDigests: [digest],
     allowedNetworkProfiles: ['nav-private-egress'], limits: {}
   }), /PROVENANCE_VERIFIER_REQUIRED/);
+  assert.throws(() => createOciWorkloadPolicy({
+    approvedWorkloadClasses: ['izakhono-nav'], allowedImageDigests: [digest],
+    allowedNetworkProfiles: ['nav-private-egress'], limits: { maxCpuMillicores: 100, maxMemoryMiB: 100 }
+  }), /OCI_POLICY_LIMIT_INVALID:maxDiskMiB/);
 });
