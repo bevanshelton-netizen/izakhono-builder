@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { executeProductionDistributionExport } from './cinematic-media-export-worker';
+import { executeProductionDistributionExport, persistProductionExportResult } from './cinematic-media-export-worker';
 import type { CinematicProduction } from './cinematic-production-graph';
 import type { MediaExportRuntime } from './media-export-executor';
 
@@ -61,4 +61,64 @@ await assert.rejects(()=>executeProductionDistributionExport({
 await assert.rejects(()=>executeProductionDistributionExport(project,{
   ...request,outputAssetId:'unsafe-key-export',objectKey:'projects/other-film/exports/out.mp4',
 },runtime,store,resolve),/project’s exports namespace/);
+
+let persistedGraph: CinematicProduction = project;
+const calls: Array<{ url: string; method: string; body?: any; secret?: string | null }> = [];
+const apiFetch: typeof fetch = async (input, init) => {
+  const url = String(input);
+  const method = init?.method ?? 'GET';
+  const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+  calls.push({ url, method, body, secret: new Headers(init?.headers).get('x-creator-generation-secret') });
+  if (method === 'GET') return new Response(JSON.stringify({ production: persistedGraph }), { status: 200 });
+  if (method === 'PATCH') {
+    assert.equal(body.production.assets.find((a: any) => a.id === 'distribution-1')?.mediaQa, undefined, 'generic PATCH must never carry QA evidence');
+    persistedGraph = body.production as CinematicProduction;
+    return new Response(JSON.stringify({ status: 'updated' }), { status: 200 });
+  }
+  if (method === 'POST') {
+    const evidence = body.evidence;
+    persistedGraph = {
+      ...persistedGraph,
+      assets: persistedGraph.assets.map(a => a.id === 'distribution-1' ? { ...a, mediaQa: evidence } : a),
+    };
+    return new Response(JSON.stringify({ status: 'recorded' }), { status: 200 });
+  }
+  return new Response('not found', { status: 404 });
+};
+const persisted = await persistProductionExportResult('https://creator.example', 'film-1', passed, 'worker-secret', apiFetch);
+assert.equal(persisted.graphStatus, 200);
+assert.equal(persisted.qaStatus, 200);
+assert.deepEqual(calls.map(call => call.method), ['GET', 'PATCH', 'POST']);
+assert.ok(calls.every(call => call.secret === 'worker-secret'), 'all persistence calls carry the service credential');
+assert.equal(persistedGraph.assets.find(a => a.id === 'distribution-1')?.mediaQa?.passed, true);
+const beforeRetry = calls.length;
+await persistProductionExportResult('https://creator.example', 'film-1', passed, 'worker-secret', apiFetch);
+assert.equal(calls.length, beforeRetry + 1, 'retry of an already persisted result only reads and does not duplicate writes');
+assert.equal(calls.at(-1)?.method, 'GET');
+
+let partialGraph: CinematicProduction = project;
+let failQaOnce = true;
+const partialFetch: typeof fetch = async (input, init) => {
+  const method = init?.method ?? 'GET';
+  const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+  if (method === 'GET') return new Response(JSON.stringify({ production: partialGraph }), { status: 200 });
+  if (method === 'PATCH') {
+    partialGraph = body.production as CinematicProduction;
+    return new Response('{}', { status: 200 });
+  }
+  if (method === 'POST' && failQaOnce) {
+    failQaOnce = false;
+    return new Response('temporary error', { status: 503 });
+  }
+  if (method === 'POST') {
+    partialGraph = { ...partialGraph, assets: partialGraph.assets.map(a => a.id === 'distribution-1' ? { ...a, mediaQa: body.evidence } : a) };
+    return new Response('{}', { status: 200 });
+  }
+  return new Response('{}', { status: 404 });
+};
+await assert.rejects(() => persistProductionExportResult('https://creator.example', 'film-1', passed, 'worker-secret', partialFetch), /distribution stays gated/);
+assert.equal(partialGraph.assets.find(a => a.id === 'distribution-1')?.mediaQa, undefined, 'partial persistence must leave delivery gated');
+await persistProductionExportResult('https://creator.example', 'film-1', passed, 'worker-secret', partialFetch);
+assert.equal(partialGraph.assets.find(a => a.id === 'distribution-1')?.mediaQa?.passed, true, 'retry completes QA persistence without repeating the graph PATCH');
+
 console.log('IZAKHONO production-graph to FFmpeg distribution worker integration: PASS');
