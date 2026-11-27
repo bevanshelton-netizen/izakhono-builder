@@ -1,0 +1,383 @@
+{
+  "catalog_name": "$7 Topic PDF Publishing Programme",
+  "catalog_version": "1.0.0",
+  "author": "Bevan Shelton",
+  "price_target_usd": 7,
+  "items": [
+    {
+      "product_id": "TPDF-001",
+      "slug": "household-budget-that-works",
+      "title": "Build a Household Budget That Actually Works",
+      "category": "Personal finance",
+      "reader_profile": "Households needing a realistic income-and-expense plan",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-002",
+      "slug": "understand-credit-report",
+      "title": "Understand Your Credit Report",
+      "category": "Personal finance",
+      "reader_profile": "Readers learning to review a credit report",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-003",
+      "slug": "first-step-out-of-debt",
+      "title": "A Practical First Step Out of Debt",
+      "category": "Personal finance",
+      "reader_profile": "Readers who need to organise debts and compare options",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-004",
+      "slug": "prepare-for-job-interview",
+      "title": "Prepare for a Job Interview",
+      "category": "Careers",
+      "reader_profile": "Job seekers preparing for an interview",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-005",
+      "slug": "write-effective-cv",
+      "title": "Write a Clear, Effective CV",
+      "category": "Careers",
+      "reader_profile": "Job seekers presenting skills and experience",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-006",
+      "slug": "start-small-business-first-month",
+      "title": "Start a Small Business: The First 30 Days",
+      "category": "Business",
+      "reader_profile": "New founders validating and organising a small business",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-007",
+      "slug": "price-first-product-service",
+      "title": "Price Your First Product or Service",
+      "category": "Business",
+      "reader_profile": "New entrepreneurs learning basic pricing",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-008",
+      "slug": "simple-business-records",
+      "title": "How to Keep Simple Business Records",
+      "category": "Business",
+      "reader_profile": "Small-business owners organising sales and expenses",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-009",
+      "slug": "first-month-university",
+      "title": "Prepare for Your First Month at University",
+      "category": "Education",
+      "reader_profile": "New tertiary students planning study and daily life",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-010",
+      "slug": "study-difficult-module",
+      "title": "Study a Difficult Module More Effectively",
+      "category": "Education",
+      "reader_profile": "Students building a practical study routine",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-011",
+      "slug": "understand-payslip",
+      "title": "Understand a Payslip",
+      "category": "Work and money",
+      "reader_profile": "Employees learning common pay and deduction fields",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-012",
+      "slug": "household-emergency-fund",
+      "title": "Plan a Household Emergency Fund",
+      "category": "Personal finance",
+      "reader_profile": "Households creating a realistic savings plan",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-013",
+      "slug": "organise-household-documents",
+      "title": "Organise Important Household Documents",
+      "category": "Home and life",
+      "reader_profile": "Readers creating a secure document system",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-014",
+      "slug": "difficult-family-conversation",
+      "title": "Prepare for a Difficult Family Conversation",
+      "category": "Relationships",
+      "reader_profile": "Readers preparing for a sensitive conversation",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-015",
+      "slug": "renting-home-basics",
+      "title": "Understand the Basics of Renting a Home",
+      "category": "Everyday legal literacy",
+      "reader_profile": "Renters learning common lease concepts",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-016",
+      "slug": "beginner-digital-safety",
+      "title": "A Beginner's Guide to Digital Safety",
+      "category": "Technology",
+      "reader_profile": "Readers protecting accounts and personal information",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-017",
+      "slug": "spot-online-scams",
+      "title": "Spot Common Online Scams",
+      "category": "Technology",
+      "reader_profile": "Readers learning to recognise and verify suspicious requests",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-018",
+      "slug": "personal-learning-plan",
+      "title": "Build a Simple Personal Learning Plan",
+      "category": "Personal development",
+      "reader_profile": "Readers planning and tracking a learning goal",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-019",
+      "slug": "small-vegetable-garden",
+      "title": "Start a Small Vegetable Garden",
+      "category": "Home and garden",
+      "reader_profile": "Beginners planning a small garden",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-020",
+      "slug": "affordable-balanced-meals",
+      "title": "Plan Affordable, Balanced Meals",
+      "category": "Food and everyday living",
+      "reader_profile": "Households planning meals and food shopping",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-021",
+      "slug": "prepare-medical-appointment",
+      "title": "Prepare for a Medical Appointment",
+      "category": "Health literacy",
+      "reader_profile": "Patients organising questions and follow-up",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-022",
+      "slug": "understand-medicine-labels",
+      "title": "Understand Medicine Labels Safely",
+      "category": "Health literacy",
+      "reader_profile": "Readers learning to interpret common label information",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-023",
+      "slug": "weekly-household-cleaning",
+      "title": "Create a Weekly Household Cleaning Plan",
+      "category": "Home and life",
+      "reader_profile": "Households building a manageable routine",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-024",
+      "slug": "beginner-walking-fitness",
+      "title": "Start Walking for Everyday Fitness",
+      "category": "Wellness",
+      "reader_profile": "Beginners building a gradual walking habit",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    },
+    {
+      "product_id": "TPDF-025",
+      "slug": "low-cost-family-celebration",
+      "title": "Plan a Low-Cost Family Celebration",
+      "category": "Lifestyle",
+      "reader_profile": "Families organising a meaningful affordable event",
+      "status": "candidate",
+      "price_target_usd": 7,
+      "jurisdiction": [
+        "to-be-defined"
+      ],
+      "language": "en",
+      "approved_for_drafting": false,
+      "publication_status": "not-published"
+    }
+  ]
+}

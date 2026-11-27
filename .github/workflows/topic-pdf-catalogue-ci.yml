@@ -1,0 +1,94 @@
+name: Topic PDF Catalogue CI
+
+on:
+  pull_request:
+    paths:
+      - "products/topic-pdfs/**"
+      - "src/topic-pdf-request-api.ts"
+      - "src/topic-pdf-request-api.test.ts"
+      - "src/topic-pdf-customer-auth-api.ts"
+      - "src/topic-pdf-customer-auth-api.test.ts"
+      - "src/topic-pdf-fulfilment-api.ts"
+      - "src/topic-pdf-fulfilment-api.test.ts"
+      - "migrations/0037_topic_pdf_customer_fulfilment.sql"
+      - "migrations/0038_topic_pdf_sale_edition_release.sql"
+      - "migrations/0036_topic_pdf_customer_auth_limits.sql"
+      - "public/topic-guides/**"
+      - "src/topic-pdf-generation-worker.ts"
+      - "src/topic-pdf-generation-worker.test.ts"
+      - "migrations/0032_topic_pdf_generation_jobs.sql"
+      - "migrations/0033_topic_pdf_job_execution_and_reviews.sql"
+      - "migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql"
+      - "migrations/0035_topic_pdf_render_storage.sql"
+      - "products/topic-pdfs/render-service.py"
+      - "products/topic-pdfs/test_render_service.py"
+      - "wrangler.jsonc"
+      - "src/customer-auth.ts"
+      - "src/sovereign.ts"
+      - ".github/workflows/topic-pdf-catalogue-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/topic-pdfs/**"
+      - ".github/workflows/topic-pdf-catalogue-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate topic candidate catalogue
+        run: node products/topic-pdfs/validate-catalog.mjs
+      - name: Validate storefront prototype
+        run: node products/topic-pdfs/validate-storefront.mjs
+      - name: Validate TPDF-001 claim-to-source evidence ledger
+        run: node products/topic-pdfs/validate-evidence-ledger.mjs
+      - name: Validate customer workspace security and UX
+        run: node products/topic-pdfs/validate-customer-workspace.mjs
+      - name: Test on-demand topic generation core
+        run: npx --yes tsx@4.20.3 products/topic-pdfs/src/generation-core.test.ts
+      - name: Test authenticated customer request API guards
+        run: npx --yes tsx@4.20.3 src/topic-pdf-request-api.test.ts
+      - name: Test verified customer authentication guards
+        run: npx --yes tsx@4.20.3 src/topic-pdf-customer-auth-api.test.ts
+      - name: Test entitlement-gated customer PDF fulfilment
+        run: npx --yes tsx@4.20.3 src/topic-pdf-fulfilment-api.test.ts
+      - name: Test on-demand generation worker and review guards
+        run: npx --yes tsx@4.20.3 src/topic-pdf-generation-worker.test.ts
+      - name: Typecheck topic PDF request and worker services
+        run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/topic-pdf-request-api.ts src/topic-pdf-customer-auth-api.ts src/topic-pdf-fulfilment-api.ts src/topic-pdf-generation-worker.ts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PDF renderer and proof-check dependencies
+        run: python -m pip install reportlab pypdf
+      - name: Test Topic PDF database migrations
+        run: python products/topic-pdfs/test_migrations.py
+      - name: Test private editorial PDF render service
+        run: python products/topic-pdfs/test_render_service.py
+      - name: Render first guide as a non-sale editorial proof
+        run: |
+          python products/topic-pdfs/render-pdf.py products/topic-pdfs/drafts/TPDF-001-household-budget.md /tmp/TPDF-001-editorial-proof.pdf
+          test -s /tmp/TPDF-001-editorial-proof.pdf
+      - name: Verify proof cover title and subtitle
+        run: |
+          python - <<'PY'
+          from pypdf import PdfReader
+          page = PdfReader("/tmp/TPDF-001-editorial-proof.pdf").pages[0].extract_text()
+          assert "Build a Household Budget That" in page
+          assert "A practical household money guide" in page
+          assert "Sources and further reading" not in page
+          PY
+      - name: Upload non-sale editorial proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: TPDF-001-editorial-proof
+          path: /tmp/TPDF-001-editorial-proof.pdf
+          if-no-files-found: error
+          retention-days: 14

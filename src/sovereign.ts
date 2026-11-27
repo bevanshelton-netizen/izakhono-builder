@@ -14,6 +14,10 @@ import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
+import { topicPdfRequestRoute } from './topic-pdf-request-api';
+import { topicPdfFulfilmentRoute } from './topic-pdf-fulfilment-api';
+import { topicPdfCustomerAuthRoute } from './topic-pdf-customer-auth-api';
+import { processOneApprovedTopicPdfJob, processOneSaleEditionTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -1325,8 +1329,45 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 }
 
 export default {
+  async scheduled(_event: ScheduledEvent, env: any, _ctx: ExecutionContext): Promise<void> {
+    await processOneTopicPdfJob(env);
+    await processOneApprovedTopicPdfJob(env);
+    await processOneSaleEditionTopicPdfJob(env);
+  },
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    if (url.pathname === '/topic-guides') {
+      return Response.redirect(url.origin + '/topic-guides/', 302);
+    }
+    if (url.pathname.startsWith('/topic-guides/')) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
+      const relative = url.pathname.slice('/topic-guides/'.length) || 'index.html';
+      if (!new Set(['index.html', 'app.js', 'styles.css']).has(relative)) return new Response('Not found', { status: 404 });
+      const assetUrl = new URL(req.url);
+      assetUrl.pathname = '/topic-guides/' + relative;
+      assetUrl.search = '';
+      const asset = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+      const headers = new Headers(asset.headers);
+      headers.set('cache-control', 'no-store');
+      headers.set('x-content-type-options', 'nosniff');
+      headers.set('referrer-policy', 'no-referrer');
+      headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+      headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+      headers.delete('content-length');
+      return new Response(req.method === 'HEAD' ? null : asset.body, { status: asset.status, statusText: asset.statusText, headers });
+    }
+
+    const topicPdfCustomerAuth = await topicPdfCustomerAuthRoute(req, env, url);
+    if (topicPdfCustomerAuth) return topicPdfCustomerAuth;
+
+    const topicPdfFulfilment = await topicPdfFulfilmentRoute(req, env, url);
+    if (topicPdfFulfilment) return topicPdfFulfilment;
+
+    const topicPdfRequests = await topicPdfRequestRoute(req, env, url);
+    if (topicPdfRequests) return topicPdfRequests;
+    const topicPdfReview = await topicPdfOwnerReviewRoute(req, env, url, request => ownerAuthorized(request, env));
+    if (topicPdfReview) return topicPdfReview;
 
     if ((url.pathname === '/jarvis' || url.pathname === '/jarvis/') && req.method === 'GET') {
       const page = new URL(req.url);
