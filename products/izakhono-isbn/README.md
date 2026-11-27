@@ -28,6 +28,7 @@ ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN 
 - `GET /api/health` — public health and release state only.
 - `GET /api/dashboard` — counts and agency/application status.
 - `GET /api/catalogue` — edition-level catalogue with ISBN verification state.
+- `GET /api/export/registry.json` — protected versioned full-registry JSON export for migration; includes allowlisted registry tables, audit history and correspondence, but no runtime secrets.
 - `GET|POST|PATCH /api/publishers`
 - `GET|POST|PATCH /api/imprints`
 - `GET|POST|PATCH /api/authors`
