@@ -179,12 +179,6 @@ export class PublisherReviewService {
       throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
     }
     const session = await this.resolveSession(command.sessionCredential);
-    const requestFingerprint = await fingerprint(command, session, {
-      requestId: command.requestId, kind: command.kind, dueAt: command.dueAt,
-    });
-    const prior = await this.ports.store.lookupIdempotency(session.tenant, command.idempotencyKey, requestFingerprint);
-    if (prior?.status === 'replayed') return prior;
-    if (prior?.status === 'conflict') throw new ReviewServiceError('REVIEW_IDEMPOTENCY_CONFLICT');
     const permission = 'publishing:review:request_evidence';
     const authorization = await this.ports.authorization.authorize({
       tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
@@ -192,15 +186,20 @@ export class PublisherReviewService {
     });
     if (!authorization.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
     if (!this.validAuthorization(authorization, session.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    const requestFingerprint = await fingerprint(command, session, {
+      requestId: command.requestId, kind: command.kind, dueAt: command.dueAt,
+    });
+    const prior = await this.ports.store.lookupIdempotency(session.tenant, command.idempotencyKey, requestFingerprint);
+    if (prior?.status === 'replayed') return prior;
+    if (prior?.status === 'conflict') throw new ReviewServiceError('REVIEW_IDEMPOTENCY_CONFLICT');
     const current = await this.ports.store.getCase(session.tenant, command.caseId);
     if (!current || !sameTenant(current.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const now = this.clock();
     const caseErrors = validateReviewCase(current, now);
     if (caseErrors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', caseErrors.join(','));
+    if (command.expectedVersion !== current.version) throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
     if (current.status !== 'in_review' || current.evidenceRequests.some(item => item.requestId === command.requestId)
-      || Date.parse(command.dueAt) <= Date.parse(now) || command.expectedVersion !== current.version) {
-      throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
-    }
+      || Date.parse(command.dueAt) <= Date.parse(now)) throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
     const request: ReviewEvidenceRequest = {
       requestId: command.requestId, kind: command.kind, status: 'requested',
       requestedByPrincipalRef: session.principalRef, requestedAt: now, dueAt: command.dueAt,
