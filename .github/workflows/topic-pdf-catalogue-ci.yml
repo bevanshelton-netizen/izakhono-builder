@@ -47,6 +47,8 @@ jobs:
         run: node products/topic-pdfs/validate-catalog.mjs
       - name: Validate storefront prototype
         run: node products/topic-pdfs/validate-storefront.mjs
+      - name: Validate TPDF-001 claim-to-source evidence ledger
+        run: node products/topic-pdfs/validate-evidence-ledger.mjs
       - name: Validate customer workspace security and UX
         run: node products/topic-pdfs/validate-customer-workspace.mjs
       - name: Test on-demand topic generation core
