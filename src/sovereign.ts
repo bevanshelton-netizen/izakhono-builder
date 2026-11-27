@@ -15,6 +15,7 @@ import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import { topicPdfRequestRoute } from './topic-pdf-request-api';
+import { topicPdfCustomerAuthRoute } from './topic-pdf-customer-auth-api';
 import { processOneApprovedTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 import {
   commitInternalRepository,
@@ -1333,6 +1334,9 @@ export default {
   },
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const topicPdfCustomerAuth = await topicPdfCustomerAuthRoute(req, env, url);
+    if (topicPdfCustomerAuth) return topicPdfCustomerAuth;
 
     const topicPdfRequests = await topicPdfRequestRoute(req, env, url);
     if (topicPdfRequests) return topicPdfRequests;
