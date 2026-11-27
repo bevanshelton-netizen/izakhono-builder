@@ -43,6 +43,7 @@ const hasVerifiedFacebookQa = (asset: ProductionAsset): boolean => {
 };
 const hasRightsEvidence = (project: CinematicProduction, asset: ProductionAsset): boolean => {
   if (!asset.provenance.licence?.trim()) return false;
+  if (asset.role === 'source' && asset.sourceEvidence && asset.sourceEvidence.rightsReviewStatus !== 'verified') return false;
   const shot = asset.shotId ? project.shots.find(item => item.id === asset.shotId) : undefined;
   const requiredConsentIds = shot
     ? project.characters.filter(character => shot.characterIds.includes(character.id)).map(character => character.consentRecordId).filter((id): id is string => Boolean(id))
@@ -95,6 +96,7 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
       details: [
         `kind=${asset.kind}`, `source=${asset.source}`, `status=${asset.status}`,
         linked ? 'Storage key or content hash recorded' : 'No storage key or content hash recorded',
+        asset.sourceEvidence ? 'Source rights review=' + asset.sourceEvidence.rightsReviewStatus : '',
         asset.provenance.createdAt ? `createdAt=${asset.provenance.createdAt}` : 'Creation timestamp not recorded',
         asset.mediaQa ? `mediaQa=${asset.mediaQa.passed ? 'passed' : 'failed'}; profile=${asset.mediaQa.profileId}; hash=${asset.mediaQa.assetContentHash}; recordedBy=${asset.mediaQa.recordedBy}; recordedAt=${asset.mediaQa.recordedAt}` : 'No media QA evidence recorded',
         asset.mediaQa ? `mediaQaChecks=${asset.mediaQa.checks.filter(check => check.passed).length}/${asset.mediaQa.checks.length} passed` : '',
