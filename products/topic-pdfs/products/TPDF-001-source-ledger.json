@@ -1,0 +1,173 @@
+{
+  "schema": "izakhono.topic-pdf-evidence-ledger/v1",
+  "product_id": "TPDF-001",
+  "edition": "South Africa",
+  "language": "en-ZA",
+  "status": "research-verification-pending",
+  "note": "Prepared from the manuscript bibliography and product record. Source existence, contents, currentness, claim mapping and reuse terms have not yet been independently re-verified. Do not treat this ledger as passed research or rights review.",
+  "claims": [
+    {
+      "claim_id": "CLAIM-001",
+      "draft_location": "Sections 1-2; household income and expense tracking",
+      "claim_summary": "Use take-home income and record household spending before setting a budget.",
+      "source_ids": [
+        "S001",
+        "S002",
+        "S003"
+      ],
+      "verification_status": "pending",
+      "reviewer_notes": "Confirm exact passages and whether sources support each distinct recommendation."
+    },
+    {
+      "claim_id": "CLAIM-002",
+      "draft_location": "Sections 3-4; fixed, variable and occasional costs",
+      "claim_summary": "Distinguish regular committed costs, variable essentials and known irregular costs; plan for annual costs.",
+      "source_ids": [
+        "S001",
+        "S002",
+        "S005"
+      ],
+      "verification_status": "pending",
+      "reviewer_notes": "Check the FNB consumer page and SAQA standard for exact coverage; avoid implying a formal universal classification."
+    },
+    {
+      "claim_id": "CLAIM-003",
+      "draft_location": "Sections 5-7; budget order and pay-cycle planning",
+      "claim_summary": "Build a realistic household budget using dependable income, expenses and actual pay dates.",
+      "source_ids": [
+        "S001",
+        "S002",
+        "S005"
+      ],
+      "verification_status": "pending",
+      "reviewer_notes": "Worked rand amounts are fictional calculations authored for illustration and should be independently recalculated."
+    },
+    {
+      "claim_id": "CLAIM-004",
+      "draft_location": "Section 8; shortfalls and credit support",
+      "claim_summary": "Contact credit providers early and use reputable South African credit/debt support information.",
+      "source_ids": [
+        "S003",
+        "S004"
+      ],
+      "verification_status": "pending",
+      "reviewer_notes": "Verify all current NCR routes, debt-counselling statements and legal implications against current primary sources."
+    },
+    {
+      "claim_id": "CLAIM-005",
+      "draft_location": "Section 9; household money meeting",
+      "claim_summary": "Review household spending and upcoming expenses regularly.",
+      "source_ids": [
+        "S001",
+        "S003"
+      ],
+      "verification_status": "pending",
+      "reviewer_notes": "Keep as practical author guidance unless direct source support is confirmed."
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "S001",
+      "title": "Household Monthly Budget",
+      "publisher": "National Credit Regulator, South Africa",
+      "url": "https://www.ncr.org.za/brochures/Ncra/1475AD%20NCR%20NCAA%20Brochure%20ENG.pdf",
+      "source_type": "official consumer guidance",
+      "published_on": null,
+      "accessed_on": "2026-11-27",
+      "relevant_passages": [],
+      "jurisdiction": "South Africa",
+      "claims_supported": [
+        "CLAIM-001",
+        "CLAIM-002",
+        "CLAIM-003",
+        "CLAIM-005"
+      ],
+      "reliability_notes": "Official regulator source; currentness and exact content must be checked before release.",
+      "rights_notes": "No permission to reproduce brochure text, tables or design is recorded.",
+      "verification_status": "pending",
+      "reviewer": null,
+      "reviewed_on": null
+    },
+    {
+      "source_id": "S002",
+      "title": "Unit Standard 10718 — Manage own money affairs",
+      "publisher": "South African Qualifications Authority",
+      "url": "https://pcqs.saqa.org.za/showUnitStandard.php?id=10718",
+      "source_type": "official qualification standard",
+      "published_on": null,
+      "accessed_on": "2026-11-27",
+      "relevant_passages": [],
+      "jurisdiction": "South Africa",
+      "claims_supported": [
+        "CLAIM-001",
+        "CLAIM-002",
+        "CLAIM-003"
+      ],
+      "reliability_notes": "Official standards record; confirm status/currentness and exact unit-standard wording.",
+      "rights_notes": "Do not reproduce protected learning materials or imply the guide is an accredited course.",
+      "verification_status": "pending",
+      "reviewer": null,
+      "reviewed_on": null
+    },
+    {
+      "source_id": "S003",
+      "title": "Financially smart citizens build resilient households",
+      "publisher": "South African Government",
+      "url": "https://www.gov.za/blog/financially-smart-citizens-build-resilient-households",
+      "source_type": "official public information",
+      "published_on": "2026",
+      "accessed_on": "2026-11-27",
+      "relevant_passages": [],
+      "jurisdiction": "South Africa",
+      "claims_supported": [
+        "CLAIM-001",
+        "CLAIM-004",
+        "CLAIM-005"
+      ],
+      "reliability_notes": "Government blog; verify author, publication date and exact advice; use current primary law/regulator sources for legal claims.",
+      "rights_notes": "Retain attribution; no permission to copy protected expression or imagery is recorded.",
+      "verification_status": "pending",
+      "reviewer": null,
+      "reviewed_on": null
+    },
+    {
+      "source_id": "S004",
+      "title": "Consumer rights under the National Credit Act",
+      "publisher": "National Credit Regulator, South Africa",
+      "url": "https://www.ncr.org.za/documents/Consumer%20Rights%20as%20per%20the%20National%20Credit%20Act%20%28NCA%29%5B4%5D.pdf",
+      "source_type": "official regulator guidance",
+      "published_on": null,
+      "accessed_on": "2026-11-27",
+      "relevant_passages": [],
+      "jurisdiction": "South Africa",
+      "claims_supported": [
+        "CLAIM-004"
+      ],
+      "reliability_notes": "Confirm the document remains current and check legislation/regulator guidance for any legal interpretation.",
+      "rights_notes": "Use as reference only; do not reproduce the document.",
+      "verification_status": "pending",
+      "reviewer": null,
+      "reviewed_on": null
+    },
+    {
+      "source_id": "S005",
+      "title": "Budgeting",
+      "publisher": "First National Bank, South Africa",
+      "url": "https://www.fnb.co.za/education/budgeting.html",
+      "source_type": "bank consumer education",
+      "published_on": null,
+      "accessed_on": "2026-11-27",
+      "relevant_passages": [],
+      "jurisdiction": "South Africa",
+      "claims_supported": [
+        "CLAIM-002",
+        "CLAIM-003"
+      ],
+      "reliability_notes": "Commercial bank education page; verify current availability, date and exact content; treat as secondary guidance.",
+      "rights_notes": "No permission to reproduce text, graphics or page design is recorded.",
+      "verification_status": "pending",
+      "reviewer": null,
+      "reviewed_on": null
+    }
+  ]
+}
