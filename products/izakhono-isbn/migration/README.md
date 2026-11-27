@@ -29,6 +29,23 @@ Create a UTF-8 JSON file with this shape (include only the tables being migrated
 
 The export must contain records only. Never include database credentials, bearer tokens, environment variables or secrets. Preserve source IDs and all evidence references. Export correspondence as records; the importer never updates or deletes it.
 
+## Export from the transitional D1 registry
+
+The Worker now exposes a protected, allowlisted export endpoint. From a trusted administrator environment, set the base URL of the existing registry and its admin token in your shell, then download the export:
+
+```sh
+export REGISTRY_BASE_URL='https://your-existing-registry.example'
+read -s ISBN_ADMIN_TOKEN
+export ISBN_ADMIN_TOKEN
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer ${ISBN_ADMIN_TOKEN}" \
+  "${REGISTRY_BASE_URL}/api/export/registry.json" \
+  --output ./d1-export.json
+unset ISBN_ADMIN_TOKEN
+```
+
+Do not enable shell tracing while handling the token. Store the export in an access-controlled location and create an independent backup of the source database before importing. The endpoint exports only the fixed registry table allowlist; it does not export runtime environment variables or credentials. Review the file and its row counts before using it. This endpoint is protected by the same bearer-token gate as other management routes.
+
 ## Run a rehearsal (default)
 
 From this directory, with Node.js 22 and the runtime's `pg` dependency installed:
