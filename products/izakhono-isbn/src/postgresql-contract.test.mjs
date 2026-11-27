@@ -26,4 +26,4 @@ assert.doesNotMatch(seed, /INSERT INTO isbn_records/i, "seed must never fabricat
 assert.match(contract, /export interface RegistryDatabase/);
 assert.match(contract, /transaction<T>/);
 assert.match(contract, /parameterised queries/);
-console.log("PostgreSQL target schema and persistence-contract checks passed (19 assertions).");
+console.log("PostgreSQL target schema and persistence-contract checks passed (24 assertions).");
