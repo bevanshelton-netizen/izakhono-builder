@@ -73,3 +73,21 @@ npx wrangler deploy --config products/izakhono-creator/wrangler.jsonc
 - **End-to-end verified:** a real project completed the acceptance sequence using the owned broker and a healthy worker.
 
 Never promote one status into another without evidence.
+## 7. Node/FFmpeg distribution-export worker boundary
+
+The repository contains a reusable Node/container export executor and a production-graph integration function. These are source modules, not a deployed service or a reachable API endpoint. The Cloudflare request Worker must not attempt to spawn FFmpeg.
+
+Before connecting a real project to this worker, implement and verify a deployment-specific adapter with all of the following properties:
+
+- **Authenticated job intake:** accept only a trusted service identity; never expose the Creator service secret, Media Fabric key or storage credentials to the browser.
+- **Canonical graph loading:** load the project and its production graph from the existing Creator D1 store; reject missing projects, malformed graphs and mismatched project IDs.
+- **Version-checked persistence:** commit the worker's updated graph only if the stored production version still equals the version loaded before rendering. A concurrent edit must fail closed rather than overwrite newer approvals, tasks or assets.
+- **Scoped source resolution:** resolve the master only from its canonical project asset storage key, read the actual bytes and verify the approved SHA-256 before FFmpeg starts.
+- **Scoped output storage:** write only beneath the same project's exports namespace; use an idempotent job/output identity and prevent overwriting an existing unrelated object.
+- **Failure recovery:** distinguish render failure, QA failure, storage failure and graph-persistence conflict. Do not mark a task or asset complete unless stored bytes and the corresponding graph evidence agree. Define cleanup/reconciliation for an uploaded object whose graph commit fails.
+- **Operational limits:** enforce worker identity, execution timeout, output-size limits, disk-space limits, concurrency limits and auditable logs that exclude secrets.
+- **End-to-end verification:** run a non-production project through source resolution, FFmpeg, ffprobe, hash-bound QA, object storage and version-checked graph persistence; retrieve and play the resulting MP4 independently.
+
+The new `cinematic-distribution-worker-adapter.ts` source module now provides authenticated-request gating through a host-supplied authenticator, canonical D1 graph loading, required expectedUpdatedAt matching, a trusted worker-local output-path allocator, deterministic project-scoped output keys, D1 compare-and-swap graph persistence and cleanup/reconciliation when an uploaded object cannot be committed. Its regression test covers unauthenticated rejection, stale preflight versions, successful persistence, concurrent-write conflict cleanup and failed-cleanup escalation. The module is deliberately not imported into the Cloudflare Creator Worker entrypoint: it belongs in a separately hosted Node/container service.
+
+Still required before release: implement and configure the actual Node service host, concrete service authentication, D1 and object-storage credentials, scoped source-object resolver, safe temporary-directory allocator, delete-capable object-storage adapter, execution timeout, output-size/disk/concurrency limits, structured secret-redacting logs and an end-to-end non-production run. The current adapter is an injectable source boundary, not a deployed service or reachable endpoint. Do not infer that a Facebook export endpoint exists or that a real film has been rendered from source CI checks.

@@ -1,20 +1,31 @@
 import { compileCinematicBrief, type CinematicBriefInput } from './cinematic-brief-compiler';
 import {
   getRunnableTasks,
+  recordMediaQaEvidence,
+  recordHumanMediaReview,
+  hasPassingHumanMediaReview,
+  recordSourceRightsReview,
+  hasVerifiedSourceRights,
   updateTaskWithEvidence,
   validateProductionGraph,
   type ApprovalGate,
   type CinematicProduction,
+  type MediaQaEvidence,
   type ProductionTask,
+  type ProductionAsset,
 } from './cinematic-production-graph';
-import { getProject, listProjects, saveAsset, saveProject, type CreatorStorageEnv } from './project-store';
+import { findAssetByExternalId, getAsset, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
+import { buildProductionReadinessReport } from './cinematic-production-readiness';
+import { resolveOriginalSourceImage } from './cinematic-source-media';
+import { chooseProvider, createAdapters, type GenerationRequest, type ProviderEnv } from './provider-router';
 
-type CinematicEnv = CreatorStorageEnv & { CREATOR_GENERATION_SECRET?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
+type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; CREATOR_IMAGE_PROVIDER?: string; CREATOR_IMAGE_ASSET_HOSTS?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 const gates: ApprovalGate[] = ['creative', 'generation', 'master', 'distribution'];
+async function findAssetByIdForProject(env: CreatorStorageEnv, assetId: string, projectId: string) { const asset = await getAsset(env, assetId); return asset?.projectId === projectId ? asset : null; }
 const parseBody = async (request: Request) => request.json().catch(() => null) as Promise<Record<string, unknown> | null>;
 const authenticated = (request: Request, env: CinematicEnv) =>
   Boolean(env.CREATOR_GENERATION_SECRET) &&
@@ -38,6 +49,86 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   if (!env.DB) return response({ error: 'Creator D1 storage is not configured.' }, 503);
 
   const fabricRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/tasks\/([^/]+)\/(submit|status)$/);
+  const sourceMediaRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/source-media$/);
+  if (sourceMediaRoute && request.method === 'POST') {
+    const id = decodeURIComponent(sourceMediaRoute[1]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    if (!env.ASSETS) return response({ error: 'Private source-media object storage is not configured.' }, 503);
+    const contentType = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const kindByMime: Record<string, 'image' | 'video' | 'audio'> = {
+      'image/jpeg': 'image', 'image/png': 'image', 'image/webp': 'image',
+      'video/mp4': 'video', 'video/quicktime': 'video', 'video/webm': 'video',
+      'audio/mpeg': 'audio', 'audio/mp4': 'audio', 'audio/wav': 'audio', 'audio/x-wav': 'audio', 'audio/webm': 'audio',
+    };
+    const kind = kindByMime[contentType];
+    if (!kind) return response({ error: 'Unsupported source-media content type.' }, 415);
+    const declaredLength = Number(request.headers.get('content-length') || 0);
+    const maxBytes = 100 * 1024 * 1024;
+    if (!Number.isSafeInteger(declaredLength) || declaredLength < 1 || declaredLength > maxBytes) return response({ error: 'Source media must declare a content length between 1 byte and 100 MB.' }, 413);
+    const filenameRaw = request.headers.get('x-creator-filename') || 'source-media';
+    const filename = filenameRaw.split('/').join('_').split(String.fromCharCode(92)).join('_').replace(/[\r\n\0]/g, '_').trim().slice(0, 180);
+    const receivedBy = request.headers.get('x-creator-uploader-id')?.trim() || '';
+    const licence = request.headers.get('x-creator-licence')?.trim() || '';
+    const consentStatus = request.headers.get('x-creator-consent-status');
+    const consentRecordIds = (request.headers.get('x-creator-consent-record-ids') || '').split(',').map(value => value.trim()).filter(Boolean);
+    if (!filename || !receivedBy || receivedBy.length > 160 || !licence || licence.length > 1000) return response({ error: 'A filename, uploader identity and licence declaration are required.' }, 400);
+    if (!['provided', 'not_applicable', 'unverified'].includes(String(consentStatus))) return response({ error: 'Consent status must be explicitly provided, not_applicable or unverified.' }, 400);
+    if (consentStatus === 'provided' && consentRecordIds.length === 0) return response({ error: 'Consent record IDs are required when consent status is provided.' }, 400);
+    if (consentRecordIds.some(value => value.length > 160) || new Set(consentRecordIds).size !== consentRecordIds.length) return response({ error: 'Consent record IDs are invalid or duplicated.' }, 400);
+    const shotId = request.headers.get('x-creator-shot-id')?.trim();
+    const shot = shotId ? graph.shots.find(item => item.id === shotId) : undefined;
+    if (shotId && !shot) return response({ error: 'The requested shot does not exist in this production.' }, 400);
+    let bytes: Uint8Array;
+    try { bytes = new Uint8Array(await request.arrayBuffer()); } catch { return response({ error: 'Source media body could not be read.' }, 400); }
+    if (bytes.byteLength !== declaredLength || bytes.byteLength < 1 || bytes.byteLength > maxBytes) return response({ error: 'Source media body size does not match its declared content length or exceeds the limit.' }, 413);
+    const starts = (...signature: number[]) => signature.every((value, index) => bytes[index] === value);
+    const hasFtyp = bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70;
+    const signatureMatches = contentType === 'image/jpeg' ? starts(0xff, 0xd8, 0xff)
+      : contentType === 'image/png' ? starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+      : contentType === 'image/webp' ? starts(0x52, 0x49, 0x46, 0x46) && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+      : contentType === 'video/mp4' ? hasFtyp
+      : contentType === 'video/quicktime' ? hasFtyp && bytes[8] === 0x71 && bytes[9] === 0x74
+      : contentType === 'video/webm' || contentType === 'audio/webm' ? starts(0x1a, 0x45, 0xdf, 0xa3)
+      : contentType === 'audio/wav' || contentType === 'audio/x-wav' ? starts(0x52, 0x49, 0x46, 0x46) && bytes[8] === 0x57 && bytes[9] === 0x41 && bytes[10] === 0x56 && bytes[11] === 0x45
+      : contentType === 'audio/mp4' ? hasFtyp
+      : contentType === 'audio/mpeg' ? starts(0x49, 0x44, 0x33) || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)
+      : false;
+    if (!signatureMatches) return response({ error: 'Uploaded bytes do not match the declared media type.' }, 415);
+    const bodyBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const digest = await crypto.subtle.digest('SHA-256', bodyBuffer);
+    const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+    const assetId = 'src_' + crypto.randomUUID();
+    const storageKey = 'projects/' + id + '/source/' + assetId;
+    const receivedAt = new Date().toISOString();
+    const asset: ProductionAsset = {
+      id: assetId, kind, status: 'completed', source: 'user', role: 'source',
+      ...(shot ? { shotId: shot.id, sceneId: shot.sceneId } : {}),
+      storageKey, contentHash: sha256, mimeType: contentType, parentAssetIds: [],
+      provenance: { createdAt: receivedAt, licence, consentRecordIds },
+      sourceEvidence: {
+        schema: 'izakhono.creator/source-media-evidence-v1', origin: 'user_upload',
+        originalFilename: filename, mimeType: contentType, byteSize: bytes.byteLength,
+        sha256, receivedAt, receivedBy, licenceDeclaration: licence,
+        rightsReviewStatus: 'unverified', consentStatus: consentStatus as 'provided' | 'not_applicable' | 'unverified',
+      },
+    };
+    const updatedGraph: CinematicProduction = {
+      ...graph, assets: [...graph.assets, asset],
+      metadata: { ...graph.metadata, updatedAt: receivedAt, version: graph.metadata.version + 1 },
+    };
+    const checked = validate(updatedGraph);
+    if (!checked.valid) return response({ error: 'Source media would violate production graph integrity.', issues: checked.issues }, 422);
+    try {
+      await env.ASSETS.put(storageKey, new Response(bodyBuffer).body, { httpMetadata: { contentType } });
+      await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
+    } catch {
+      return response({ error: 'Source media storage or graph persistence failed. Upload was not confirmed; reconcile any private orphan object before retrying.' }, 503);
+    }
+    return response({ status: 'ingested', asset, productionVersion: updatedGraph.metadata.version }, 201);
+  }
   if (fabricRoute) {
     const [, rawProjectId, rawTaskId, action] = fabricRoute;
     const id = decodeURIComponent(rawProjectId);
@@ -46,9 +137,105 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (!project) return response({ error: 'project not found.' }, 404);
     const graph = graphFrom(project);
     if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
-    if (!env.MEDIA_FABRIC_URL || !env.MEDIA_FABRIC_KEY) return response({ error: 'Owned Media Runtime Fabric is not configured on this Creator Worker.' }, 503);
     const task = graph.tasks.find(item => item.id === taskId);
     if (!task) return response({ error: 'task not found.' }, 404);
+
+    // Still-image keyframes use the existing provider-neutral Creator adapter.
+    // Luma is currently the only registered image-capable adapter; credentials
+    // remain server-side and generation approval is mandatory.
+    if (action === 'submit' && request.method === 'POST' && task.kind === 'image_generation') {
+      if (env.CREATOR_GENERATION_ENABLED !== 'true') return response({ error: 'Image generation is disabled. Enable it only after provider, rights and cost review.' }, 403);
+      const generationApproval = graph.approvals.find(item => item.gate === 'generation');
+      if (generationApproval?.status !== 'approved') return response({ error: 'generation approval is required before image submission.' }, 409);
+      if (!['ready', 'approved', 'failed'].includes(task.status)) return response({ error: 'task is not in a submittable state.' }, 409);
+      const shot = graph.shots.find(item => item.id === task.shotId);
+      if (!shot) return response({ error: 'image-generation task must reference a valid shot.' }, 409);
+      const generation: GenerationRequest = {
+        kind: 'image',
+        prompt: shot.generationPrompt?.trim() || shot.firstFrameIntent?.trim() || shot.action,
+        aspectRatio: shot.aspectRatio === 'custom' ? '9:16' : shot.aspectRatio,
+        shotIndex: shot.sequence,
+      };
+      const adapter = chooseProvider(generation, createAdapters(env), env.CREATOR_IMAGE_PROVIDER || 'luma');
+      if (!adapter) return response({ error: 'No enabled image-generation provider is configured. Configure the approved Luma server-side credential; no generation has been submitted.' }, 503);
+      const job = await adapter.submit(generation);
+      const failed = job.status === 'failed';
+      const updated = updateTaskWithEvidence(graph, task.id, {
+        status: failed ? 'failed' : 'submitted',
+        selectedProvider: job.provider,
+        ...(job.externalId ? { externalJobId: job.externalId } : {}),
+        ...(failed ? { errorCode: 'IMAGE_PROVIDER_SUBMISSION_FAILED', errorMessage: job.error || 'Image provider submission failed.' } : {}),
+      });
+      await saveAsset(env, {
+        id: job.id, projectId: id, shotIndex: shot.sequence, kind: 'image',
+        status: failed ? 'failed' : 'submitted', provider: job.provider,
+        externalId: job.externalId, url: job.outputUrl,
+        metadata: { taskId, shotId: shot.id, request: generation, selected: false, source: 'external_provider', error: job.error },
+      });
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      return response({ status: failed ? 'failed' : 'submitted', taskId, provider: job.provider, externalJobId: job.externalId, assetId: job.id, error: job.error }, failed ? 502 : 202);
+    }
+
+    // Poll an image provider through the same adapter used for submission.
+    if (action === 'status' && request.method === 'GET' && task.kind === 'image_generation' && task.selectedProvider !== 'izakhono-media-runtime-fabric') {
+      if (!task.externalJobId || !task.selectedProvider) return response({ error: 'image task has no provider job to poll.' }, 409);
+      const provider = task.selectedProvider;
+      const asset = await findAssetByExternalId(env, provider, task.externalJobId);
+      if (!asset) return response({ error: 'tracked image provider job was not found.' }, 404);
+      const adapter = createAdapters(env).find(item => item.id === provider);
+      if (!adapter?.enabled) return response({ error: 'the selected image provider is not configured on this Creator Worker.' }, 503);
+      const job = await adapter.poll(task.externalJobId, 'image');
+      if (job.status === 'completed' && !job.outputUrl) return response({ error: 'provider reported completion without an image URL; task remains uncompleted.' }, 409);
+      let storedObjectKey: string | undefined;
+      let storedMimeType: string | undefined;
+      let storedSha256: string | undefined;
+      if (job.status === 'completed') {
+        if (!env.ASSETS) return response({ error: 'Creator R2 asset storage is required before an image result can be marked complete.' }, 503);
+        const allowedHosts = (env.CREATOR_IMAGE_ASSET_HOSTS || '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean);
+        if (!allowedHosts.length) return response({ error: 'CREATOR_IMAGE_ASSET_HOSTS must explicitly allowlist the image provider asset host before ingestion.' }, 503);
+        const output = new URL(job.outputUrl!);
+        if (output.protocol !== 'https:' || !allowedHosts.includes(output.hostname.toLowerCase())) return response({ error: 'Image provider returned an asset outside the configured HTTPS host allowlist.' }, 502);
+        const downloaded = await fetch(output.toString(), { redirect: 'error' });
+        const contentType = (downloaded.headers.get('content-type') || '').split(';')[0].toLowerCase();
+        const length = Number(downloaded.headers.get('content-length') || 0);
+        if (!downloaded.ok || !downloaded.body || !['image/png', 'image/jpeg', 'image/webp'].includes(contentType) || (length && length > 16_000_000)) return response({ error: 'Image provider asset failed download, MIME type or size validation.' }, 502);
+        const bytes = await downloaded.arrayBuffer();
+        if (!bytes.byteLength || bytes.byteLength > 16_000_000) return response({ error: 'Image provider asset is empty or exceeds the 16 MB ingestion limit.' }, 502);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        storedSha256 = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+        storedMimeType = contentType;
+        storedObjectKey = `projects/${encodeURIComponent(id)}/assets/${encodeURIComponent(asset.id)}`;
+        await env.ASSETS.put(storedObjectKey, new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }), { httpMetadata: { contentType } });
+      }
+      await updateAsset(env, asset.id, {
+        status: job.status, url: storedObjectKey ? `/api/assets/${encodeURIComponent(asset.id)}/content` : job.outputUrl ?? asset.url,
+        ...(storedObjectKey ? { objectKey: storedObjectKey } : {}),
+        metadata: { ...(asset.metadata as Record<string, unknown> ?? {}), lastPoll: job, error: job.error, ...(storedSha256 ? { sha256: storedSha256, contentType: storedMimeType, ingestedToR2: true } : {}) },
+      });
+      const nextStatus: ProductionTask['status'] = job.status === 'completed' ? 'completed' : job.status === 'failed' ? 'failed' : 'processing';
+      const assetId = asset.id;
+      const updatedTaskGraph = updateTaskWithEvidence(graph, task.id, {
+        status: nextStatus,
+        ...(job.status === 'completed' ? { evidence: JSON.stringify({ provider, externalJobId: task.externalJobId, creatorAssetId: assetId, objectKey: storedObjectKey, sha256: storedSha256 }) } : {}),
+        ...(job.status === 'failed' ? { errorCode: 'IMAGE_PROVIDER_FAILED', errorMessage: job.error || 'Image provider reported failure.' } : {}),
+      });
+      const updatedGraph = job.status === 'completed' ? {
+        ...updatedTaskGraph,
+        assets: [...updatedTaskGraph.assets.filter(item => item.id !== assetId), {
+          id: assetId, kind: 'image' as const, status: 'completed' as const, source: 'external_provider' as const,
+          storageKey: storedObjectKey, contentHash: storedSha256, mimeType: storedMimeType, provider,
+          externalJobId: task.externalJobId, parentAssetIds: [],
+          provenance: { createdAt: new Date().toISOString(), consentRecordIds: [] },
+        }],
+        tasks: updatedTaskGraph.tasks.map(item => item.id === taskId ? { ...item, outputAssetIds: [...new Set([...item.outputAssetIds, assetId])] } : item),
+      } : updatedTaskGraph;
+      const checked = validate(updatedGraph);
+      if (!checked.valid) return response({ error: 'Provider image result failed production graph validation.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
+      return response({ status: 'polled', job, task: updatedGraph.tasks.find(item => item.id === taskId), assetId, runnableTasks: getRunnableTasks(updatedGraph) });
+    }
+
+    if (!env.MEDIA_FABRIC_URL || !env.MEDIA_FABRIC_KEY) return response({ error: 'Owned Media Runtime Fabric is not configured on this Creator Worker.' }, 503);
     const base = env.MEDIA_FABRIC_URL.replace(/\/+$/, '');
     if (action === 'submit' && request.method === 'POST') {
       if (task.kind !== 'video_generation') return response({ error: 'The currently registered owned worker supports video generation only. Image, audio and 3D workers are not yet registered.' }, 409);
@@ -58,9 +245,33 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       const shot = graph.shots.find(item => item.id === task.shotId);
       if (!shot) return response({ error: 'generation task must reference a valid shot.' }, 409);
       const body = await parseBody(request);
-      const sourceImage = body?.sourceImage;
+      let sourceImage = body?.sourceImage;
+      if (typeof body?.sourceAssetId === 'string') {
+        if (!env.ASSETS) return response({ error: 'Creator R2 asset storage is required to resolve a selected keyframe asset.' }, 503);
+        const canonicalSource = graph.assets.find(asset => asset.id === body.sourceAssetId);
+        if (canonicalSource) {
+          try {
+            const resolved = await resolveOriginalSourceImage(id, canonicalSource, key => env.ASSETS!.get(key), { shotId: shot.id, sceneId: shot.sceneId });
+            sourceImage = resolved.dataUri;
+          } catch (error) {
+            return response({ error: error instanceof Error ? error.message : 'Original source image could not be verified.' }, 409);
+          }
+        } else {
+          const selected = await findAssetByIdForProject(env, body.sourceAssetId, id);
+          if (!selected || selected.kind !== 'image' || selected.status !== 'completed' || !selected.objectKey) return response({ error: 'sourceAssetId must reference a completed image asset in this project.' }, 400);
+          const object = await env.ASSETS.get(selected.objectKey);
+          if (!object) return response({ error: 'Selected keyframe asset is missing from Creator R2 storage.' }, 404);
+          const bytes = await new Response(object.body).arrayBuffer();
+          if (!bytes.byteLength || bytes.byteLength > 12_000_000) return response({ error: 'Selected keyframe image is empty or exceeds the video worker payload limit.' }, 413);
+          const mime = String((selected.metadata as Record<string, unknown> | undefined)?.contentType || 'image/png');
+          if (!['image/png', 'image/jpeg', 'image/webp'].includes(mime)) return response({ error: 'Selected keyframe image has an unsupported MIME type.' }, 415);
+          let binary = '';
+          for (const byte of new Uint8Array(bytes)) binary += String.fromCharCode(byte);
+          sourceImage = `data:${mime};base64,${btoa(binary)}`;
+        }
+      }
       if (shot.aspectRatio !== '9:16') return response({ error: 'The currently staged owned video runtime requires a 9:16 vertical shot.' }, 409);
-      if (typeof sourceImage !== 'string' || sourceImage.length > 16000000 || !['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'].some(prefix => sourceImage.startsWith(prefix))) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage keyframe (maximum 16 MB) is required.' }, 400);
+      if (typeof sourceImage !== 'string' || sourceImage.length > 16000000 || !['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'].some(prefix => sourceImage.startsWith(prefix))) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage or completed sourceAssetId keyframe (maximum 16 MB) is required.' }, 400);
       const capability = 'video';
       const prompt = shot.generationPrompt?.trim() || shot.action;
       const fabricPayload = {
@@ -191,6 +402,94 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     return response({ status: 'created', project: { id: project.id, brief: project.brief, production: compiled.production, assumptions: compiled.assumptions, nextActions: compiled.nextActions }, validation: checked }, 201);
   }
 
+
+  const mediaQaRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/media-qa$/);
+  if (mediaQaRoute) {
+    if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
+    const id = decodeURIComponent(mediaQaRoute[1]);
+    const assetId = decodeURIComponent(mediaQaRoute[2]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    const body = await parseBody(request);
+    if (!body?.evidence || typeof body.evidence !== 'object') return response({ error: 'media QA evidence object is required.' }, 400);
+    try {
+      const updated = recordMediaQaEvidence(graph, assetId, body.evidence as MediaQaEvidence);
+      const checked = validate(updated);
+      if (!checked.valid) return response({ error: 'Media QA recording violates production graph rules.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      return response({
+        status: 'recorded',
+        assetId,
+        mediaQa: updated.assets.find(asset => asset.id === assetId)?.mediaQa,
+        productionVersion: updated.metadata.version,
+        readiness: buildProductionReadinessReport(updated),
+      });
+    } catch (error) {
+      return response({ error: error instanceof Error ? error.message : 'Media QA evidence could not be recorded.' }, 400);
+    }
+  }
+
+
+  const sourceRightsReviewRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/rights-review$/);
+  if (sourceRightsReviewRoute) {
+    if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
+    const id = decodeURIComponent(sourceRightsReviewRoute[1]);
+    const assetId = decodeURIComponent(sourceRightsReviewRoute[2]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    const body = await parseBody(request);
+    if (!body?.evidence || typeof body.evidence !== 'object') return response({ error: 'source rights-review evidence object is required.' }, 400);
+    try {
+      const updated = recordSourceRightsReview(graph, assetId, body.evidence as import('./cinematic-production-graph').SourceRightsReviewEvidence);
+      const checked = validate(updated);
+      if (!checked.valid) return response({ error: 'Source rights review violates production graph rules.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      const reviewedAsset = updated.assets.find(asset => asset.id === assetId)!;
+      return response({
+        status: 'recorded',
+        assetId,
+        rightsReviews: reviewedAsset.rightsReviews,
+        productionVersion: updated.metadata.version,
+        readiness: buildProductionReadinessReport(updated),
+      });
+    } catch (error) {
+      return response({ error: error instanceof Error ? error.message : 'Source rights-review evidence could not be recorded.' }, 400);
+    }
+  }
+
+  const humanReviewRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/human-review$/);
+  if (humanReviewRoute) {
+    if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
+    const id = decodeURIComponent(humanReviewRoute[1]);
+    const assetId = decodeURIComponent(humanReviewRoute[2]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    const body = await parseBody(request);
+    if (!body?.evidence || typeof body.evidence !== 'object') return response({ error: 'human review evidence object is required.' }, 400);
+    try {
+      const updated = recordHumanMediaReview(graph, assetId, body.evidence as import('./cinematic-production-graph').HumanMediaReviewEvidence);
+      const checked = validate(updated);
+      if (!checked.valid) return response({ error: 'Human review recording violates production graph rules.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      const reviewedAsset = updated.assets.find(asset => asset.id === assetId)!;
+      return response({
+        status: 'recorded',
+        assetId,
+        humanReviews: reviewedAsset.humanReviews,
+        productionVersion: updated.metadata.version,
+        readiness: buildProductionReadinessReport(updated),
+      });
+    } catch (error) {
+      return response({ error: error instanceof Error ? error.message : 'Human review evidence could not be recorded.' }, 400);
+    }
+  }
+
   const match = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)(?:\/(approvals|tasks)\/([^/]+))?$/);
   if (!match) return response({ error: 'Unknown cinematic API route.' }, 404);
   const [, rawId, resource, rawResourceId] = match;
@@ -202,13 +501,46 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
 
   if (!resource && request.method === 'GET') {
     const assets = (project.packageData as Record<string, unknown>).cinematic;
-    return response({ project: { id: project.id, brief: project.brief, createdAt: project.createdAt, updatedAt: project.updatedAt }, production: graph, ...(assets && typeof assets === 'object' ? assets : {}), runnableTasks: getRunnableTasks(graph), validation: validate(graph) });
+    return response({ project: { id: project.id, brief: project.brief, createdAt: project.createdAt, updatedAt: project.updatedAt }, production: graph, ...(assets && typeof assets === 'object' ? assets : {}), runnableTasks: getRunnableTasks(graph), readiness: buildProductionReadinessReport(graph), validation: validate(graph) });
   }
 
   if (!resource && request.method === 'PATCH') {
     const body = await parseBody(request);
     const candidate = body?.production as CinematicProduction | undefined;
     if (!candidate || candidate.id !== id || candidate.metadata?.ownerId !== graph.metadata.ownerId || candidate.metadata?.tenantId !== graph.metadata.tenantId) return response({ error: 'A production graph with the same project and immutable owner is required.' }, 400);
+
+    const currentQa = new Map(graph.assets.map(asset => [asset.id, asset.mediaQa ?? null]));
+    const candidateQa = new Map(candidate.assets.map(asset => [asset.id, asset.mediaQa ?? null]));
+    const qaAssetIds = new Set([...currentQa.keys(), ...candidateQa.keys()]);
+    for (const assetId of qaAssetIds) {
+      if (JSON.stringify(currentQa.get(assetId) ?? null) !== JSON.stringify(candidateQa.get(assetId) ?? null)) {
+        return response({ error: 'Media QA evidence can only be added or changed through the dedicated authenticated media-qa endpoint.' }, 409);
+      }
+    }
+    const currentSourceEvidence = new Map(graph.assets.map(asset => [asset.id, asset.sourceEvidence ?? null]));
+    const candidateSourceEvidence = new Map(candidate.assets.map(asset => [asset.id, asset.sourceEvidence ?? null]));
+    const sourceEvidenceAssetIds = new Set([...currentSourceEvidence.keys(), ...candidateSourceEvidence.keys()]);
+    for (const assetId of sourceEvidenceAssetIds) {
+      if (JSON.stringify(currentSourceEvidence.get(assetId) ?? null) !== JSON.stringify(candidateSourceEvidence.get(assetId) ?? null)) {
+        return response({ error: 'Source-media intake evidence can only be created by the authenticated source-media ingestion endpoint and cannot be altered through general graph PATCH.' }, 409);
+      }
+    }
+    const currentRightsReviews = new Map(graph.assets.map(asset => [asset.id, asset.rightsReviews ?? null]));
+    const candidateRightsReviews = new Map(candidate.assets.map(asset => [asset.id, asset.rightsReviews ?? null]));
+    const rightsReviewAssetIds = new Set([...currentRightsReviews.keys(), ...candidateRightsReviews.keys()]);
+    for (const assetId of rightsReviewAssetIds) {
+      if (JSON.stringify(currentRightsReviews.get(assetId) ?? null) !== JSON.stringify(candidateRightsReviews.get(assetId) ?? null)) {
+        return response({ error: 'Source rights-review evidence can only be appended through the dedicated authenticated rights-review endpoint.' }, 409);
+      }
+    }
+    const currentReviews = new Map(graph.assets.map(asset => [asset.id, asset.humanReviews ?? null]));
+    const candidateReviews = new Map(candidate.assets.map(asset => [asset.id, asset.humanReviews ?? null]));
+    const reviewAssetIds = new Set([...currentReviews.keys(), ...candidateReviews.keys()]);
+    for (const assetId of reviewAssetIds) {
+      if (JSON.stringify(currentReviews.get(assetId) ?? null) !== JSON.stringify(candidateReviews.get(assetId) ?? null)) {
+        return response({ error: 'Human review evidence can only be appended through the dedicated authenticated human-review endpoint.' }, 409);
+      }
+    }
     const checked = validate(candidate);
     if (!checked.valid) return response({ error: 'Production graph validation failed.', issues: checked.issues }, 422);
     const updated = { ...candidate, metadata: { ...candidate.metadata, updatedAt: new Date().toISOString(), version: graph.metadata.version + 1 } };
@@ -230,6 +562,16 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (body.decision === 'approved' && gate === 'master' && graph.approvals.find(item => item.gate === 'generation')?.status !== 'approved') return response({ error: 'generation approval must be completed before master approval.' }, 409);
     if (body.decision === 'approved' && gate === 'master' && graph.tasks.some(task => task.kind === 'video_generation' && task.status !== 'completed')) return response({ error: 'all planned video-generation tasks must be completed with worker evidence before master approval.' }, 409);
     if (body.decision === 'approved' && gate === 'distribution' && graph.approvals.find(item => item.gate === 'master')?.status !== 'approved') return response({ error: 'master approval must be completed before distribution approval.' }, 409);
+    if (body.decision === 'approved' && gate === 'distribution') {
+      const reviewedExportReady = graph.assets.some(asset =>
+        asset.kind === 'video' && asset.role === 'distribution_export' && asset.status === 'completed'
+        && Boolean(asset.storageKey?.trim()) && Boolean(asset.contentHash)
+        && asset.mediaQa?.passed === true
+        && asset.mediaQa.assetContentHash.toLowerCase() === asset.contentHash!.toLowerCase()
+        && hasPassingHumanMediaReview(asset),
+      );
+      if (!reviewedExportReady) return response({ error: 'A completed stored export with matching passing machine QA and a passing human media review is required before distribution approval.' }, 409);
+    }
     const updated: CinematicProduction = {
       ...graph,
       approvals: graph.approvals.map(item => item.gate === gate ? {

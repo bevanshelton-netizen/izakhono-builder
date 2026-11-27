@@ -36,3 +36,33 @@ export async function saveRender(env:CreatorStorageEnv,input:Omit<CreatorRender,
 export async function getRender(env:CreatorStorageEnv,id:string){if(!env.DB)return null;await ensureSchema(env.DB);const r=await env.DB.prepare(`SELECT * FROM creator_renders WHERE id=?`).bind(id).first<any>();return r?mapRender(r):null}
 export async function listRenders(env:CreatorStorageEnv,projectId:string){if(!env.DB)return[];await ensureSchema(env.DB);const r=await env.DB.prepare(`SELECT * FROM creator_renders WHERE project_id=? ORDER BY created_at ASC`).bind(projectId).all<any>();return(r.results??[]).map(mapRender) as CreatorRender[]}
 export async function updateRender(env:CreatorStorageEnv,id:string,patch:Partial<Pick<CreatorRender,'status'|'objectKey'|'outputUrl'|'error'|'metadata'>>){const current=await getRender(env,id);if(!current)return null;return saveRender(env,{...current,...patch})}
+
+/**
+ * Optimistic compare-and-swap for long-running production workers.
+ * Returns false when another writer changed the project after it was loaded.
+ * Unlike saveProject, this never creates a missing record or overwrites a newer version.
+ */
+export async function saveProjectIfUnchanged(
+  env: CreatorStorageEnv,
+  input: { id: string; brief: string; packageData: unknown },
+  expectedUpdatedAt: string,
+): Promise<boolean> {
+  if (!env.DB) throw new Error('Creator D1 storage is required for version-checked project persistence.');
+  if (!input.id.trim() || !expectedUpdatedAt.trim() || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
+    throw new Error('Project ID and a valid expected update timestamp are required.');
+  }
+  await ensureSchema(env.DB);
+  // Keep the version token strictly monotonic even when two writes land in the
+  // same clock millisecond or the host clock is behind the stored timestamp.
+  const candidate = now();
+  const timestamp = Date.parse(candidate) > Date.parse(expectedUpdatedAt)
+    ? candidate
+    : new Date(Date.parse(expectedUpdatedAt) + 1).toISOString();
+  const result = await env.DB.prepare(
+    `UPDATE creator_projects
+     SET brief = ?, package_json = ?, updated_at = ?
+     WHERE id = ? AND updated_at = ?
+     RETURNING id`,
+  ).bind(input.brief, JSON.stringify(input.packageData), timestamp, input.id, expectedUpdatedAt).first<{ id: string }>();
+  return result?.id === input.id;
+}

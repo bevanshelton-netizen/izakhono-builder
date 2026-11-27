@@ -10,6 +10,7 @@ export type ProductionId = string;
 export type ProductionStatus = 'draft' | 'planned' | 'approved' | 'in_progress' | 'review' | 'completed' | 'archived';
 export type TaskStatus = 'blocked' | 'ready' | 'approved' | 'queued' | 'submitted' | 'processing' | 'completed' | 'failed' | 'cancelled';
 export type MediaKind = 'image' | 'video' | 'audio' | '3d' | 'document';
+export type AssetRole = 'source' | 'reference' | 'shot_video' | 'shot_audio' | 'voiceover' | 'music' | 'sound_effect' | 'caption' | 'master' | 'distribution_export' | 'thumbnail' | 'other';
 export type ShotSize = 'extreme_wide' | 'wide' | 'full' | 'medium' | 'close_up' | 'extreme_close_up' | 'insert';
 export type CameraMove = 'static' | 'pan' | 'tilt' | 'dolly' | 'tracking' | 'crane' | 'handheld' | 'orbit' | 'drone' | 'zoom';
 export type ApprovalGate = 'creative' | 'generation' | 'master' | 'distribution';
@@ -92,14 +93,73 @@ export interface Shot {
   generationPrompt?: string;
 }
 
+export interface HumanMediaReviewEvidence {
+  schema: 'izakhono.creator/human-media-review-v1';
+  profileId: string;
+  reviewId: ProductionId;
+  assetContentHash: string;
+  passed: boolean;
+  recordedAt: string;
+  recordedBy: string;
+  checks: Array<{ id: string; passed: boolean; finding: string }>;
+}
+
+export interface MediaQaEvidence {
+  schema: 'izakhono.creator/media-qa-evidence-v1';
+  profileId: string;
+  passed: boolean;
+  assetContentHash: string;
+  recordedAt: string;
+  recordedBy: string;
+  checks: Array<{ id: string; passed: boolean; actual: string; expected: string }>;
+}
+
+export interface SourceMediaEvidence {
+  schema: 'izakhono.creator/source-media-evidence-v1';
+  origin: 'user_upload';
+  originalFilename: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  receivedAt: string;
+  receivedBy: string;
+  licenceDeclaration: string;
+  rightsReviewStatus: 'unverified' | 'verified' | 'rejected';
+  consentStatus: 'provided' | 'not_applicable' | 'unverified';
+}
+
+export interface SourceRightsReviewEvidence {
+  schema: 'izakhono.creator/source-rights-review-v1';
+  reviewId: ProductionId;
+  assetContentHash: string;
+  decision: 'verified' | 'rejected';
+  basis: string;
+  evidenceReferences: string[];
+  recordedAt: string;
+  recordedBy: string;
+}
+
 export interface ProductionAsset {
   id: ProductionId;
   kind: MediaKind;
   status: TaskStatus;
   source: 'user' | 'owned_model' | 'external_provider' | 'edited' | 'assembled';
+  /** Optional production-graph ownership links for shot-to-media traceability. */
+  role?: AssetRole;
+  sceneId?: ProductionId;
+  shotId?: ProductionId;
+  createdByTaskId?: ProductionId;
   storageKey?: string;
   contentHash?: string;
   mimeType?: string;
+  /** Immutable intake evidence for original user-supplied source media. */
+  sourceEvidence?: SourceMediaEvidence;
+  /** Append-only, hash-bound rights-review decisions for original source media. */
+  rightsReviews?: SourceRightsReviewEvidence[];
+  /** Machine QA evidence bound to the exact exported bytes by SHA-256. */
+  mediaQa?: MediaQaEvidence;
+  /** Append-only human review history for the final distribution export. */
+  humanReviews?: HumanMediaReviewEvidence[];
   width?: number;
   height?: number;
   durationSeconds?: number;
@@ -225,11 +285,41 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
     if (shot.dependsOnShotIds.includes(shot.id)) issues.push({ code: 'SELF_DEPENDENCY', path: `shots.${shot.id}`, message: 'A shot cannot depend on itself.', severity: 'error' });
   }
   for (const ref of project.references) requireRefs([ref.assetId], assetIds, `references.${ref.id}.assetId`, 'asset');
-  for (const asset of project.assets) requireRefs(asset.parentAssetIds, assetIds, `assets.${asset.id}.parentAssetIds`, 'parent asset');
+  for (const asset of project.assets) {
+    requireRefs(asset.parentAssetIds, assetIds, `assets.${asset.id}.parentAssetIds`, 'parent asset');
+    if (asset.sourceEvidence) {
+      const evidence = asset.sourceEvidence;
+      if (asset.role !== 'source' || evidence.schema !== 'izakhono.creator/source-media-evidence-v1' || evidence.origin !== 'user_upload') {
+        issues.push({ code: 'INVALID_SOURCE_EVIDENCE', path: `assets.${asset.id}.sourceEvidence`, message: 'Source intake evidence must belong to a user-uploaded source asset.', severity: 'error' });
+      }
+      if (typeof asset.storageKey !== 'string' || !asset.storageKey.startsWith(`projects/${project.id}/source/`) || asset.status !== 'completed') {
+        issues.push({ code: 'SOURCE_MEDIA_NOT_STORED', path: `assets.${asset.id}`, message: 'Ingested source media must be stored under its project source namespace before it is marked completed.', severity: 'error' });
+      }
+      if (typeof asset.contentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || typeof evidence.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.sha256) || evidence.sha256.toLowerCase() !== asset.contentHash.toLowerCase()) {
+        issues.push({ code: 'SOURCE_HASH_MISMATCH', path: `assets.${asset.id}.sourceEvidence.sha256`, message: 'Source intake SHA-256 must match the asset content hash.', severity: 'error' });
+      }
+      if (!Number.isSafeInteger(evidence.byteSize) || evidence.byteSize < 1 || typeof evidence.mimeType !== 'string' || evidence.mimeType !== asset.mimeType || typeof evidence.originalFilename !== 'string' || !evidence.originalFilename.trim() || typeof evidence.receivedBy !== 'string' || !evidence.receivedBy.trim() || typeof evidence.licenceDeclaration !== 'string' || !evidence.licenceDeclaration.trim() || typeof evidence.receivedAt !== 'string' || !Number.isFinite(Date.parse(evidence.receivedAt))) {
+        issues.push({ code: 'INCOMPLETE_SOURCE_EVIDENCE', path: `assets.${asset.id}.sourceEvidence`, message: 'Source intake evidence requires valid size, MIME type, filename, uploader, licence declaration and timestamp.', severity: 'error' });
+      }
+      if (evidence.consentStatus === 'provided' && asset.provenance.consentRecordIds.length === 0) {
+        issues.push({ code: 'MISSING_SOURCE_CONSENT_RECORDS', path: `assets.${asset.id}.provenance.consentRecordIds`, message: 'Provided source consent must reference at least one consent record.', severity: 'error' });
+      }
+    }
+    if (asset.sceneId && !sceneIds.has(asset.sceneId)) issues.push({ code: 'UNKNOWN_ASSET_SCENE', path: `assets.${asset.id}.sceneId`, message: 'Asset references a scene that does not exist.', severity: 'error' });
+    if (asset.shotId && !shotIds.has(asset.shotId)) issues.push({ code: 'UNKNOWN_ASSET_SHOT', path: `assets.${asset.id}.shotId`, message: 'Asset references a shot that does not exist.', severity: 'error' });
+    if (asset.shotId && asset.sceneId && project.shots.some(shot => shot.id === asset.shotId && shot.sceneId !== asset.sceneId)) issues.push({ code: 'ASSET_SCENE_SHOT_MISMATCH', path: `assets.${asset.id}`, message: 'Asset sceneId must match the scene that owns its shotId.', severity: 'error' });
+    if (asset.createdByTaskId && !taskIds.has(asset.createdByTaskId)) issues.push({ code: 'UNKNOWN_ASSET_TASK', path: `assets.${asset.id}.createdByTaskId`, message: 'Asset references a task that does not exist.', severity: 'error' });
+    if (asset.createdByTaskId && project.tasks.some(task => task.id === asset.createdByTaskId && !task.outputAssetIds.includes(asset.id))) issues.push({ code: 'ASSET_TASK_OUTPUT_MISMATCH', path: `assets.${asset.id}.createdByTaskId`, message: 'The creating task must list this asset as an output.', severity: 'error' });
+  }
   for (const task of project.tasks) {
     requireRefs(task.dependsOnTaskIds, taskIds, `tasks.${task.id}.dependsOnTaskIds`, 'task');
     requireRefs(task.inputAssetIds, assetIds, `tasks.${task.id}.inputAssetIds`, 'input asset');
     requireRefs(task.outputAssetIds, assetIds, `tasks.${task.id}.outputAssetIds`, 'output asset');
+    if (task.shotId && !shotIds.has(task.shotId)) issues.push({ code: 'UNKNOWN_TASK_SHOT', path: `tasks.${task.id}.shotId`, message: 'Task references a shot that does not exist.', severity: 'error' });
+    for (const assetId of task.outputAssetIds) {
+      const asset = project.assets.find(item => item.id === assetId);
+      if (asset?.createdByTaskId && asset.createdByTaskId !== task.id) issues.push({ code: 'TASK_ASSET_CREATOR_MISMATCH', path: `tasks.${task.id}.outputAssetIds`, message: `Asset ${assetId} identifies a different creating task.`, severity: 'error' });
+    }
     if (task.attempts < 0) issues.push({ code: 'INVALID_ATTEMPTS', path: `tasks.${task.id}.attempts`, message: 'Task attempts cannot be negative.', severity: 'error' });
     if (task.status === 'completed' && !task.evidence) issues.push({ code: 'MISSING_COMPLETION_EVIDENCE', path: `tasks.${task.id}`, message: 'Completed tasks require evidence.', severity: 'error' });
     if (task.status === 'submitted' && !task.selectedProvider) issues.push({ code: 'MISSING_PROVIDER', path: `tasks.${task.id}`, message: 'Submitted tasks must identify the selected provider.', severity: 'error' });
@@ -262,6 +352,179 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
   if (!project.approvals.some(x => x.gate === 'master')) issues.push({ code: 'MISSING_MASTER_GATE', path: 'approvals', message: 'A master approval gate is required.', severity: 'error' });
   if (!project.approvals.some(x => x.gate === 'distribution')) issues.push({ code: 'MISSING_DISTRIBUTION_GATE', path: 'approvals', message: 'A distribution approval gate is required.', severity: 'error' });
   return issues;
+}
+
+
+const requiredMediaQaCheckIds = [
+  'container-mp4', 'duration-positive', 'video-stream-present', 'video-stream-count',
+  'video-h264', 'video-dimensions', 'video-pixel-format', 'video-frame-rate',
+  'audio-stream-present', 'audio-stream-count', 'audio-aac', 'audio-sample-rate',
+  'audio-stereo', 'mp4-fast-start',
+];
+
+/**
+ * Attach machine QA evidence to the exact stored distribution-export asset.
+ * Failed QA is retained for audit; it can never be promoted to a passing record
+ * unless all required checks pass for the asset's current SHA-256.
+ */
+export function recordMediaQaEvidence(
+  project: CinematicProduction,
+  assetId: ProductionId,
+  evidence: MediaQaEvidence,
+): CinematicProduction {
+  const asset = project.assets.find(item => item.id === assetId);
+  if (!asset) throw new Error(`Unknown media QA asset: ${assetId}`);
+  if (asset.kind !== 'video' || asset.role !== 'distribution_export') {
+    throw new Error('Media QA evidence can only be recorded against a video distribution export.');
+  }
+  const passedEvidenceRequiresStoredAsset = evidence.passed && asset.status === 'completed' && Boolean(asset.storageKey?.trim());
+  const failedEvidenceCanBeRetainedLocally = !evidence.passed && asset.status === 'failed';
+  if (!passedEvidenceRequiresStoredAsset && !failedEvidenceCanBeRetainedLocally) {
+    throw new Error('Passing QA requires a completed stored export; failed QA may be retained on a failed export record.');
+  }
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) {
+    throw new Error('Distribution export must have a SHA-256 content hash before QA evidence is recorded.');
+  }
+  if (evidence.schema !== 'izakhono.creator/media-qa-evidence-v1') throw new Error('Unsupported media QA evidence schema.');
+  if (evidence.profileId !== 'facebook-reels-1080x1920-v1') throw new Error('Unsupported distribution profile for this QA record.');
+  if (evidence.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
+    throw new Error('Media QA evidence hash does not match the current distribution asset bytes.');
+  }
+  if (!evidence.recordedBy.trim() || !Number.isFinite(Date.parse(evidence.recordedAt))) {
+    throw new Error('Media QA evidence requires a worker identity and valid timestamp.');
+  }
+  if (!Array.isArray(evidence.checks)) throw new Error('Media QA checks must be an array.');
+  const checks = new Map(evidence.checks.map(check => [check.id, check]));
+  if (checks.size !== evidence.checks.length || !requiredMediaQaCheckIds.every(id => checks.has(id)) || evidence.checks.some(check => !check.id?.trim() || !check.actual?.trim() || !check.expected?.trim())) {
+    throw new Error('Media QA evidence must contain every required Facebook profile check exactly once with actual and expected values.');
+  }
+  const checksPassed = evidence.checks.every(check => check.passed === true);
+  if (evidence.passed !== checksPassed) throw new Error('Media QA overall result must agree with all recorded checks.');
+  return {
+    ...project,
+    assets: project.assets.map(item => item.id === assetId ? { ...item, mediaQa: { ...evidence, assetContentHash: evidence.assetContentHash.toLowerCase(), checks: evidence.checks.map(check => ({ ...check })) } } : item),
+    metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
+  };
+}
+
+
+const requiredHumanMediaReviewCheckIds = [
+  'full-playback-integrity',
+  'dialogue-music-effects',
+  'captions-safe-areas',
+  'continuity-titles-credits',
+  'private-upload-playback',
+] as const;
+
+export function hasPassingHumanMediaReview(asset: ProductionAsset): boolean {
+  const latest = asset.humanReviews?.at(-1);
+  if (!latest || !latest.passed || latest.schema !== 'izakhono.creator/human-media-review-v1'
+    || !latest.recordedBy.trim() || !Number.isFinite(Date.parse(latest.recordedAt))
+    || latest.profileId !== 'facebook-reels-1080x1920-v1'
+    || !asset.contentHash || latest.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()
+    || !Array.isArray(latest.checks)) return false;
+  const checks = new Map(latest.checks.map(check => [check.id, check]));
+  return checks.size === requiredHumanMediaReviewCheckIds.length
+    && requiredHumanMediaReviewCheckIds.every(id => checks.get(id)?.passed === true && Boolean(checks.get(id)?.finding.trim()));
+}
+
+/** Append a human review to the immutable review history for a machine-QA-passed export. */
+/** Append a rights decision for original source media, bound to its exact stored bytes. */
+export function recordSourceRightsReview(
+  project: CinematicProduction,
+  assetId: ProductionId,
+  evidence: SourceRightsReviewEvidence,
+): CinematicProduction {
+  const asset = project.assets.find(item => item.id === assetId);
+  if (!asset || asset.role !== 'source' || !asset.sourceEvidence || asset.status !== 'completed'
+    || !asset.storageKey?.startsWith(`projects/${project.id}/source/`)) {
+    throw new Error('Rights review can only be recorded against a completed, stored original source-media asset.');
+  }
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)
+    || typeof evidence.assetContentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.assetContentHash)
+    || evidence.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
+    throw new Error('Rights review must be bound to the exact current source-media SHA-256.');
+  }
+  if (evidence.schema !== 'izakhono.creator/source-rights-review-v1'
+    || !['verified', 'rejected'].includes(evidence.decision)) throw new Error('Unsupported source rights-review schema or decision.');
+  if (typeof evidence.reviewId !== 'string' || !evidence.reviewId.trim()
+    || typeof evidence.recordedBy !== 'string' || !evidence.recordedBy.trim()
+    || typeof evidence.recordedAt !== 'string' || !Number.isFinite(Date.parse(evidence.recordedAt))
+    || typeof evidence.basis !== 'string' || !evidence.basis.trim()
+    || !Array.isArray(evidence.evidenceReferences) || !evidence.evidenceReferences.length
+    || evidence.evidenceReferences.some(value => typeof value !== 'string' || !value.trim())
+    || evidence.reviewId.length > 160 || evidence.recordedBy.length > 160 || evidence.basis.length > 4000
+    || evidence.evidenceReferences.length > 20 || evidence.evidenceReferences.some(value => value.length > 300)
+    || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
+    throw new Error('Rights review requires a unique ID, reviewer, timestamp, decision basis and distinct evidence references.');
+  }
+  if (asset.rightsReviews?.some(item => item.reviewId === evidence.reviewId)) throw new Error('Source rights-review ID already exists.');
+  const review = { ...evidence, evidenceReferences: [...evidence.evidenceReferences] };
+  return {
+    ...project,
+    assets: project.assets.map(item => item.id === assetId
+      ? { ...item, rightsReviews: [...(item.rightsReviews ?? []), review] }
+      : item),
+    metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
+  };
+}
+
+/** Only the latest hash-matched verified decision clears source-media rights. */
+export function hasVerifiedSourceRights(asset: ProductionAsset): boolean {
+  if (asset.role !== 'source' || !asset.sourceEvidence || !asset.contentHash
+    || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) return false;
+  const latest = asset.rightsReviews?.at(-1);
+  if (!latest || typeof latest.reviewId !== 'string' || typeof latest.recordedBy !== 'string'
+    || typeof latest.assetContentHash !== 'string' || typeof latest.recordedAt !== 'string'
+    || typeof latest.basis !== 'string' || !Array.isArray(latest.evidenceReferences)) return false;
+  return latest.schema === 'izakhono.creator/source-rights-review-v1'
+    && latest.decision === 'verified'
+    && /^[a-f0-9]{64}$/i.test(latest.assetContentHash)
+    && latest.assetContentHash.toLowerCase() === asset.contentHash.toLowerCase()
+    && Boolean(latest.reviewId.trim() && latest.recordedBy.trim() && latest.basis.trim())
+    && Number.isFinite(Date.parse(latest.recordedAt))
+    && latest.evidenceReferences.length > 0
+    && latest.evidenceReferences.every(value => typeof value === 'string' && Boolean(value.trim()));
+}
+
+export function recordHumanMediaReview(
+  project: CinematicProduction,
+  assetId: ProductionId,
+  evidence: HumanMediaReviewEvidence,
+): CinematicProduction {
+  const asset = project.assets.find(item => item.id === assetId);
+  if (!asset || asset.kind !== 'video' || asset.role !== 'distribution_export'
+    || asset.status !== 'completed' || !asset.storageKey?.trim()) {
+    throw new Error('Human review can only be recorded against a completed, stored video distribution export.');
+  }
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)
+    || !asset.mediaQa?.passed || asset.mediaQa.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
+    throw new Error('A matching passing machine QA record is required before human review.');
+  }
+  if (evidence.schema !== 'izakhono.creator/human-media-review-v1'
+    || evidence.profileId !== 'facebook-reels-1080x1920-v1') throw new Error('Unsupported human media review schema or profile.');
+  if (evidence.assetContentHash.toLowerCase() !== asset.contentHash!.toLowerCase()) throw new Error('Human review evidence must be bound to the exact current export SHA-256.');
+  if (!evidence.reviewId.trim() || !evidence.recordedBy.trim() || !Number.isFinite(Date.parse(evidence.recordedAt))) {
+    throw new Error('Human review requires a review ID, reviewer identity and valid timestamp.');
+  }
+  if (asset.humanReviews?.some(item => item.reviewId === evidence.reviewId)) throw new Error('Human review ID already exists for this export.');
+  if (!Array.isArray(evidence.checks)) throw new Error('Human review checks must be an array.');
+  const checks = new Map(evidence.checks.map(check => [check.id, check]));
+  if (checks.size !== evidence.checks.length
+    || checks.size !== requiredHumanMediaReviewCheckIds.length
+    || !requiredHumanMediaReviewCheckIds.every(id => checks.has(id))
+    || evidence.checks.some(check => !check.id?.trim() || !check.finding?.trim())) {
+    throw new Error('Human review must contain every required playback, audio, captions, continuity and private-upload check exactly once with findings.');
+  }
+  const checksPassed = evidence.checks.every(check => check.passed === true);
+  if (evidence.passed !== checksPassed) throw new Error('Human review overall result must agree with all recorded checks.');
+  return {
+    ...project,
+    assets: project.assets.map(item => item.id === assetId
+      ? { ...item, humanReviews: [...(item.humanReviews ?? []), { ...evidence, checks: evidence.checks.map(check => ({ ...check })) }] }
+      : item),
+    metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
+  };
 }
 
 export function getRunnableTasks(project: CinematicProduction): ProductionTask[] {
