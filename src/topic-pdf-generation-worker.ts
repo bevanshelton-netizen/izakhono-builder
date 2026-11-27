@@ -128,18 +128,18 @@ async function appendEvent(env: TopicPdfWorkerEnv, jobId: string, eventType: str
 
 async function claimOne(env: TopicPdfWorkerEnv): Promise<ClaimedJob | null> {
   const now = new Date();
-  const lease = new Date(now.getTime() + 3 * 60_000).toISOString();
+  const lease = new Date(now.getTime() + 5 * 60_000).toISOString();
   return env.DB.prepare(
     `UPDATE topic_pdf_generation_jobs
      SET status='scoping', lease_until=?, attempt_count=attempt_count+1, updated_at=?
      WHERE id=(
        SELECT id FROM topic_pdf_generation_jobs
-       WHERE status='requested'
+       WHERE status IN ('requested','scoping','research_required','drafting')
          AND (next_attempt_at IS NULL OR next_attempt_at<=?)
          AND (lease_until IS NULL OR lease_until<?)
        ORDER BY created_at ASC LIMIT 1
      )
-     AND status='requested'
+     AND status IN ('requested','scoping','research_required','drafting')
      RETURNING id,request_json,plan_json,attempt_count`,
   ).bind(lease, now.toISOString(), now.toISOString(), now.toISOString()).first<ClaimedJob>();
 }
