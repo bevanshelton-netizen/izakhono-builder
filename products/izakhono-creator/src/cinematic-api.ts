@@ -2,6 +2,8 @@ import { compileCinematicBrief, type CinematicBriefInput } from './cinematic-bri
 import {
   getRunnableTasks,
   recordMediaQaEvidence,
+  recordHumanMediaReview,
+  hasPassingHumanMediaReview,
   updateTaskWithEvidence,
   validateProductionGraph,
   type ApprovalGate,
@@ -335,6 +337,36 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     }
   }
 
+
+  const humanReviewRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/human-review$/);
+  if (humanReviewRoute) {
+    if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
+    const id = decodeURIComponent(humanReviewRoute[1]);
+    const assetId = decodeURIComponent(humanReviewRoute[2]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    const body = await parseBody(request);
+    if (!body?.evidence || typeof body.evidence !== 'object') return response({ error: 'human review evidence object is required.' }, 400);
+    try {
+      const updated = recordHumanMediaReview(graph, assetId, body.evidence as import('./cinematic-production-graph').HumanMediaReviewEvidence);
+      const checked = validate(updated);
+      if (!checked.valid) return response({ error: 'Human review recording violates production graph rules.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      const reviewedAsset = updated.assets.find(asset => asset.id === assetId)!;
+      return response({
+        status: 'recorded',
+        assetId,
+        humanReviews: reviewedAsset.humanReviews,
+        productionVersion: updated.metadata.version,
+        readiness: buildProductionReadinessReport(updated),
+      });
+    } catch (error) {
+      return response({ error: error instanceof Error ? error.message : 'Human review evidence could not be recorded.' }, 400);
+    }
+  }
+
   const match = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)(?:\/(approvals|tasks)\/([^/]+))?$/);
   if (!match) return response({ error: 'Unknown cinematic API route.' }, 404);
   const [, rawId, resource, rawResourceId] = match;
@@ -362,6 +394,14 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
         return response({ error: 'Media QA evidence can only be added or changed through the dedicated authenticated media-qa endpoint.' }, 409);
       }
     }
+    const currentReviews = new Map(graph.assets.map(asset => [asset.id, asset.humanReviews ?? null]));
+    const candidateReviews = new Map(candidate.assets.map(asset => [asset.id, asset.humanReviews ?? null]));
+    const reviewAssetIds = new Set([...currentReviews.keys(), ...candidateReviews.keys()]);
+    for (const assetId of reviewAssetIds) {
+      if (JSON.stringify(currentReviews.get(assetId) ?? null) !== JSON.stringify(candidateReviews.get(assetId) ?? null)) {
+        return response({ error: 'Human review evidence can only be appended through the dedicated authenticated human-review endpoint.' }, 409);
+      }
+    }
     const checked = validate(candidate);
     if (!checked.valid) return response({ error: 'Production graph validation failed.', issues: checked.issues }, 422);
     const updated = { ...candidate, metadata: { ...candidate.metadata, updatedAt: new Date().toISOString(), version: graph.metadata.version + 1 } };
@@ -383,6 +423,16 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (body.decision === 'approved' && gate === 'master' && graph.approvals.find(item => item.gate === 'generation')?.status !== 'approved') return response({ error: 'generation approval must be completed before master approval.' }, 409);
     if (body.decision === 'approved' && gate === 'master' && graph.tasks.some(task => task.kind === 'video_generation' && task.status !== 'completed')) return response({ error: 'all planned video-generation tasks must be completed with worker evidence before master approval.' }, 409);
     if (body.decision === 'approved' && gate === 'distribution' && graph.approvals.find(item => item.gate === 'master')?.status !== 'approved') return response({ error: 'master approval must be completed before distribution approval.' }, 409);
+    if (body.decision === 'approved' && gate === 'distribution') {
+      const reviewedExportReady = graph.assets.some(asset =>
+        asset.kind === 'video' && asset.role === 'distribution_export' && asset.status === 'completed'
+        && Boolean(asset.storageKey?.trim()) && Boolean(asset.contentHash)
+        && asset.mediaQa?.passed === true
+        && asset.mediaQa.assetContentHash.toLowerCase() === asset.contentHash!.toLowerCase()
+        && hasPassingHumanMediaReview(asset),
+      );
+      if (!reviewedExportReady) return response({ error: 'A completed stored export with matching passing machine QA and a passing human media review is required before distribution approval.' }, 409);
+    }
     const updated: CinematicProduction = {
       ...graph,
       approvals: graph.approvals.map(item => item.gate === gate ? {
