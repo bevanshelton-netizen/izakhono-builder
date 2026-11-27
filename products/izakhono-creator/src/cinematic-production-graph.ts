@@ -97,6 +97,7 @@ export interface HumanMediaReviewEvidence {
   schema: 'izakhono.creator/human-media-review-v1';
   profileId: string;
   reviewId: ProductionId;
+  assetContentHash: string;
   passed: boolean;
   recordedAt: string;
   recordedBy: string;
@@ -372,7 +373,9 @@ export function hasPassingHumanMediaReview(asset: ProductionAsset): boolean {
   const latest = asset.humanReviews?.at(-1);
   if (!latest || !latest.passed || latest.schema !== 'izakhono.creator/human-media-review-v1'
     || !latest.recordedBy.trim() || !Number.isFinite(Date.parse(latest.recordedAt))
-    || latest.profileId !== 'facebook-reels-1080x1920-v1') return false;
+    || latest.profileId !== 'facebook-reels-1080x1920-v1'
+    || !asset.contentHash || latest.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()
+    || !Array.isArray(latest.checks)) return false;
   const checks = new Map(latest.checks.map(check => [check.id, check]));
   return checks.size === requiredHumanMediaReviewCheckIds.length
     && requiredHumanMediaReviewCheckIds.every(id => checks.get(id)?.passed === true && Boolean(checks.get(id)?.finding.trim()));
@@ -395,6 +398,7 @@ export function recordHumanMediaReview(
   }
   if (evidence.schema !== 'izakhono.creator/human-media-review-v1'
     || evidence.profileId !== 'facebook-reels-1080x1920-v1') throw new Error('Unsupported human media review schema or profile.');
+  if (evidence.assetContentHash.toLowerCase() !== asset.contentHash!.toLowerCase()) throw new Error('Human review evidence must be bound to the exact current export SHA-256.');
   if (!evidence.reviewId.trim() || !evidence.recordedBy.trim() || !Number.isFinite(Date.parse(evidence.recordedAt))) {
     throw new Error('Human review requires a review ID, reviewer identity and valid timestamp.');
   }
