@@ -14,14 +14,14 @@
 - Initial publisher/imprint/author/application records and six SELFHELP Stories development works; no unconfirmed editions or ISBNs are invented.
 - NLSA correspondence history for 6 October, 14 October and 26 November 2026. Outgoing messages are not represented as agency acknowledgement or allocation.
 
-## Latest verification
+## Latest verification — 27 November 2026
 
-- Latest full-registry export changes are committed on the feature branch; CI for the export endpoint, auth rejection test and documentation is pending at the time of this status update.
+- Latest feature-branch head `8d90520c23e51ee11f5bb425c503d17e4bdb1456`: all 18 of 18 GitHub check runs completed successfully, including `isbn-registry-tests`, typecheck, repository validation and the Cloudflare Workers build. The protected export endpoint and its authentication/integration test are included in this verified head.
+- Cloudflare reports a successful preview build for this branch. This is a preview build, not a production release or migration.
+- Pull request #793 remains OPEN and DRAFT; it has not been merged.
 
 - Commit `eaa646d341aaa464ec8c399962f71f6cf7cb7960`: all 18 reported GitHub checks completed successfully, including the ISBN registry integration suite, PostgreSQL 17 API integration, Docker image build, and actual container smoke test.
 - Commit `410ba2ec30eb9e3db7584ca2cc8b715443bac2e8`: the ISBN registry CI job passed the migration unit tests, live PostgreSQL 17 schema/API integration, live D1-to-PostgreSQL importer dry-run and commit rehearsal, runtime syntax, Docker image build and actual container smoke test. The rehearsal used a synthetic fixture in an isolated schema, proved dry-run leaves zero rows, verified explicit commit and append-only correspondence, then dropped the test schema.
-- All checks shown for the registry suite and the Workers build completed successfully. One unrelated repository `validate` check was still running at the last check; the overall repository check set is therefore not described as fully complete.
-- Pull request #793 remains OPEN and DRAFT; it has not been merged.
 
 ## Migration safety
 
@@ -40,10 +40,9 @@
 
 ## Release gates
 
-1. Complete the remaining repository-wide validation check; the ISBN registry migration and container verification job has passed.
-2. Complete an operator-led local migration rehearsal using a real, independently backed-up D1 export and disposable PostgreSQL target; the current passing CI rehearsal used synthetic test records only.
-3. Verify source/target row counts, relationships, audit history and correspondence evidence; test restore and rollback.
-4. Approve IZAKHONO Edge execution substrate, resource budget and access policy before provisioning.
-5. Configure monitoring, encrypted off-node backups, restore procedures, owned DNS/TLS/WAF/ingress and operational controls.
-6. Obtain explicit approval before any paid hosting, hardware, bandwidth or subscription commitment.
-7. Record ISBNs only after allocation by NLSA or another authorised ISBN agency.
+1. Complete an operator-led local migration rehearsal using a real, independently backed-up D1 export and disposable PostgreSQL target; the current passing CI rehearsal used synthetic test records only.
+2. Verify source/target row counts, relationships, audit history and correspondence evidence; test restore and rollback.
+3. Approve IZAKHONO Edge execution substrate, resource budget and access policy before provisioning.
+4. Configure monitoring, encrypted off-node backups, restore procedures, owned DNS/TLS/WAF/ingress and operational controls.
+5. Obtain explicit approval before any paid hosting, hardware, bandwidth or subscription commitment.
+6. Record ISBNs only after allocation by NLSA or another authorised ISBN agency.
