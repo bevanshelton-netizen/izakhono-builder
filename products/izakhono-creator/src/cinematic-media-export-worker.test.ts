@@ -3,6 +3,8 @@ import { executeProductionDistributionExport, persistProductionExportResult } fr
 import type { CinematicProduction } from './cinematic-production-graph';
 import type { MediaExportRuntime } from './media-export-executor';
 
+async function run() {
+
 function box(type: string, payload: number[] = []): number[] {
   const size = payload.length + 8;
   return [(size >>> 24) & 255, (size >>> 16) & 255, (size >>> 8) & 255, size & 255, ...Array.from(type).map(char => char.charCodeAt(0)), ...payload];
@@ -122,3 +124,6 @@ await persistProductionExportResult('https://creator.example', 'film-1', passed,
 assert.equal(partialGraph.assets.find(a => a.id === 'distribution-1')?.mediaQa?.passed, true, 'retry completes QA persistence without repeating the graph PATCH');
 
 console.log('IZAKHONO production-graph to FFmpeg distribution worker integration: PASS');
+}
+
+run().catch(error => { console.error(error); process.exitCode = 1; });
