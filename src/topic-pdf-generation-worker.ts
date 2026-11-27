@@ -417,10 +417,10 @@ export async function processOneApprovedTopicPdfJob(env: TopicPdfWorkerEnv): Pro
     const title = String(manuscript.title || 'topic-guide').slice(0, 180);
     const slugBase = title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'topic-guide';
     const slug = slugBase + '-' + job.id.slice(-8);
-    const publicationId = 'tpdfpub_' + crypto.randomUUID().replaceAll('-', '');
+    const publicationId = 'tpdfpub_' + job.id;
     const specialistPassed = plan.risk?.requiresSpecialistReview === true ? 1 : 0;
     await env.DB.prepare(
-      `INSERT INTO topic_pdf_publications
+      `INSERT OR IGNORE INTO topic_pdf_publications
        (id,job_id,slug,title,language,geography,version,storage_key,price_target_usd,status,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,created_at,updated_at)
        VALUES(?,?,?,?,?,?,?, ?,7,'approved',1,1,?,?,?,?)`,
     ).bind(
