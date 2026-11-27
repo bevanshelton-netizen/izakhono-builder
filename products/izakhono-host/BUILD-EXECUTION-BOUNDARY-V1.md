@@ -138,12 +138,12 @@ This audit is source-level evidence only. It does not prove that a current workf
 - **B4 — Artifact handoff:** integrate immutable OCI output and evidence into the existing Builder Alpha test path; no deployment authority.
 - **B5 — Owner acceptance:** demonstrate reproducible builds, verified artifacts, cleanup, recovery and cost ceilings before enabling real project builds.
 
-## 9. Current status and explicit exclusions
+## 10. Current status and explicit exclusions
 
 This document defines the required boundary. It does **not** claim that BuildKit is deployed, that a sandbox has passed escape testing, that artifacts are being handed to Builder Alpha, or that customer code can currently be built by HOST.
 
 No build executor, privileged runtime, public endpoint, paid infrastructure or deployment permission is activated by this change. The next implementation change must begin with an audit of the actual Builder Alpha source and a testable typed contract, followed by the isolated executor. Do not connect the executor to production projects until B3 passes.
 
-## 10. Definition of done
+## 11. Definition of done
 
 The build boundary is accepted only when all B0–B5 gates have machine-readable evidence, the executor runs rootless under enforced resource limits, no host container socket is present, egress is controlled, cleanup is verified after success/failure/cancellation, artifacts are digest- and provenance-verified by Builder Alpha, and owner-approved cost ceilings are enforced.
