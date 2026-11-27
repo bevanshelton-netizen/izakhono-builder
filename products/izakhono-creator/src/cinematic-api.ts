@@ -46,7 +46,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   if (!env.DB) return response({ error: 'Creator D1 storage is not configured.' }, 503);
 
   const fabricRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/tasks\/([^/]+)\/(submit|status)$/);
-  const sourceMediaRoute = url.pathname.match(/^\\/api\\/cinematic\\/projects\\/([^/]+)\\/source-media$/);
+  const sourceMediaRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/source-media$/);
   if (sourceMediaRoute && request.method === 'POST') {
     const id = decodeURIComponent(sourceMediaRoute[1]);
     const project = await getProject(env, id);
@@ -66,7 +66,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     const maxBytes = 100 * 1024 * 1024;
     if (!Number.isSafeInteger(declaredLength) || declaredLength < 1 || declaredLength > maxBytes) return response({ error: 'Source media must declare a content length between 1 byte and 100 MB.' }, 413);
     const filenameRaw = request.headers.get('x-creator-filename') || 'source-media';
-    const filename = filenameRaw.replace(/[\\\\/\\r\\n\\0]/g, '_').trim().slice(0, 180);
+    const filename = filenameRaw.replace(/[\\\/\\r\\n\\0]/g, '_').trim().slice(0, 180);
     const receivedBy = request.headers.get('x-creator-uploader-id')?.trim() || '';
     const licence = request.headers.get('x-creator-licence')?.trim() || '';
     const consentStatus = request.headers.get('x-creator-consent-status');
