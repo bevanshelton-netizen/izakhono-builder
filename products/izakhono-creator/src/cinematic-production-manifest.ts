@@ -1,4 +1,4 @@
-import type { CinematicProduction, ProductionAsset, ProductionTask } from './cinematic-production-graph';
+import { hasPassingHumanMediaReview, type CinematicProduction, type ProductionAsset, type ProductionTask } from './cinematic-production-graph';
 
 export type ManifestState = 'complete' | 'in_progress' | 'missing' | 'blocked';
 export interface ManifestEntry {
@@ -98,6 +98,7 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
         asset.provenance.createdAt ? `createdAt=${asset.provenance.createdAt}` : 'Creation timestamp not recorded',
         asset.mediaQa ? `mediaQa=${asset.mediaQa.passed ? 'passed' : 'failed'}; profile=${asset.mediaQa.profileId}; hash=${asset.mediaQa.assetContentHash}; recordedBy=${asset.mediaQa.recordedBy}; recordedAt=${asset.mediaQa.recordedAt}` : 'No media QA evidence recorded',
         asset.mediaQa ? `mediaQaChecks=${asset.mediaQa.checks.filter(check => check.passed).length}/${asset.mediaQa.checks.length} passed` : '',
+        asset.humanReviews?.length ? `humanReviews=${asset.humanReviews.length}; latest=${asset.humanReviews.at(-1)?.passed ? 'passed' : 'failed'}; reviewer=${asset.humanReviews.at(-1)?.recordedBy}; recordedAt=${asset.humanReviews.at(-1)?.recordedAt}` : 'No human media review recorded',
         licenceRecorded ? `licence=${asset.provenance.licence}` : 'Licence not recorded',
         applicableConsentIds.length ? (consentCovered ? 'Applicable consent evidence linked' : 'Applicable consent evidence missing') : 'No character consent record is declared as applicable',
       ],
@@ -108,19 +109,22 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
   const masterAssets = project.assets.filter(asset => asset.role === 'master' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey || asset.contentHash));
   const exportAssets = project.assets.filter(asset => asset.role === 'distribution_export' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey?.trim() && asset.contentHash && /^[a-f0-9]{64}$/i.test(asset.contentHash)));
   const verifiedExportAssets = exportAssets.filter(hasVerifiedFacebookQa);
+  const humanReviewedExportAssets = verifiedExportAssets.filter(hasPassingHumanMediaReview);
   entries.push({ id: 'master-delivery', category: 'export', label: 'Approved master video', state: masterAssets.length ? 'complete' : 'missing', relatedIds: masterAssets.map(asset=>asset.id), details: masterAssets.length ? ['Master asset and storage evidence recorded', 'Verify Facebook profile metadata and run media QA against the actual export'] : ['No completed, stored master video asset'] });
   entries.push({
     id: 'distribution-delivery', category: 'export', label: 'Distribution export',
-    state: verifiedExportAssets.length ? 'complete' : exportAssets.length ? 'blocked' : 'missing',
+    state: humanReviewedExportAssets.length ? 'complete' : exportAssets.length ? 'blocked' : 'missing',
     relatedIds: exportAssets.map(asset=>asset.id),
-    details: verifiedExportAssets.length
-      ? verifiedExportAssets.map(asset => `Asset ${asset.id}: Facebook profile QA passed for SHA-256 ${asset.contentHash}; recorded by ${asset.mediaQa!.recordedBy} at ${asset.mediaQa!.recordedAt}`)
-      : exportAssets.length
-        ? ['Stored export exists, but hash-bound Facebook QA evidence is missing, incomplete, failed or does not match the asset bytes']
+    details: humanReviewedExportAssets.length
+      ? humanReviewedExportAssets.map(asset => `Asset ${asset.id}: machine QA passed for SHA-256 ${asset.contentHash}; human review passed by ${asset.humanReviews!.at(-1)!.recordedBy} at ${asset.humanReviews!.at(-1)!.recordedAt}`)
+      : verifiedExportAssets.length
+        ? ['Machine QA passed, but required human playback, audio, captions, continuity and private-upload review is missing or failed']
+        : exportAssets.length
+          ? ['Stored export exists, but hash-bound Facebook QA evidence is missing, incomplete, failed or does not match the asset bytes']
         : ['No completed, stored distribution export asset'],
   });
   const count = (state: ManifestState) => entries.filter(entry=>entry.state===state).length;
   const readyForMaster = isApproved(project,'creative') && isApproved(project,'generation') && project.shots.length>0 && project.shots.every(shot=>assetsForShot(project.assets,shot.id).some(asset=>asset.kind==='video' && asset.role==='shot_video' && asset.status==='completed' && Boolean(asset.storageKey || asset.contentHash) && hasRightsEvidence(project, asset)));
-  const readyForDistribution = readyForMaster && isApproved(project,'master') && isApproved(project,'distribution') && masterAssets.length>0 && verifiedExportAssets.length>0;
+  const readyForDistribution = readyForMaster && isApproved(project,'master') && isApproved(project,'distribution') && masterAssets.length>0 && humanReviewedExportAssets.length>0;
   return { schema:'izakhono.creator/production-manifest-v1', productionId:project.id, productionTitle:project.title, generatedAt, summary:{total:entries.length,complete:count('complete'),inProgress:count('in_progress'),missing:count('missing'),blocked:count('blocked'),readyForMaster,readyForDistribution},entries };
 }
