@@ -16,6 +16,20 @@ permissions:
 jobs:
   isbn-registry-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: izakhono_isbn
+          POSTGRES_USER: izakhono
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U izakhono -d izakhono_isbn"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -36,5 +50,15 @@ jobs:
         run: npx --yes tsx@4.20.3 products/izakhono-isbn/src/postgresql-adapter.test.ts
       - name: Verify PostgreSQL target schema and provider-neutral contract
         run: node products/izakhono-isbn/src/postgresql-contract.test.mjs
+      - name: Install the PostgreSQL runtime driver for CI integration tests
+        run: npm install --prefix products/izakhono-isbn/runtime --ignore-scripts --no-audit --no-fund
+      - name: Run live PostgreSQL schema and API integration tests
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGDATABASE: izakhono_isbn
+          PGUSER: izakhono
+          PGPASSWORD: test-password
+        run: node --experimental-strip-types products/izakhono-isbn/runtime/postgres-integration.test.mjs
       - name: Check self-hosted runtime server syntax
         run: node --check products/izakhono-isbn/runtime/server.mjs
