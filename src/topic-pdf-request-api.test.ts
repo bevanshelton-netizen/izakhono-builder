@@ -36,6 +36,14 @@ async function main() {
   assert.equal(unauthorized?.status, 401);
   assert.equal(db.writes, 0);
 
+  const unauthorizedList = await topicPdfRequestRoute(
+    new Request(url, { method: 'GET' }),
+    { DB: db, TOPIC_PDF_REQUESTS_ENABLED: 'true' },
+    url,
+  );
+  assert.equal(unauthorizedList?.status, 401);
+  assert.equal(db.writes, 0);
+
   const unrelated = await topicPdfRequestRoute(
     new Request('https://example.test/api/other'),
     { DB: db, TOPIC_PDF_REQUESTS_ENABLED: 'true' },
