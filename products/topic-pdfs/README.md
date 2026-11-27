@@ -110,3 +110,15 @@ The intended standard price is **US$7 per focused PDF guide**. Local currency pr
 ## Initial release principle
 
 Build a repeatable, quality-controlled publishing system before attempting volume. Start with a small set of carefully chosen, well-researched topics; learn from reader needs and product performance; then expand the catalogue systematically.
+
+
+## Current build artefacts
+
+- Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
+- Product metadata contract: `product-record.schema.json`
+- Catalogue validator: `validate-catalog.mjs`
+- Release checklist: `RELEASE-CHECKLIST.md`
+- First product record: `products/TPDF-001-household-budget.json`
+- First editorial draft: `drafts/TPDF-001-household-budget.md`
+
+The first guide is a South African editorial draft. Its rights review and editorial review are pending; it is not yet a finished PDF or approved for sale.
