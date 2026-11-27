@@ -10,6 +10,7 @@ import {
   type CinematicProduction,
   type MediaQaEvidence,
   type ProductionTask,
+  type ProductionAsset,
 } from './cinematic-production-graph';
 import { findAssetByExternalId, getAsset, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
 import { buildProductionReadinessReport } from './cinematic-production-readiness';
@@ -45,6 +46,72 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   if (!env.DB) return response({ error: 'Creator D1 storage is not configured.' }, 503);
 
   const fabricRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/tasks\/([^/]+)\/(submit|status)$/);
+  const sourceMediaRoute = url.pathname.match(/^\\/api\\/cinematic\\/projects\\/([^/]+)\\/source-media$/);
+  if (sourceMediaRoute && request.method === 'POST') {
+    const id = decodeURIComponent(sourceMediaRoute[1]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    if (!env.ASSETS) return response({ error: 'Private source-media object storage is not configured.' }, 503);
+    const contentType = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const kindByMime: Record<string, 'image' | 'video' | 'audio'> = {
+      'image/jpeg': 'image', 'image/png': 'image', 'image/webp': 'image',
+      'video/mp4': 'video', 'video/quicktime': 'video', 'video/webm': 'video',
+      'audio/mpeg': 'audio', 'audio/mp4': 'audio', 'audio/wav': 'audio', 'audio/x-wav': 'audio', 'audio/webm': 'audio',
+    };
+    const kind = kindByMime[contentType];
+    if (!kind) return response({ error: 'Unsupported source-media content type.' }, 415);
+    const declaredLength = Number(request.headers.get('content-length') || 0);
+    const maxBytes = 100 * 1024 * 1024;
+    if (!Number.isSafeInteger(declaredLength) || declaredLength < 1 || declaredLength > maxBytes) return response({ error: 'Source media must declare a content length between 1 byte and 100 MB.' }, 413);
+    const filenameRaw = request.headers.get('x-creator-filename') || 'source-media';
+    const filename = filenameRaw.replace(/[\\\\/\\r\\n\\0]/g, '_').trim().slice(0, 180);
+    const receivedBy = request.headers.get('x-creator-uploader-id')?.trim() || '';
+    const licence = request.headers.get('x-creator-licence')?.trim() || '';
+    const consentStatus = request.headers.get('x-creator-consent-status');
+    const consentRecordIds = (request.headers.get('x-creator-consent-record-ids') || '').split(',').map(value => value.trim()).filter(Boolean);
+    if (!filename || !receivedBy || receivedBy.length > 160 || !licence || licence.length > 1000) return response({ error: 'A filename, uploader identity and licence declaration are required.' }, 400);
+    if (!['provided', 'not_applicable', 'unverified'].includes(String(consentStatus))) return response({ error: 'Consent status must be explicitly provided, not_applicable or unverified.' }, 400);
+    if (consentStatus === 'provided' && consentRecordIds.length === 0) return response({ error: 'Consent record IDs are required when consent status is provided.' }, 400);
+    if (consentRecordIds.some(value => value.length > 160) || new Set(consentRecordIds).size !== consentRecordIds.length) return response({ error: 'Consent record IDs are invalid or duplicated.' }, 400);
+    const shotId = request.headers.get('x-creator-shot-id')?.trim();
+    const shot = shotId ? graph.shots.find(item => item.id === shotId) : undefined;
+    if (shotId && !shot) return response({ error: 'The requested shot does not exist in this production.' }, 400);
+    let bytes: Uint8Array;
+    try { bytes = new Uint8Array(await request.arrayBuffer()); } catch { return response({ error: 'Source media body could not be read.' }, 400); }
+    if (bytes.byteLength !== declaredLength || bytes.byteLength < 1 || bytes.byteLength > maxBytes) return response({ error: 'Source media body size does not match its declared content length or exceeds the limit.' }, 413);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+    const assetId = 'src_' + crypto.randomUUID();
+    const storageKey = 'projects/' + id + '/source/' + assetId;
+    const receivedAt = new Date().toISOString();
+    const asset: ProductionAsset = {
+      id: assetId, kind, status: 'completed', source: 'user', role: 'source',
+      ...(shot ? { shotId: shot.id, sceneId: shot.sceneId } : {}),
+      storageKey, contentHash: sha256, mimeType: contentType, parentAssetIds: [],
+      provenance: { createdAt: receivedAt, licence, consentRecordIds },
+      sourceEvidence: {
+        schema: 'izakhono.creator/source-media-evidence-v1', origin: 'user_upload',
+        originalFilename: filename, mimeType: contentType, byteSize: bytes.byteLength,
+        sha256, receivedAt, receivedBy, licenceDeclaration: licence,
+        consentStatus: consentStatus as 'provided' | 'not_applicable' | 'unverified',
+      },
+    };
+    const updatedGraph: CinematicProduction = {
+      ...graph, assets: [...graph.assets, asset],
+      metadata: { ...graph.metadata, updatedAt: receivedAt, version: graph.metadata.version + 1 },
+    };
+    const checked = validate(updatedGraph);
+    if (!checked.valid) return response({ error: 'Source media would violate production graph integrity.', issues: checked.issues }, 422);
+    try {
+      await env.ASSETS.put(storageKey, new Response(bytes).body, { httpMetadata: { contentType } });
+      await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
+    } catch {
+      return response({ error: 'Source media storage or graph persistence failed. Upload was not confirmed; reconcile any private orphan object before retrying.' }, 503);
+    }
+    return response({ status: 'ingested', asset, productionVersion: updatedGraph.metadata.version }, 201);
+  }
   if (fabricRoute) {
     const [, rawProjectId, rawTaskId, action] = fabricRoute;
     const id = decodeURIComponent(rawProjectId);
@@ -392,6 +459,14 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     for (const assetId of qaAssetIds) {
       if (JSON.stringify(currentQa.get(assetId) ?? null) !== JSON.stringify(candidateQa.get(assetId) ?? null)) {
         return response({ error: 'Media QA evidence can only be added or changed through the dedicated authenticated media-qa endpoint.' }, 409);
+      }
+    }
+    const currentSourceEvidence = new Map(graph.assets.map(asset => [asset.id, asset.sourceEvidence ?? null]));
+    const candidateSourceEvidence = new Map(candidate.assets.map(asset => [asset.id, asset.sourceEvidence ?? null]));
+    const sourceEvidenceAssetIds = new Set([...currentSourceEvidence.keys(), ...candidateSourceEvidence.keys()]);
+    for (const assetId of sourceEvidenceAssetIds) {
+      if (JSON.stringify(currentSourceEvidence.get(assetId) ?? null) !== JSON.stringify(candidateSourceEvidence.get(assetId) ?? null)) {
+        return response({ error: 'Source-media intake evidence can only be created by the authenticated source-media ingestion endpoint and cannot be altered through general graph PATCH.' }, 409);
       }
     }
     const currentReviews = new Map(graph.assets.map(asset => [asset.id, asset.humanReviews ?? null]));
