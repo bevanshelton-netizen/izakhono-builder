@@ -66,3 +66,6 @@ jobs:
           test -s products/izakhono-host/PRIVATE-MVP.md
           test -x products/izakhono-host/MVP-ACTIVATE.sh || chmod +x products/izakhono-host/MVP-ACTIVATE.sh
           grep -q '127.0.0.1:18080' products/izakhono-host/docker-compose.mvp.yml
+          grep -q 'Submit a real health-check job' products/izakhono-host/MVP-ACTIVATE.sh
+          grep -q 'data.job.result?.ok!==true' products/izakhono-host/MVP-ACTIVATE.sh
+          grep -q 'health-check.*compute job' products/izakhono-host/PRIVATE-MVP.md
