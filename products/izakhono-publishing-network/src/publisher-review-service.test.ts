@@ -38,7 +38,7 @@ class FakeStore implements ReviewStore {
   receipt: { key: string; fingerprint: string; reviewCase: PublisherReviewCase; decision: ImmutableReviewDecision } | null = null;
   async lookupIdempotency(scope: typeof session.tenant, key: string, fingerprint: string): Promise<Extract<ReviewCommitResult, { status: 'replayed' | 'conflict' }> | null> {
     if (!this.receipt || this.receipt.key !== key) return null;
-    if (this.receipt.fingerprint !== fingerprint || scope.entityId !== this.receipt.reviewCase.tenant.entityId) return { status: 'conflict' };
+    if (this.receipt.fingerprint !== fingerprint || scope.entityId !== this.receipt.reviewCase.tenant.entityId || scope.platformId !== this.receipt.reviewCase.tenant.platformId) return { status: 'conflict' };
     return { status: 'replayed', reviewCase: this.receipt.reviewCase, decision: this.receipt.decision, replayed: true };
   }
   async getCase(scope: typeof session.tenant, caseId: string): Promise<PublisherReviewCase | null> {
