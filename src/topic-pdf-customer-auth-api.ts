@@ -89,7 +89,9 @@ async function sendVerificationEmail(env: AuthEnv, email: string, displayName: s
   const base = new URL(String(env.TOPIC_PDF_PUBLIC_BASE_URL));
   if (base.protocol !== 'https:') throw new Error('Public storefront URL must use HTTPS.');
   const link = base.toString().replace(/\/$/, '') + '/topic-guides/#verify=' + encodeURIComponent(token);
-  const response = await fetch(String(env.TOPIC_PDF_EMAIL_URL), {
+  const emailEndpoint = new URL(String(env.TOPIC_PDF_EMAIL_URL));
+  if (emailEndpoint.protocol !== 'https:') throw new Error('Transactional email adapter URL must use HTTPS.');
+  const response = await fetch(emailEndpoint.toString(), {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -153,6 +155,8 @@ async function register(req: Request, env: AuthEnv): Promise<Response> {
 async function verify(req: Request, env: AuthEnv): Promise<Response> {
   let body: any;
   try { body = await readJson(req); } catch (error) { return json({ ok: false, error: String(error) }, 400); }
+  const ip = req.headers.get('cf-connecting-ip') || 'unknown';
+  if (!(await allowedAttempt(env, 'verify-ip', ip, 10, 15 * 60_000))) return json({ ok: false, error: 'Too many verification attempts. Try again later.' }, 429);
   const token = String(body?.token || '').trim();
   if (!/^[a-f0-9]{64}$/i.test(token)) return json({ ok: false, error: 'Verification token is invalid or expired.' }, 400);
   const customerId = await consumeEmailVerificationToken(env.DB, token);
@@ -194,8 +198,8 @@ export async function topicPdfCustomerAuthRoute(req: Request, env: AuthEnv, url:
     '/api/topic-pdfs/customer/session',
   ]);
   if (!route.has(url.pathname)) return null;
-  if (!authReady(env)) return json({ ok: false, error: 'Customer authentication is not enabled or its transactional email/rate-limit configuration is incomplete.' }, 503);
   if (!originAllowed(req, url)) return json({ ok: false, error: 'Cross-origin request rejected.' }, 403);
+  if (!authReady(env)) return json({ ok: false, error: 'Customer authentication is not enabled or its transactional email/rate-limit configuration is incomplete.' }, 503);
 
   if (req.method === 'POST' && url.pathname === '/api/topic-pdfs/customer/register') return register(req, env);
   if (req.method === 'POST' && url.pathname === '/api/topic-pdfs/customer/verify') return verify(req, env);
