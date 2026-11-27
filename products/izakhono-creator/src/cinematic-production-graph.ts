@@ -453,7 +453,9 @@ export function recordSourceRightsReview(
     || typeof evidence.basis !== 'string' || !evidence.basis.trim()
     || !Array.isArray(evidence.evidenceReferences) || !evidence.evidenceReferences.length
     || evidence.evidenceReferences.some(value => typeof value !== 'string' || !value.trim())
-    || evidence.reviewId.length > 160 || evidence.recordedBy.length > 160 || evidence.basis.length > 4000\n    || evidence.evidenceReferences.length > 20 || evidence.evidenceReferences.some(value => value.length > 300)\n    || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
+    || evidence.reviewId.length > 160 || evidence.recordedBy.length > 160 || evidence.basis.length > 4000
+    || evidence.evidenceReferences.length > 20 || evidence.evidenceReferences.some(value => value.length > 300)
+    || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
     throw new Error('Rights review requires a unique ID, reviewer, timestamp, decision basis and distinct evidence references.');
   }
   if (asset.rightsReviews?.some(item => item.reviewId === evidence.reviewId)) throw new Error('Source rights-review ID already exists.');
