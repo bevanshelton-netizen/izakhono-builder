@@ -54,7 +54,7 @@ assert.equal(storeCount,1,'Failed QA output must not be stored as a deliverable'
 await assert.rejects(()=>executeProductionDistributionExport({...project,approvals:[]},request,runtime,store,resolve),/master approval/);
 await assert.rejects(()=>executeProductionDistributionExport({...project,assets:project.assets.map(a=>({...a,provenance:{...a.provenance,licence:undefined}}))},request,runtime,store,resolve),/licence evidence/);
 await assert.rejects(()=>executeProductionDistributionExport({...project,assets:project.assets.map(a=>({...a,contentHash:'c'.repeat(64)}))},request,runtime,store,resolve),/do not match/);
-await assert.rejects(()=>executeProductionDistributionExport({...project,tasks:[{...project.tasks[0],status:'blocked',blockedReason:'dependencies'}]},request,runtime,store,resolve),/not runnable/);
+await assert.rejects(()=>executeProductionDistributionExport({...project,tasks:[{...project.tasks[0],status:'blocked',blockedReason:'approval'}]},request,runtime,store,resolve),/not runnable/);
 
 await assert.rejects(()=>executeProductionDistributionExport({
   ...project,
