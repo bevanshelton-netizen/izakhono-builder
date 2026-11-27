@@ -16,7 +16,8 @@
 ## Latest verification
 
 - Commit `eaa646d341aaa464ec8c399962f71f6cf7cb7960`: all 18 reported GitHub checks completed successfully, including the ISBN registry integration suite, PostgreSQL 17 API integration, Docker image build, and actual container smoke test.
-- Subsequent migration tooling, migration CI test step and documentation updates have been committed to this same feature branch. Their CI run is required before treating the new migration tests as passed.
+- Commit `410ba2ec30eb9e3db7584ca2cc8b715443bac2e8`: the ISBN registry CI job passed the migration unit tests, live PostgreSQL 17 schema/API integration, live D1-to-PostgreSQL importer dry-run and commit rehearsal, runtime syntax, Docker image build and actual container smoke test. The rehearsal used a synthetic fixture in an isolated schema, proved dry-run leaves zero rows, verified explicit commit and append-only correspondence, then dropped the test schema.
+- All checks shown for the registry suite and the Workers build completed successfully. One unrelated repository `validate` check was still running at the last check; the overall repository check set is therefore not described as fully complete.
 - Pull request #793 remains OPEN and DRAFT; it has not been merged.
 
 ## Migration safety
@@ -36,8 +37,8 @@
 
 ## Release gates
 
-1. Pass CI for the newly added migration-tool tests and inspect any failures.
-2. Complete an operator-led local migration rehearsal using a real, independently backed-up D1 export and disposable PostgreSQL target.
+1. Complete the remaining repository-wide validation check; the ISBN registry migration and container verification job has passed.
+2. Complete an operator-led local migration rehearsal using a real, independently backed-up D1 export and disposable PostgreSQL target; the current passing CI rehearsal used synthetic test records only.
 3. Verify source/target row counts, relationships, audit history and correspondence evidence; test restore and rollback.
 4. Approve IZAKHONO Edge execution substrate, resource budget and access policy before provisioning.
 5. Configure monitoring, encrypted off-node backups, restore procedures, owned DNS/TLS/WAF/ingress and operational controls.
