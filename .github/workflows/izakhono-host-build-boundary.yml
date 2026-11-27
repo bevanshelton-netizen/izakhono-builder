@@ -53,7 +53,8 @@ jobs:
           assert request['properties']['schema_version']['const']=='izakhono.host.build-request.v1'
           assert result['properties']['schema_version']['const']=='izakhono.host.build-result.v1'
           assert 'source_commit_sha' in request['required'] and 'manifest_digest' in request['required']
-          assert 'artifact' in result['required'] and 'evidence' in result['required']
+          assert 'artifact' in result['allOf'][0]['then']['required'] and 'evidence' in result['allOf'][0]['then']['required']
+          assert 'failure' in result['allOf'][0]['else']['required']
           assert 'signature' in result['required']
           for schema in (request,result):
               assert 'command' not in schema.get('properties',{})
