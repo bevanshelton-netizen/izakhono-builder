@@ -58,6 +58,8 @@ jobs:
           python-version: "3.12"
       - name: Install PDF renderer and proof-check dependencies
         run: python -m pip install reportlab pypdf
+      - name: Test Topic PDF database migrations
+        run: python products/topic-pdfs/test_migrations.py
       - name: Test private editorial PDF render service
         run: python products/topic-pdfs/test_render_service.py
       - name: Render first guide as a non-sale editorial proof
