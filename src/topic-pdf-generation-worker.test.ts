@@ -52,6 +52,15 @@ async function main() {
   );
   assert.equal(unauthorized?.status, 401);
 
+  const salePreviewUrl = new URL('https://example.test/api/owner/topic-pdfs/publications/pub_12345678/preview');
+  const missingSalePreview = await topicPdfOwnerReviewRoute(
+    new Request(salePreviewUrl),
+    { DB: db, TOPIC_PDF_BUCKET: { async get() { return null; } } },
+    salePreviewUrl,
+    async () => true,
+  );
+  assert.equal(missingSalePreview?.status, 404);
+
   const publishUrl = new URL('https://example.test/api/owner/topic-pdfs/publications/pub_12345678/publish');
   const noSaleCandidate = await topicPdfOwnerReviewRoute(
     new Request(publishUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmPublication: true }) }),
