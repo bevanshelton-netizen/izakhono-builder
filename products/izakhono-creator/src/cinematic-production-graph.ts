@@ -441,13 +441,16 @@ export function recordSourceRightsReview(
     throw new Error('Rights review can only be recorded against a completed, stored original source-media asset.');
   }
   if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)
+    || typeof evidence.assetContentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.assetContentHash)
     || evidence.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
     throw new Error('Rights review must be bound to the exact current source-media SHA-256.');
   }
   if (evidence.schema !== 'izakhono.creator/source-rights-review-v1'
     || !['verified', 'rejected'].includes(evidence.decision)) throw new Error('Unsupported source rights-review schema or decision.');
-  if (!evidence.reviewId?.trim() || !evidence.recordedBy?.trim()
-    || !Number.isFinite(Date.parse(evidence.recordedAt)) || !evidence.basis?.trim()
+  if (typeof evidence.reviewId !== 'string' || !evidence.reviewId.trim()
+    || typeof evidence.recordedBy !== 'string' || !evidence.recordedBy.trim()
+    || typeof evidence.recordedAt !== 'string' || !Number.isFinite(Date.parse(evidence.recordedAt))
+    || typeof evidence.basis !== 'string' || !evidence.basis.trim()
     || !Array.isArray(evidence.evidenceReferences) || !evidence.evidenceReferences.length
     || evidence.evidenceReferences.some(value => typeof value !== 'string' || !value.trim())
     || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
@@ -469,7 +472,8 @@ export function hasVerifiedSourceRights(asset: ProductionAsset): boolean {
   if (asset.role !== 'source' || !asset.sourceEvidence || !asset.contentHash
     || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) return false;
   const latest = asset.rightsReviews?.at(-1);
-  return Boolean(latest
+  return Boolean(latest && typeof latest.reviewId === 'string' && typeof latest.recordedBy === 'string'
+    && typeof latest.assetContentHash === 'string' && typeof latest.basis === 'string'
     && latest.schema === 'izakhono.creator/source-rights-review-v1'
     && latest.decision === 'verified'
     && latest.assetContentHash.toLowerCase() === asset.contentHash.toLowerCase()
@@ -477,7 +481,7 @@ export function hasVerifiedSourceRights(asset: ProductionAsset): boolean {
     && Number.isFinite(Date.parse(latest.recordedAt))
     && latest.basis.trim() && Array.isArray(latest.evidenceReferences)
     && latest.evidenceReferences.length > 0
-    && latest.evidenceReferences.every(value => value.trim()));
+    && latest.evidenceReferences.every(value => typeof value === 'string' && value.trim()));
 }
 
 export function recordHumanMediaReview(
