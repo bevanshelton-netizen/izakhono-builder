@@ -69,12 +69,26 @@ The database preserves dated outgoing and incoming agency correspondence as sepa
 4. Stop the local database with `docker compose down`; use `docker compose down -v` only when intentionally deleting the local database volume.
 5. The `.env` file is ignored by Git. Never put real credentials in `.env.example` or commit a local `.env`.
 
-## PostgreSQL target (not yet wired to the API)
+## Self-hosted Node.js + PostgreSQL runtime (local acceptance environment)
+
+The repository now includes a Node.js 22 container runtime and a PostgreSQL adapter that preserves the current API's parameterised query surface while moving its storage to PostgreSQL. This is the intended first self-hosted runtime path; it is not yet a production deployment.
+
+1. From `products/izakhono-isbn/postgresql/`, copy `.env.example` to `.env`.
+2. Replace both sample secrets. Use a long URL-safe password for the local PostgreSQL password because the Compose connection URL embeds it; never commit `.env`.
+3. Start only the local database: `docker compose up -d isbn-postgres`.
+4. Apply `0001_initial_schema.sql` and `0002_seed_initial_catalogue.sql` using the psql commands above.
+5. Start the application profile: `docker compose --profile runtime up -d --build isbn-registry`.
+6. The dashboard is available at `http://127.0.0.1:8080`; management endpoints require the local bearer token. Both database and application ports are loopback-only.
+7. Stop with `docker compose --profile runtime down`. Keep the PostgreSQL volume unless intentionally deleting local test data.
+
+The adapter uses positional PostgreSQL parameters, bounded pool settings, statement timeouts and PostgreSQL's row-count result. The runtime requires `DATABASE_URL` and `ISBN_ADMIN_TOKEN` at startup and fails closed if either is absent. Apply schema migrations before starting the application. Do not expose this local stack to the public internet.
+
+## Production readiness gates
 
 1. Create a private PostgreSQL instance only after the execution substrate, cost, access controls and backup destination have been approved.
 2. Apply `postgresql/0001_initial_schema.sql`, then `postgresql/0002_seed_initial_catalogue.sql` using a migration runner.
-3. Implement and test a PostgreSQL adapter for `RegistryDatabase` in `src/storage/contract.ts`; use parameterised queries and bounded connection pooling.
-4. Port API repository operations to the contract, then run data parity, API integration, security, backup and restore acceptance tests.
+3. Complete live PostgreSQL adapter/API integration tests, including schema compatibility, transactions, security and append-only correspondence.
+4. Add organisation-controlled access, monitoring, encrypted off-node backups and demonstrate restore/rollback.
 5. Migrate existing records only after a verified backup and tested rollback plan.
 
 The PostgreSQL files are a migration foundation, not evidence of a running database. The Compose service is for local development only and is bound to loopback; it is not a public or production host. Do not deploy until adapter wiring, access controls, backups, restore tests and operational acceptance are complete.
