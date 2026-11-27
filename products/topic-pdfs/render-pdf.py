@@ -107,7 +107,7 @@ def render_markdown(source: Path, output: Path):
     for line in lines:
         if line.startswith("# "):
             title = line[2:].strip()
-        elif line.startswith("## "):
+        elif line.startswith("## ") and not subtitle:
             subtitle = line[3:].strip()
         elif line.startswith("**Author:**"):
             author = line.split(":", 1)[1].replace("**", "").strip()
