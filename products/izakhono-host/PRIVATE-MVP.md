@@ -29,7 +29,7 @@ From this directory:
 bash ./MVP-ACTIVATE.sh
 ```
 
-The script creates a private `.env.mvp` file with random secrets (mode 0600), validates the Compose model, builds the three owned services, starts PostgreSQL and the compute manager, issues a single-use enrollment token, verifies the worker is online, starts the native site runtime and checks its health endpoint. It then removes the consumed enrollment token from the environment file.
+The script creates a private `.env.mvp` file with random secrets (mode 0600), validates the Compose model, builds the three owned services, starts PostgreSQL and the compute manager, issues a single-use enrollment token, verifies the worker is online, submits a real `health-check` compute job and waits for the worker to complete it successfully, starts the native site runtime and checks its health endpoint. It then removes the consumed enrollment token from the environment file.
 
 The Compose profile exposes only `127.0.0.1:18080`; it does not publish manager or worker ports and does not expose a public customer endpoint.
 
