@@ -109,6 +109,46 @@ async function run() {
   const sourcePersisted = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
   const sourceAsset = sourcePersisted.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
   assert.equal(sourceAsset.sourceEvidence.receivedBy, 'producer-1', 'source provenance is retained in the canonical graph');
+  const rightsReviewEvidence = {
+    schema: 'izakhono.creator/source-rights-review-v1' as const,
+    reviewId: 'rights-review-1',
+    assetContentHash: sourcePayload.asset.contentHash,
+    decision: 'verified' as const,
+    basis: 'Original source file and written rights declaration were checked against the production intake record.',
+    evidenceReferences: ['intake-record-1', 'rights-declaration-1'],
+    recordedAt: '2026-11-27T21:00:00.000Z',
+    recordedBy: 'rights-reviewer-1',
+  };
+  const rightsReviewResponse = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ evidence: rightsReviewEvidence }),
+  }), sourceEnv);
+  assert.equal(rightsReviewResponse?.status, 200, 'authenticated rights-review endpoint records a hash-bound source decision');
+  const rightsReviewPayload = await rightsReviewResponse!.json() as { rightsReviews: Array<{ decision: string; assetContentHash: string }> };
+  assert.equal(rightsReviewPayload.rightsReviews.at(-1)?.decision, 'verified', 'latest rights decision is retained as append-only evidence');
+  assert.equal(rightsReviewPayload.rightsReviews.at(-1)?.assetContentHash, sourcePayload.asset.contentHash, 'rights decision is bound to exact source bytes');
+  const afterRightsReview = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
+  const sourceAfterReview = afterRightsReview.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
+  assert.equal(sourceAfterReview.sourceEvidence.rightsReviewStatus, 'unverified', 'original intake evidence remains immutable after review');
+  assert.equal(sourceAfterReview.rightsReviews.length, 1, 'review is stored separately from immutable intake evidence');
+  const rejectedDuplicateRightsReview = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ evidence: rightsReviewEvidence }),
+  }), sourceEnv);
+  assert.equal(rejectedDuplicateRightsReview?.status, 400, 'duplicate rights-review IDs are rejected');
+
+  const sourceRightsReviewForgery = {
+    ...afterRightsReview,
+    assets: afterRightsReview.assets.map((asset: any) => asset.id === sourcePayload.asset.id
+      ? { ...asset, rightsReviews: [] } : asset),
+  };
+  const rightsForgeryResponse = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project', {
+    method: 'PATCH', headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ production: sourceRightsReviewForgery }),
+  }), sourceEnv);
+  assert.equal(rightsForgeryResponse?.status, 409, 'generic graph PATCH cannot alter or remove source rights-review history');
   const sourceEvidenceForgery = {
     ...sourcePersisted,
     assets: sourcePersisted.assets.map((asset: any) => asset.id === sourcePayload.asset.id
