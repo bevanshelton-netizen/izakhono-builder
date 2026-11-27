@@ -309,7 +309,6 @@ export async function topicPdfOwnerReviewRoute(
         'content-disposition': 'inline; filename="topic-guide-editorial-draft.pdf"',
         'cache-control': 'private, no-store',
         'x-content-type-options': 'nosniff',
-        'content-length': String(object.size || ''),
       },
     });
   }
