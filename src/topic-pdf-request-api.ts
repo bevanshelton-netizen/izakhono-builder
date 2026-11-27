@@ -44,7 +44,6 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
     return response({ ok: false, error: 'Method not allowed.' }, 405);
   }
   if (req.method === 'POST' && !isCollection) return response({ ok: false, error: 'Not found.' }, 404);
-  if (req.method === 'GET' && isCollection) return response({ ok: false, error: 'Method not allowed.' }, 405);
 
   const origin = req.headers.get('origin');
   if (origin && origin !== url.origin) return response({ ok: false, error: 'Cross-origin request rejected.' }, 403);
@@ -54,9 +53,16 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
   const customer = await resolveCustomerSession(env.DB as any, token);
   if (!customer) return response({ ok: false, error: 'Customer session is invalid or expired.' }, 401);
 
+  if (req.method === 'GET' && isCollection) {
+    const rows = await (env.DB as any).prepare(
+      'SELECT id,status,risk_level,CASE WHEN pdf_storage_key IS NULL THEN 0 ELSE 1 END AS pdf_ready,created_at,updated_at FROM topic_pdf_generation_jobs WHERE requested_by=? ORDER BY created_at DESC LIMIT 50',
+    ).bind(customer.id).all();
+    return response({ ok: true, requests: rows.results || [] });
+  }
+
   if (req.method === 'GET' && item) {
     const row = await env.DB.prepare(
-      'SELECT id,status,risk_level,created_at,updated_at FROM topic_pdf_generation_jobs WHERE id=? AND requested_by=? LIMIT 1',
+      'SELECT id,status,risk_level,CASE WHEN pdf_storage_key IS NULL THEN 0 ELSE 1 END AS pdf_ready,created_at,updated_at FROM topic_pdf_generation_jobs WHERE id=? AND requested_by=? LIMIT 1',
     ).bind(item[1], customer.id).first<any>();
     if (!row) return response({ ok: false, error: 'Request not found.' }, 404);
     return response({ ok: true, request: row });
