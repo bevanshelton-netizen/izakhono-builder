@@ -114,6 +114,19 @@ export interface MediaQaEvidence {
   checks: Array<{ id: string; passed: boolean; actual: string; expected: string }>;
 }
 
+export interface SourceMediaEvidence {
+  schema: 'izakhono.creator/source-media-evidence-v1';
+  origin: 'user_upload';
+  originalFilename: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  receivedAt: string;
+  receivedBy: string;
+  licenceDeclaration: string;
+  consentStatus: 'provided' | 'not_applicable' | 'unverified';
+}
+
 export interface ProductionAsset {
   id: ProductionId;
   kind: MediaKind;
@@ -127,6 +140,8 @@ export interface ProductionAsset {
   storageKey?: string;
   contentHash?: string;
   mimeType?: string;
+  /** Immutable intake evidence for original user-supplied source media. */
+  sourceEvidence?: SourceMediaEvidence;
   /** Machine QA evidence bound to the exact exported bytes by SHA-256. */
   mediaQa?: MediaQaEvidence;
   /** Append-only human review history for the final distribution export. */
