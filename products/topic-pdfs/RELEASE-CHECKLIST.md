@@ -10,6 +10,10 @@ A product may move to **published** only after every applicable release gate is 
 - [ ] The guide provides enough practical value to justify the US$7 target price.
 
 ## Research and writing
+- [ ] Every material claim is mapped to one or more stable source IDs in the internal evidence ledger.
+- [ ] Every source has been opened and checked by a human; search snippets and AI-generated citations are not verification.
+- [ ] The evidence ledger records exact title, publisher, canonical URL, publication/update date, access date, relevant passage, jurisdiction, reliability limits and rights/reuse notes.
+- [ ] Verified sources include a named human reviewer, review date and passage locator; unresolved, inaccessible, stale or contradicted sources are resolved or their claims removed/qualified.
 - [ ] Claims have credible supporting sources.
 - [ ] Sources are current enough for the subject and date-sensitive claims are checked.
 - [ ] Primary/official sources were preferred where appropriate.
@@ -29,7 +33,8 @@ A product may move to **published** only after every applicable release gate is 
 - [ ] Images, illustrations, fonts, icons and templates have documented usage rights.
 - [ ] Personal stories and identifiable information have valid permission or are excluded.
 - [ ] No affiliation, endorsement or accreditation is implied without written evidence.
-- [ ] Source list and source-access dates are complete.
+- [ ] Reader-facing source list matches the internal evidence ledger and source-access dates are complete.
+- [ ] Rights clearance is recorded separately from factual verification; a public URL is not a reuse licence.
 
 ## PDF design and final QA
 - [ ] Cover/title page identifies title, author and edition/version.
