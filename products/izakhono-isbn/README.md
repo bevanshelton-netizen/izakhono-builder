@@ -14,7 +14,8 @@ ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN 
 - **Architecture decision:** `products/izakhono-platform/IZAKHONO-EDGE-ARCHITECTURE-ADR-0001.md`.
 - **Current implementation status:** this registry's existing Worker + D1 adapter is transitional prototype code. It is not the self-owned production platform and must not be represented as deployed self-hosted infrastructure.
 - **PostgreSQL target schema:** `postgresql/0001_initial_schema.sql`; initial publisher/catalogue seed: `postgresql/0002_seed_initial_catalogue.sql`.
-- **Provider-neutral persistence contract:** `src/storage/contract.ts`. This defines the application-facing database contract only; a PostgreSQL driver/adapter and API wiring have not yet been implemented.
+- **Provider-neutral persistence contract:** `src/storage/contract.ts`.
+- **PostgreSQL runtime:** `src/postgresql-adapter.ts` and `runtime/` provide the PostgreSQL-backed adapter and Node.js 22 HTTP runtime. The existing API handler is wired through this adapter; CI exercises the live PostgreSQL API and boots the built container.
 - The PostgreSQL schema preserves the registry's publisher, imprint, author, work, edition, agency application, ISBN, legal deposit, audit and immutable correspondence records. It enforces ISBN-13 checksum integrity and append-only correspondence at database level.
 - NODE01 is an IZAKHONO software node, not a physical server. It is governed by the repository's software-node contract in `autonomy/software-node.mjs`; it is promoted only after runtime evidence.
 - No physical-server enrolment is required merely to define NODE01. Any additional execution substrate, hosting, database, hardware or paid service must be separately configured and must not be provisioned without explicit cost approval.
@@ -83,11 +84,24 @@ The repository now includes a Node.js 22 container runtime and a PostgreSQL adap
 
 The adapter uses positional PostgreSQL parameters, bounded pool settings, statement timeouts and PostgreSQL's row-count result. The runtime requires `DATABASE_URL` and `ISBN_ADMIN_TOKEN` at startup and fails closed if either is absent. Apply schema migrations before starting the application. Do not expose this local stack to the public internet.
 
+
+## D1 → PostgreSQL migration rehearsal
+
+The dry-run-first importer is in `migration/`. It accepts a versioned JSON export from the transitional D1 registry, validates table/column allowlists, ISBN-13 checksums and allocation evidence, then attempts a dependency-ordered insert inside one PostgreSQL transaction.
+
+- Default command performs a full validation transaction and rolls it back; it commits no records.
+- `--apply` is an explicit opt-in and commits only after the complete import succeeds.
+- Duplicate IDs, unique conflicts, foreign-key failures or other database constraints abort and roll back the entire transaction.
+- Source IDs and correspondence evidence references are preserved; correspondence is insert-only.
+- The tool does not allocate ISBNs, update existing records, drop tables or migrate secrets.
+
+See `migration/README.md` for the export envelope and operator procedure. Back up both systems and test restore/rollback before any actual migration. CI runs the migration validation and transaction-mode tests.
+
 ## Production readiness gates
 
 1. Create a private PostgreSQL instance only after the execution substrate, cost, access controls and backup destination have been approved.
 2. Apply `postgresql/0001_initial_schema.sql`, then `postgresql/0002_seed_initial_catalogue.sql` using a migration runner.
-3. Complete live PostgreSQL adapter/API integration tests, including schema compatibility, transactions, security and append-only correspondence.
+3. Maintain the passing live PostgreSQL adapter/API integration and container smoke tests; complete local operator acceptance, transaction/security review and append-only correspondence checks.
 4. Add organisation-controlled access, monitoring, encrypted off-node backups and demonstrate restore/rollback.
 5. Migrate existing records only after a verified backup and tested rollback plan.
 
