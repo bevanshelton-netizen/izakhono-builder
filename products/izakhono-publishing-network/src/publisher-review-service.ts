@@ -75,6 +75,8 @@ export type ReviewCommitResult =
   | { status: 'replayed'; reviewCase: PublisherReviewCase; decision: ImmutableReviewDecision; replayed: true }
   | { status: 'conflict' };
 export interface ReviewStore {
+  /** Resolve a tenant-scoped idempotency receipt before applying optimistic-version checks. */
+  lookupIdempotency(tenant: ReviewTenantScope, idempotencyKey: string, requestFingerprint: string): Promise<Extract<ReviewCommitResult, { status: 'replayed' | 'conflict' }> | null>;
   getCase(tenant: ReviewTenantScope, caseId: string): Promise<PublisherReviewCase | null>;
   /** Must atomically compare version, write case + immutable decision + audit event + idempotency receipt. */
   commitMutation(input: ReviewMutationCommit): Promise<ReviewCommitResult>;
@@ -117,7 +119,8 @@ export type ReviewServiceErrorCode =
   | 'REVIEW_IDEMPOTENCY_KEY_REQUIRED'
   | 'REVIEW_AUTHORIZATION_RESPONSE_INVALID'
   | 'REVIEW_DECISION_INVALID'
-  | 'REVIEW_EVIDENCE_REQUEST_INVALID';
+  | 'REVIEW_EVIDENCE_REQUEST_INVALID'
+  | 'REVIEW_IDEMPOTENCY_CONFLICT';
 export class ReviewServiceError extends Error {
   constructor(readonly code: ReviewServiceErrorCode, message = code) { super(message); this.name = 'ReviewServiceError'; }
 }
@@ -176,6 +179,12 @@ export class PublisherReviewService {
       throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
     }
     const session = await this.resolveSession(command.sessionCredential);
+    const requestFingerprint = await fingerprint(command, session, {
+      requestId: command.requestId, kind: command.kind, dueAt: command.dueAt,
+    });
+    const prior = await this.ports.store.lookupIdempotency(session.tenant, command.idempotencyKey, requestFingerprint);
+    if (prior?.status === 'replayed') return prior;
+    if (prior?.status === 'conflict') throw new ReviewServiceError('REVIEW_IDEMPOTENCY_CONFLICT');
     const permission = 'publishing:review:request_evidence';
     const authorization = await this.ports.authorization.authorize({
       tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
@@ -189,7 +198,7 @@ export class PublisherReviewService {
     const caseErrors = validateReviewCase(current, now);
     if (caseErrors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', caseErrors.join(','));
     if (current.status !== 'in_review' || current.evidenceRequests.some(item => item.requestId === command.requestId)
-      || Date.parse(command.dueAt) <= Date.parse(now)) {
+      || Date.parse(command.dueAt) <= Date.parse(now) || command.expectedVersion !== current.version) {
       throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
     }
     const request: ReviewEvidenceRequest = {
@@ -202,10 +211,6 @@ export class PublisherReviewService {
       ...current, status: 'awaiting_evidence', evidenceRequests: [...current.evidenceRequests, request],
       updatedAt: now, version: current.version + 1,
     };
-    if (command.expectedVersion !== current.version) throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
-    const requestFingerprint = await fingerprint(command, session, {
-      requestId: command.requestId, kind: command.kind, dueAt: command.dueAt,
-    });
     const decision: Omit<ImmutableReviewDecision, 'auditEventRef'> = {
       decisionId: `decision:${requestFingerprint.slice(0, 32)}`, caseId: current.caseId,
       tenant: session.tenant, kind: 'request_evidence', actorPrincipalRef: session.principalRef,
@@ -240,6 +245,11 @@ export class PublisherReviewService {
     });
     if (!authorization.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
     if (!this.validAuthorization(authorization, session.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    // Check the tenant-scoped receipt after authorization but before stale-version validation.
+    const requestFingerprint = await fingerprint(command, session);
+    const prior = await this.ports.store.lookupIdempotency(session.tenant, command.idempotencyKey, requestFingerprint);
+    if (prior?.status === 'replayed') return prior;
+    if (prior?.status === 'conflict') throw new ReviewServiceError('REVIEW_IDEMPOTENCY_CONFLICT');
     // Authentication and resource authorization both precede case lookup to avoid existence leaks.
     const current = await this.ports.store.getCase(session.tenant, command.caseId);
     if (!current || !sameTenant(current.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
