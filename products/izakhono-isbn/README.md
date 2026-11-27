@@ -59,6 +59,16 @@ The database preserves dated outgoing and incoming agency correspondence as sepa
 3. Set `ISBN_ADMIN_TOKEN` as a local secret.
 4. Run `npx wrangler dev --config products/izakhono-isbn/wrangler.jsonc`.
 
+## Local PostgreSQL development (not production)
+
+1. From `products/izakhono-isbn/postgresql/`, copy `.env.example` to `.env` and replace the sample password with a long random local-only password.
+2. Start the loopback-only development database with `docker compose up -d`; port 5432 is bound to `127.0.0.1` only. The named volume persists local development data.
+3. Apply the schema and seed from that directory:
+   - `docker compose exec -T isbn-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < 0001_initial_schema.sql`
+   - `docker compose exec -T isbn-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < 0002_seed_initial_catalogue.sql`
+4. Stop the local database with `docker compose down`; use `docker compose down -v` only when intentionally deleting the local database volume.
+5. The `.env` file is ignored by Git. Never put real credentials in `.env.example` or commit a local `.env`.
+
 ## PostgreSQL target (not yet wired to the API)
 
 1. Create a private PostgreSQL instance only after the execution substrate, cost, access controls and backup destination have been approved.
@@ -67,4 +77,4 @@ The database preserves dated outgoing and incoming agency correspondence as sepa
 4. Port API repository operations to the contract, then run data parity, API integration, security, backup and restore acceptance tests.
 5. Migrate existing records only after a verified backup and tested rollback plan.
 
-The PostgreSQL files are a migration foundation, not evidence of a running database. Do not deploy until adapter wiring, access controls, backups, restore tests and operational acceptance are complete.
+The PostgreSQL files are a migration foundation, not evidence of a running database. The Compose service is for local development only and is bound to loopback; it is not a public or production host. Do not deploy until adapter wiring, access controls, backups, restore tests and operational acceptance are complete.
