@@ -25,27 +25,7 @@ echo "[1/6] Decrypting backup into a private temporary directory..."
 age -d -i "$identity" -o "$stage/data.tar.gz" "$backup"
 
 echo "[2/6] Validating archive paths and entry types before extraction..."
-python3 - "$stage/data.tar.gz" <<'PY'
-import sys
-import tarfile
-allowed = {"stalwart-etc", "stalwart-data", "roundcube-db"}
-with tarfile.open(sys.argv[1], "r:gz") as archive:
-    members = archive.getmembers()
-    if not members:
-        raise SystemExit("BLOCKED: empty backup archive")
-    for member in members:
-        name = member.name.rstrip("/")\n        parts = name.split("/")
-        if not name or name.startswith("/") or any(part in {"", ".", ".."} for part in parts):
-            raise SystemExit(f"BLOCKED: unsafe archive path: {member.name!r}")
-        if parts[0] not in allowed:
-            raise SystemExit(f"BLOCKED: unexpected archive component: {member.name!r}")
-        if not (member.isdir() or member.isfile()):
-            raise SystemExit(f"BLOCKED: non-regular archive entry: {member.name!r}")
-    roots = {member.name.split("/")[0] for member in members}
-    if roots != allowed:
-        raise SystemExit(f"BLOCKED: incomplete backup components: {sorted(roots)}")
-print("ARCHIVE_VALIDATION: PASS")
-PY
+python3 ops/validate_backup_archive.py "$stage/data.tar.gz"
 
 mkdir -p "$stage/extracted"
 tar --no-same-owner --no-same-permissions -xzf "$stage/data.tar.gz" -C "$stage/extracted"
