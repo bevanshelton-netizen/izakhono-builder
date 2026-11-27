@@ -143,17 +143,17 @@ def inspect_runtime_database(
         checks = {
             "read_only_transaction": read_only == "on",
             "runtime_deployment_table_present": bool(runtime_reg),
-            "fortress_audit_table_present": bool(fortress_reg),
+            "deploy_audit_table_present": bool(fortress_reg),
             "migration_ledger_table_present": bool(migration_reg),
             "required_columns_present": required_columns_present,
             "jsonb_contract": jsonb_contract,
             "same_database_connection": bool(runtime_reg and fortress_reg and migration_reg),
             "runtime_role_is_not_table_owner": bool(role_info and database_role not in (runtime_owner, deploy_audit_owner, migration_owner)),
             "runtime_deployment_select_insert_update": all(runtime_permissions),
-            "fortress_audit_select_insert_only": (
+            "deploy_audit_select_insert_only": (
                 audit_permissions[0] and audit_permissions[1] and not any(audit_permissions[2:])
             ),
-            "fortress_audit_append_only_trigger": append_only_trigger,
+            "deploy_audit_append_only_trigger": append_only_trigger,
             "migration_ledger_select": migration_ledger_select,
             "migration_checksum_matches_reviewed_source": migration_checksum_match,
         }
