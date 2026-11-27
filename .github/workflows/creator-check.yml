@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install --ignore-scripts --no-audit --no-fund
-      - run: npx tsc --noEmit --skipLibCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution bundler products/izakhono-creator/src/index.ts products/izakhono-creator/src/cinematic-production-graph.ts products/izakhono-creator/src/cinematic-brief-compiler.ts products/izakhono-creator/src/cinematic-api.ts products/izakhono-creator/src/fortress-cinematic-gateway.ts products/izakhono-creator/src/media-export-profile.ts products/izakhono-creator/src/cinematic-distribution-worker-adapter.ts
+      - run: npx tsc --noEmit --skipLibCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution bundler products/izakhono-creator/src/index.ts products/izakhono-creator/src/cinematic-production-graph.ts products/izakhono-creator/src/cinematic-brief-compiler.ts products/izakhono-creator/src/cinematic-api.ts products/izakhono-creator/src/fortress-cinematic-gateway.ts products/izakhono-creator/src/media-export-profile.ts products/izakhono-creator/src/media-export-executor.ts products/izakhono-creator/src/media-export-node-runtime.ts products/izakhono-creator/src/cinematic-media-export-worker.ts products/izakhono-creator/src/cinematic-distribution-worker-adapter.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-production-graph.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-brief-compiler.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-api.test.ts
@@ -31,4 +31,5 @@ jobs:
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
       - run: npx tsc --noEmit --skipLibCheck --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution bundler products/fortress-identity/src/worker.ts products/fortress-identity/src/worker.test.ts
       - run: npx --yes tsx@4.20.3 products/fortress-identity/src/worker.test.ts
+      - run: npm run creator:media-export:test
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-profile.test.ts
