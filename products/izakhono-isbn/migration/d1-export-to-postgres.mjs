@@ -81,30 +81,36 @@ function valueFor(table, column, value) {
 
 export async function importExport(pool, doc, { apply = false } = {}) {
   const checked = validateExport(doc);
-  if (checked.errors.length) throw new Error("export_validation_failed:\n" + checked.errors.join("\n"));
+  if (checked.errors.length) throw new Error("export_validation_failed:\\n" + checked.errors.join("\\n"));
+  if (typeof pool.connect !== "function") throw new Error("postgres_client_connection_required_for_atomic_transaction");
+  const client = await pool.connect();
   const inserted = {};
-  await pool.query("BEGIN");
   try {
-    for (const table of INSERT_ORDER) {
-      const rows = doc.tables[table] ?? [];
-      inserted[table] = 0;
-      for (const row of rows) {
-        const columns = TABLES[table].filter(c => Object.hasOwn(row, c));
-        if (!columns.length) throw new Error(`${table} row has no importable columns`);
-        const values = columns.map(c => valueFor(table,c,row[c]));
-        const placeholders = values.map((_,i)=>`$${i+1}`).join(", ");
-        const sql = `INSERT INTO "${table}" (${columns.map(c=>`"${c}"`).join(", ")}) VALUES (${placeholders})`;
-        await pool.query(sql, values);
-        inserted[table]++;
+    await client.query("BEGIN");
+    try {
+      for (const table of INSERT_ORDER) {
+        const rows = doc.tables[table] ?? [];
+        inserted[table] = 0;
+        for (const row of rows) {
+          const columns = TABLES[table].filter(c => Object.hasOwn(row, c));
+          if (!columns.length) throw new Error(`${table} row has no importable columns`);
+          const values = columns.map(c => valueFor(table,c,row[c]));
+          const placeholders = values.map((_,i)=>`$${i+1}`).join(", ");
+          const sql = `INSERT INTO "${table}" (${columns.map(c=>`"${c}"`).join(", ")}) VALUES (${placeholders})`;
+          await client.query(sql, values);
+          inserted[table]++;
+        }
       }
+      if (apply) await client.query("COMMIT");
+      else await client.query("ROLLBACK");
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch {}
+      throw error;
     }
-    if (apply) await pool.query("COMMIT");
-    else await pool.query("ROLLBACK");
-  } catch (error) {
-    try { await pool.query("ROLLBACK"); } catch {}
-    throw error;
+    return { mode: apply ? "applied" : "dry-run-rolled-back", counts: inserted };
+  } finally {
+    client.release();
   }
-  return { mode: apply ? "applied" : "dry-run-rolled-back", counts: inserted };
 }
 
 async function main() {
