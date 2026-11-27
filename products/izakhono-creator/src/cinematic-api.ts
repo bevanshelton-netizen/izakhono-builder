@@ -251,7 +251,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
         const canonicalSource = graph.assets.find(asset => asset.id === body.sourceAssetId);
         if (canonicalSource) {
           try {
-            const resolved = await resolveOriginalSourceImage(id, canonicalSource, key => env.ASSETS!.get(key));
+            const resolved = await resolveOriginalSourceImage(id, canonicalSource, key => env.ASSETS!.get(key), { shotId: shot.id, sceneId: shot.sceneId });
             sourceImage = resolved.dataUri;
           } catch (error) {
             return response({ error: error instanceof Error ? error.message : 'Original source image could not be verified.' }, 409);
