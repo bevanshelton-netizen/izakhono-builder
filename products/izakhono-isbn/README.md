@@ -13,12 +13,12 @@ ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN 
 - **Target direction:** IZAKHONO-owned infrastructure platform (**IZAKHONO Edge**), with self-managed DNS, ingress/TLS, WAF, application runtime, PostgreSQL, object storage, monitoring and backups.
 - **Architecture decision:** `products/izakhono-platform/IZAKHONO-EDGE-ARCHITECTURE-ADR-0001.md`.
 - **Current implementation status:** this registry's existing Worker + D1 adapter is transitional prototype code. It is not the self-owned production platform and must not be represented as deployed self-hosted infrastructure.
-- Provider-specific runtime and database code must be isolated from registry business rules. The planned migration target is a provider-neutral application contract backed by PostgreSQL.
-- **NODE01 is an IZAKHONO software node, not a physical server.** It is governed by the repository's software-node contract in `autonomy/software-node.mjs`; it can be instantiated in an available software execution substrate and is promoted only after runtime evidence.
-- NODE01's software-node identity/control plane and the registry application runtime are distinct components. Do not assume a local software-node process can be deployed unchanged into a hosted Worker runtime.
+- **PostgreSQL target schema:** `postgresql/0001_initial_schema.sql`; initial publisher/catalogue seed: `postgresql/0002_seed_initial_catalogue.sql`.
+- **Provider-neutral persistence contract:** `src/storage/contract.ts`. This defines the application-facing database contract only; a PostgreSQL driver/adapter and API wiring have not yet been implemented.
+- The PostgreSQL schema preserves the registry's publisher, imprint, author, work, edition, agency application, ISBN, legal deposit, audit and immutable correspondence records. It enforces ISBN-13 checksum integrity and append-only correspondence at database level.
+- NODE01 is an IZAKHONO software node, not a physical server. It is governed by the repository's software-node contract in `autonomy/software-node.mjs`; it is promoted only after runtime evidence.
 - No physical-server enrolment is required merely to define NODE01. Any additional execution substrate, hosting, database, hardware or paid service must be separately configured and must not be provisioned without explicit cost approval.
-- No paid service or infrastructure is provisioned by this change.
-- Until the provider-neutral runtime is implemented and verified, the existing Worker adapter still requires its D1 binding and secret for its own tests/preview. It is not the target production dependency.
+- No paid service or infrastructure is provisioned by these changes.
 - All management endpoints require `Authorization: Bearer <ISBN_ADMIN_TOKEN>`. Keep the token in a secret store; never commit it.
 - Production must additionally be placed behind an organisation-controlled access policy. Do not expose an unauthenticated registry.
 
@@ -54,9 +54,17 @@ The database preserves dated outgoing and incoming agency correspondence as sepa
 
 ## Local development (transitional Worker adapter)
 
-1. Create a D1 database and bind it as `DB` in `wrangler.jsonc` only if you are testing the transitional Worker adapter.
-2. Apply migrations in order: `0001_initial.sql`, `0002_seed_initial_publisher_and_application.sql`, `0003_isbn_integrity_guards.sql`, `0004_seed_selfhelp_first_season.sql`, `0005_agency_correspondence_history.sql`.
+1. Use the D1 configuration only when running tests or previewing the transitional Worker adapter.
+2. Apply the five SQL migrations in `migrations/` in order.
 3. Set `ISBN_ADMIN_TOKEN` as a local secret.
 4. Run `npx wrangler dev --config products/izakhono-isbn/wrangler.jsonc`.
 
-Do not deploy the transitional adapter as the long-term production service. The self-owned runtime, PostgreSQL migration, access controls, backups, restore tests and operational acceptance gates must be completed before production use.
+## PostgreSQL target (not yet wired to the API)
+
+1. Create a private PostgreSQL instance only after the execution substrate, cost, access controls and backup destination have been approved.
+2. Apply `postgresql/0001_initial_schema.sql`, then `postgresql/0002_seed_initial_catalogue.sql` using a migration runner.
+3. Implement and test a PostgreSQL adapter for `RegistryDatabase` in `src/storage/contract.ts`; use parameterised queries and bounded connection pooling.
+4. Port API repository operations to the contract, then run data parity, API integration, security, backup and restore acceptance tests.
+5. Migrate existing records only after a verified backup and tested rollback plan.
+
+The PostgreSQL files are a migration foundation, not evidence of a running database. Do not deploy until adapter wiring, access controls, backups, restore tests and operational acceptance are complete.
