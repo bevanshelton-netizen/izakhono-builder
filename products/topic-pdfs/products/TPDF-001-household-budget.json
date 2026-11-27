@@ -1,0 +1,93 @@
+{
+  "product_id": "TPDF-001",
+  "slug": "household-budget-that-works",
+  "title": "Build a Household Budget That Actually Works",
+  "subtitle": "A practical household money guide",
+  "topic": "Household budgeting",
+  "category": "Personal finance",
+  "keywords": [
+    "budget",
+    "household finance",
+    "income",
+    "expenses",
+    "South Africa"
+  ],
+  "reader_problem": "A household is unsure where its monthly income goes and needs a realistic plan for bills, essentials and irregular expenses.",
+  "reader_profile": "South African households seeking a practical first or reset budget.",
+  "promise": "Help readers map dependable income, track spending, plan known costs, build a workable monthly budget and review it over 30 days.",
+  "scope": "General household budgeting education for a South African reader, using illustrative rand examples. No individual financial plan or debt counselling.",
+  "exclusions": [
+    "Investment recommendations",
+    "Individual debt restructuring",
+    "Guarantees of savings or financial outcomes"
+  ],
+  "jurisdiction": [
+    "South Africa"
+  ],
+  "language": "en-ZA",
+  "sources": [
+    {
+      "title": "National Credit Regulator — Household Monthly Budget brochure",
+      "publisher": "National Credit Regulator, South Africa",
+      "url": "https://www.ncr.org.za/brochures/Ncra/1475AD%20NCR%20NCAA%20Brochure%20ENG.pdf",
+      "accessed_on": "2026-11-27",
+      "use": "Budget categories and consumer budgeting worksheet; verify current contact details before release.",
+      "rights_notes": "Use facts and brief references only; do not reproduce brochure tables or design."
+    },
+    {
+      "title": "SAQA Unit Standard 10718 — Manage own money affairs",
+      "publisher": "South African Qualifications Authority",
+      "url": "https://pcqs.saqa.org.za/showUnitStandard.php?id=10718",
+      "accessed_on": "2026-11-27",
+      "use": "Conceptual source for income, fixed/variable/discretionary expenses and planned-versus-actual budgeting.",
+      "rights_notes": "Use as a factual reference; no copying of protected course content."
+    },
+    {
+      "title": "Financially smart citizens build resilient households",
+      "publisher": "South African Government",
+      "url": "https://www.gov.za/blog/financially-smart-citizens-build-resilient-households",
+      "accessed_on": "2026-11-27",
+      "use": "Recent public guidance on tracking income and expenses, needs and wants, and engaging creditors early.",
+      "rights_notes": "Government source; retain attribution and check current context."
+    },
+    {
+      "title": "Consumer rights under the National Credit Act",
+      "publisher": "National Credit Regulator, South Africa",
+      "url": "https://www.ncr.org.za/documents/Consumer%20Rights%20as%20per%20the%20National%20Credit%20Act%20%28NCA%29%5B4%5D.pdf",
+      "accessed_on": "2026-11-27",
+      "use": "Consumer support and debt-related escalation information; confirm current contact details.",
+      "rights_notes": "Use as reference; do not reproduce the document."
+    }
+  ],
+  "author": "Bevan Shelton",
+  "editor": "",
+  "specialist_reviewer": "",
+  "rights_review": {
+    "status": "pending",
+    "notes": "Original prose; verify all source references, any visual assets and final PDF permissions before release."
+  },
+  "editorial_review": {
+    "status": "pending",
+    "reviewer": "",
+    "reviewed_on": "",
+    "notes": "Draft requires copy-edit, fact check, local consumer-finance review and PDF proof."
+  },
+  "status": "draft",
+  "version": "0.1.0",
+  "publication_date": "",
+  "next_review_date": "",
+  "pdf_file": "",
+  "page_count": 0,
+  "qa": {
+    "rendered_pdf_inspected": false,
+    "links_checked": false,
+    "accessibility_checked": false,
+    "proofread": false,
+    "source_list_checked": false,
+    "file_integrity_checked": false
+  },
+  "price_target_usd": 7,
+  "actual_price": "",
+  "storefront_url": "",
+  "notes": "Draft stored at drafts/TPDF-001-household-budget.md. Not approved for sale; no storefront or payment setup."
+}
