@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { handleCinematicApi } from './cinematic-api';
 import { compileCinematicBrief } from './cinematic-brief-compiler';
-import { saveProject } from './project-store';
+import { saveProject } from './project-store';\nimport { buildProductionManifest } from './cinematic-production-manifest';
 
 async function run() {
   const missingSecret = await handleCinematicApi(
@@ -105,7 +105,7 @@ async function run() {
   assert.equal(sourcePayload.asset.sourceEvidence.sha256, sourcePayload.asset.contentHash, 'source evidence hash matches graph asset hash');
   assert.equal(sourceObjects.has(sourcePayload.asset.storageKey), true, 'original bytes are stored under a project-scoped private key');
   assert.equal(sourcePayload.asset.sourceEvidence.consentStatus, 'not_applicable', 'consent status is explicitly recorded, not inferred');
-  assert.equal(sourcePayload.asset.sourceEvidence.rightsReviewStatus, 'unverified', 'a declared licence is not mistaken for verified rights clearance');
+  assert.equal(sourcePayload.asset.sourceEvidence.rightsReviewStatus, 'unverified', 'a declared licence is not mistaken for verified rights clearance');\n  assert.equal(buildProductionManifest(sourcePersisted).entries.find(entry => entry.id === sourcePayload.asset.id)?.state, 'missing', 'unreviewed source media remains blocked from manifest completion');
   const sourcePersisted = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
   const sourceAsset = sourcePersisted.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
   assert.equal(sourceAsset.sourceEvidence.receivedBy, 'producer-1', 'source provenance is retained in the canonical graph');
@@ -131,7 +131,7 @@ async function run() {
   const afterRightsReview = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
   const sourceAfterReview = afterRightsReview.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
   assert.equal(sourceAfterReview.sourceEvidence.rightsReviewStatus, 'unverified', 'original intake evidence remains immutable after review');
-  assert.equal(sourceAfterReview.rightsReviews.length, 1, 'review is stored separately from immutable intake evidence');
+  assert.equal(sourceAfterReview.rightsReviews.length, 1, 'review is stored separately from immutable intake evidence');\n  assert.equal(buildProductionManifest(afterRightsReview).entries.find(entry => entry.id === sourcePayload.asset.id)?.state, 'complete', 'a latest hash-matched verified decision clears the source-rights manifest gate');
   const rejectedDuplicateRightsReview = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
