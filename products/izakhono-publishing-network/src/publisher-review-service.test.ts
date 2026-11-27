@@ -2,13 +2,13 @@ import {
   PublisherReviewService, ReviewServiceError, type ReviewAuthorizationPort,
   type AuthorizationRequest, type AuthorizationDecision, type ReviewSessionVerifier,
   type VerifiedReviewSession, type ReviewStore, type ReviewMutationCommit,
-  type ReviewCommitResult, type TransitionReviewCommand,
+  type ReviewCommitResult, type TransitionReviewCommand, type RequestEvidenceCommand,
 } from './publisher-review-service';
 import type { PublisherReviewCase, ImmutableReviewDecision } from './publisher-review-queue-contracts';
 const expect = (condition: boolean, message: string) => { if (!condition) throw new Error(message); };
 const now = '2026-11-26T14:00:00.000Z';
 const session: VerifiedReviewSession = {
-  principalRef: 'principal:reviewer', tenant: { platformId: 'izakhono', entityId: 'tenant:1' }, role: 'SECURITY_ADMIN',
+  principalRef: 'principal:reviewer', tenant: { platformId: 'izakhono', entityId: 'tenant:1' }, role: 'administrator',
 };
 const base: PublisherReviewCase = {
   caseId: 'review:1', publisherId: 'publisher:1', tenant: session.tenant, status: 'in_review',
@@ -88,6 +88,24 @@ async function main() {
   let foreignCode = '';
   try { await new PublisherReviewService({ sessions, authorization: new FakeAuthorization(), store: foreignStore, now: () => now }).readCase('fortress-session', 'review:1'); } catch (error) { foreignCode = (error as ReviewServiceError).code; }
   expect(foreignCode === 'REVIEW_CASE_NOT_FOUND', 'cross-tenant case must be indistinguishable from absent case');
+
+  const evidenceStore = new FakeStore();
+  const evidenceAuth = new FakeAuthorization();
+  const evidenceService = new PublisherReviewService({ sessions, authorization: evidenceAuth, store: evidenceStore, now: () => now });
+  const evidenceCommand: RequestEvidenceCommand = {
+    sessionCredential: 'fortress-session', caseId: 'review:1', requestId: 'evidence-request:1',
+    kind: 'domain_control', dueAt: '2026-11-28T14:00:00.000Z',
+    reasonCode: 'EVIDENCE_DOMAIN_CONTROL_REQUIRED', reviewerNoteRef: 'ref:note:2',
+    expectedVersion: 2, idempotencyKey: 'evidence-idem-1', correlationRef: 'corr:evidence:1',
+  };
+  const evidenceResult = await evidenceService.requestEvidence(evidenceCommand);
+  expect(evidenceResult.status === 'committed' && evidenceResult.reviewCase.status === 'awaiting_evidence', 'evidence request must move review into awaiting_evidence');
+  expect(evidenceResult.reviewCase.evidenceRequests[0].requestId === 'evidence-request:1', 'evidence request must be persisted in the case');
+  expect(evidenceStore.commit?.decision.evidenceRequestIds[0] === 'evidence-request:1', 'immutable decision must reference the requested evidence');
+  expect(evidenceAuth.requests[0].permission === 'publishing:review:request_evidence', 'evidence request must use exact FORTRESS action permission');
+  let duplicateEvidenceCode = '';
+  try { await evidenceService.requestEvidence({ ...evidenceCommand, expectedVersion: 3 }); } catch (error) { duplicateEvidenceCode = (error as ReviewServiceError).code; }
+  expect(duplicateEvidenceCode === 'REVIEW_CASE_INVALID' || duplicateEvidenceCode === 'REVIEW_EVIDENCE_REQUEST_INVALID', 'duplicate evidence request must fail closed');
   console.log('IZAKHONO PUBLISHER REVIEW SERVICE: PASS');
 }
 void main();
