@@ -64,7 +64,34 @@ for _ in {1..45}; do
 done
 [[ "$registered" == 1 ]] || { "${COMPOSE[@]}" logs --tail=100 compute-worker compute-manager; echo "Worker did not enroll." >&2; exit 1; }
 
-echo "[6/6] Start owned site runtime and verify local health"
+echo "[6/7] Submit a real health-check job and verify worker completion"
+job_ok=0
+"${COMPOSE[@]}" exec -T compute-manager node -e '
+const base="http://127.0.0.1:8082";
+const headers={authorization:"Bearer "+process.env.COMPUTE_ADMIN_TOKEN,"content-type":"application/json"};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ const created=await fetch(base+"/api/compute/jobs",{method:"POST",headers,body:JSON.stringify({type:"health-check",input:{}})});
+ const payload=await created.json();
+ if(!created.ok||!payload.job?.id)throw Error(payload.error||"Health-check job was not accepted");
+ const deadline=Date.now()+45000;
+ while(Date.now()<deadline){
+  const response=await fetch(base+"/api/compute/jobs/"+payload.job.id,{headers});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||"Unable to inspect health-check job");
+  if(data.job.status==="succeeded"){
+   if(data.job.result?.ok!==true)throw Error("Worker health-check result was invalid");
+   console.log("Worker completed health-check job:",payload.job.id);
+   return;
+  }
+  if(["failed","cancelled"].includes(data.job.status))throw Error("Worker health-check job "+data.job.status+": "+(data.job.error||"no detail"));
+  await sleep(1000);
+ }
+ throw Error("Timed out waiting for worker health-check completion");
+})().catch(e=>{console.error(e.message);process.exit(1)});
+' || { "${COMPOSE[@]}" logs --tail=100 compute-worker compute-manager; echo "Compute job acceptance gate failed." >&2; exit 1; }
+
+echo "[7/7] Start owned site runtime and verify local health"
 "${COMPOSE[@]}" up -d host-runtime
 runtime_ok=0
 for _ in {1..45}; do
