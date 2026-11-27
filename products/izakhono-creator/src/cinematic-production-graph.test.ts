@@ -1,4 +1,4 @@
-import { getRunnableTasks, validateProductionGraph, updateTaskWithEvidence, recordMediaQaEvidence, type CinematicProduction } from './cinematic-production-graph';
+import { getRunnableTasks, validateProductionGraph, updateTaskWithEvidence, recordMediaQaEvidence, recordHumanMediaReview, type CinematicProduction } from './cinematic-production-graph';
 import { buildProductionManifest } from './cinematic-production-manifest';
 import { buildProductionReadinessReport } from './cinematic-production-readiness';
 
@@ -215,6 +215,33 @@ const qaRecorded = recordMediaQaEvidence(qaAssetBase, 'export-1', evidenceForRec
 if (qaRecorded.assets.find(asset => asset.id === 'export-1')?.mediaQa?.assetContentHash !== 'c'.repeat(64)) throw new Error('Media QA evidence was not attached to the canonical export asset');
 if (qaRecorded.metadata.version !== qaAssetBase.metadata.version + 1) throw new Error('Recording QA evidence must increment the production graph version');
 if (!buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Recorded hash-bound QA evidence should satisfy the export QA gate when other gates pass');
+
+if (buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Machine QA alone must not unlock distribution without human review');
+const humanReviewEvidence = {
+  schema: 'izakhono.creator/human-media-review-v1' as const,
+  profileId: 'facebook-reels-1080x1920-v1',
+  reviewId: 'human-review-001',
+  passed: true,
+  recordedAt: '2026-11-26T09:30:00.000Z',
+  recordedBy: 'producer-reviewer-1',
+  checks: [
+    { id: 'full-playback-integrity', passed: true, finding: 'Full file watched; no freezes or black frames.' },
+    { id: 'dialogue-music-effects', passed: true, finding: 'Dialogue clear; music and effects synchronised.' },
+    { id: 'captions-safe-areas', passed: true, finding: 'Captions checked for spelling, timing and mobile safe areas.' },
+    { id: 'continuity-titles-credits', passed: true, finding: 'Continuity, titles, credits and end card reviewed.' },
+    { id: 'private-upload-playback', passed: true, finding: 'Private staging upload played back successfully.' },
+  ],
+};
+const humanReviewed = recordHumanMediaReview(qaRecorded, 'export-1', humanReviewEvidence);
+if (!buildProductionManifest(humanReviewed).summary.readyForDistribution) throw new Error('Audited passing human review should unlock distribution readiness when all approvals exist');
+const failedHumanReview = { ...humanReviewEvidence, reviewId: 'human-review-002', passed: false, checks: humanReviewEvidence.checks.map(check => check.id === 'captions-safe-areas' ? { ...check, passed: false, finding: 'Caption timing needs correction.' } : check) };
+const withFailedReview = recordHumanMediaReview(humanReviewed, 'export-1', failedHumanReview);
+if (withFailedReview.assets.find(asset => asset.id === 'export-1')?.humanReviews?.length !== 2) throw new Error('Human review history must be append-only');
+if (buildProductionManifest(withFailedReview).summary.readyForDistribution) throw new Error('Latest failed human review must block distribution readiness');
+let humanReviewWithoutMachineQaRejected = false;
+try { recordHumanMediaReview(qaAssetBase, 'export-1', humanReviewEvidence); } catch { humanReviewWithoutMachineQaRejected = true; }
+if (!humanReviewWithoutMachineQaRejected) throw new Error('Human review must require matching passing machine QA');
+
 const failedEvidence = { ...evidenceForRecording, passed: false, checks: facebookQaChecks.map(check => check.id === 'mp4-fast-start' ? { ...check, passed: false } : check) };
 const failedExportForRecording: CinematicProduction = { ...qaAssetBase, assets: qaAssetBase.assets.map(asset => asset.id === 'export-1' ? { ...asset, status: 'failed' as const, storageKey: undefined } : asset) };
 const failedRecorded = recordMediaQaEvidence(failedExportForRecording, 'export-1', failedEvidence);
