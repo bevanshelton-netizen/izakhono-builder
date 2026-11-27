@@ -77,3 +77,29 @@ node d1-export-to-postgres.mjs --input ./d1-export.json --apply
 - Correspondence IDs and evidence references are retained; correspondence is inserted only, never updated or deleted.
 - Back up both systems and test restore/rollback independently before any real migration.
 - Do not point this tool at production until the execution substrate, access policy, backup destination and costs are approved.
+
+
+## Operator verification checklist (before any real import)
+
+Run these steps on a trusted workstation or private administration host. Do not paste the bearer token, database URL, export contents or backup credentials into chat, tickets or terminal transcripts.
+
+1. **Capture the source backup first.** Use the existing D1 platform's supported backup/export mechanism to create an independent source-database backup. Record its timestamp and retain it separately from the JSON registry export. Confirm that the backup is restorable using a disposable copy before treating it as a recovery point.
+2. **Download and protect the registry export.** Follow the export procedure above. Restrict file permissions immediately:
+   ```sh
+   chmod 600 ./d1-export.json
+   sha256sum ./d1-export.json > ./d1-export.json.sha256
+   ```
+   Retain the checksum with the migration evidence. Do not edit the export in place.
+3. **Inspect the envelope and source counts without printing personal data.** With `jq` installed:
+   ```sh
+   jq -e '.formatVersion == 1 and .source == "izakhono-isbn-d1-export" and (.tables | type == "object")' ./d1-export.json >/dev/null
+   jq -r '.exportedAt, (.tables | to_entries[] | "\(.key)\t\(.value | length)")' ./d1-export.json
+   ```
+   Confirm every expected table is present, including empty arrays, and investigate unexpected omissions or counts before continuing.
+4. **Back up the PostgreSQL target independently.** Before rehearsal, verify the target identity and schema. Take a database backup to a separate access-controlled location and test restoring it to a disposable database. Never use a production destination for the first rehearsal.
+5. **Run the importer in default dry-run mode.** Save the JSON summary and full error output in the restricted migration evidence directory. The expected mode is `dry-run-rolled-back`; its per-table inserted counts should match the export counts. Any validation, duplicate-key, foreign-key or constraint error is a stop condition.
+6. **Reconcile the target.** Because dry-run rolls back, query each target table's row count before and after; counts must be unchanged. For a later approved apply to an empty disposable target, compare imported counts with the export counts and check foreign-key relationships, ISBN evidence references, audit history and correspondence IDs. A successful process exit alone is not reconciliation.
+7. **Test recovery.** Restore the source backup and PostgreSQL backup into disposable environments and verify they are usable. Document the rollback procedure and who is authorised to execute it.
+8. **Require an explicit go/no-go decision.** Only after independent backups, successful restore tests, count/relationship reconciliation and review of the dry-run report may an authorised operator run `--apply` against an explicitly identified disposable target. Production migration requires a separate approval and release plan; it is not authorised by this guide.
+
+Keep a migration record containing: source backup identifier and timestamp, export checksum and timestamp, source table counts, target database identity, importer version/commit, dry-run output, post-run counts, restore-test result, operator and approval reference. Store the record without secrets or exported personal data.
