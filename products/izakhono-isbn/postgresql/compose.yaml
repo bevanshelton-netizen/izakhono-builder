@@ -1,0 +1,24 @@
+# Local development only. This is not a production deployment.
+# Bind PostgreSQL to loopback so it is not exposed to the LAN or public internet.
+services:
+  isbn-postgres:
+    image: postgres:17-alpine
+    container_name: izakhono-isbn-postgres-dev
+    environment:
+      POSTGRES_DB: ${IZAKHONO_PG_DATABASE:-izakhono_isbn}
+      POSTGRES_USER: ${IZAKHONO_PG_USER:-izakhono}
+      POSTGRES_PASSWORD: ${IZAKHONO_PG_PASSWORD:?Set IZAKHONO_PG_PASSWORD in your local .env file}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - izakhono_isbn_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IZAKHONO_PG_USER:-izakhono} -d ${IZAKHONO_PG_DATABASE:-izakhono_isbn}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  izakhono_isbn_pgdata:
