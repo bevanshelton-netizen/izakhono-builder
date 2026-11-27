@@ -1335,6 +1335,27 @@ export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
 
+    if (url.pathname === '/topic-guides' || url.pathname === '/topic-guides') {
+      return Response.redirect(url.origin + '/topic-guides/', 302);
+    }
+    if (url.pathname.startsWith('/topic-guides/')) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
+      const relative = url.pathname.slice('/topic-guides/'.length) || 'index.html';
+      if (!new Set(['index.html', 'app.js', 'styles.css']).has(relative)) return new Response('Not found', { status: 404 });
+      const assetUrl = new URL(req.url);
+      assetUrl.pathname = '/topic-guides/' + relative;
+      assetUrl.search = '';
+      const asset = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+      const headers = new Headers(asset.headers);
+      headers.set('cache-control', 'no-store');
+      headers.set('x-content-type-options', 'nosniff');
+      headers.set('referrer-policy', 'no-referrer');
+      headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+      headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+      headers.delete('content-length');
+      return new Response(req.method === 'HEAD' ? null : asset.body, { status: asset.status, statusText: asset.statusText, headers });
+    }
+
     const topicPdfCustomerAuth = await topicPdfCustomerAuthRoute(req, env, url);
     if (topicPdfCustomerAuth) return topicPdfCustomerAuth;
 
