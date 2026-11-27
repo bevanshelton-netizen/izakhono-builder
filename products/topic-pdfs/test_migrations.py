@@ -68,6 +68,10 @@ class TopicPdfMigrationTests(unittest.TestCase):
             self.db.execute(
                 "INSERT INTO topic_pdf_customer_entitlements(id,customer_id,publication_id,payment_provider,payment_reference,status,purchased_at) VALUES('ent_2','customer_1','pub_ent','stripe','pi_test_2','active','2026-11-27T00:00:00.000Z')"
             )
+        self.db.execute("UPDATE topic_pdf_customer_entitlements SET status='refunded',revoked_at='2026-11-27T00:02:00.000Z' WHERE id='ent_1'")
+        self.db.execute(
+            "INSERT INTO topic_pdf_customer_entitlements(id,customer_id,publication_id,payment_provider,payment_reference,status,purchased_at) VALUES('ent_2','customer_1','pub_ent','stripe','pi_test_2','active','2026-11-27T00:03:00.000Z')"
+        )
         self.db.execute(
             "INSERT INTO topic_pdf_download_events(id,entitlement_id,customer_id,publication_id,accessed_at) VALUES('dl_1','ent_1','customer_1','pub_ent','2026-11-27T00:01:00.000Z')"
         )
