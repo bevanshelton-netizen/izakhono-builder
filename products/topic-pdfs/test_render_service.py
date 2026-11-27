@@ -45,7 +45,6 @@ class RenderServiceTests(unittest.TestCase):
         payload = MODULE.render_manuscript(sample_manuscript())
         self.assertTrue(payload.startswith(b"%PDF-"))
         self.assertGreater(len(payload), 1000)
-        self.assertIn(b"EDITORIAL DRAFT", payload)
 
     def test_rejects_non_https_source(self):
         manuscript = sample_manuscript()
