@@ -134,6 +134,8 @@ The Worker now has a scheduled, D1-backed generation processor and owner-only ed
 - `test_render_service.py` — checks manuscript validation and PDF output.
 - `src/topic-pdf-generation-worker.test.ts` — disabled-by-default, provider-configuration, empty-queue and owner-auth guard tests.
 - `/api/owner/topic-pdfs/review-queue` — owner-only editorial queue.
+- `/api/owner/topic-pdfs/requests/:id` — owner-only manuscript, evidence, event and review-decision inspection.
+- `/api/owner/topic-pdfs/requests/:id/preview` — owner-only streaming of the private, watermarked editorial PDF.
 - `/api/owner/topic-pdfs/requests/:id/review` — records reviewer identity/role, gate decisions and specialist credentials for high-stakes guides.
 - Worker cron: every five minutes; at most one generation job is claimed per tick.
 - Customer request idempotency keys are persisted and unique per customer.
