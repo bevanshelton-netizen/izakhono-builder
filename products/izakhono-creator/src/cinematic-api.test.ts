@@ -101,10 +101,11 @@ async function run() {
     }, body: sourceBytes,
   }), sourceEnv);
   assert.equal(sourceResponse?.status, 201, 'authenticated source media is ingested into private object storage');
-  const sourcePayload = await sourceResponse!.json() as { asset: { id: string; storageKey: string; contentHash: string; sourceEvidence: { sha256: string; consentStatus: string } } };
+  const sourcePayload = await sourceResponse!.json() as { asset: { id: string; storageKey: string; contentHash: string; sourceEvidence: { sha256: string; consentStatus: string; rightsReviewStatus: string } } };
   assert.equal(sourcePayload.asset.sourceEvidence.sha256, sourcePayload.asset.contentHash, 'source evidence hash matches graph asset hash');
   assert.equal(sourceObjects.has(sourcePayload.asset.storageKey), true, 'original bytes are stored under a project-scoped private key');
   assert.equal(sourcePayload.asset.sourceEvidence.consentStatus, 'not_applicable', 'consent status is explicitly recorded, not inferred');
+  assert.equal(sourcePayload.asset.sourceEvidence.rightsReviewStatus, 'unverified', 'a declared licence is not mistaken for verified rights clearance');
   const sourcePersisted = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
   const sourceAsset = sourcePersisted.assets.find((asset: any) => asset.id === sourcePayload.asset.id);
   assert.equal(sourceAsset.sourceEvidence.receivedBy, 'producer-1', 'source provenance is retained in the canonical graph');
