@@ -295,7 +295,10 @@ export async function topicPdfOwnerReviewRoute(
     const decisions = await (env.DB as any).prepare(
       'SELECT reviewer_name,reviewer_role,decision,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,specialist_reviewer_name,specialist_credentials,notes,created_at FROM topic_pdf_review_decisions WHERE job_id=? ORDER BY created_at DESC',
     ).bind(detailMatch[1]).all();
-    return new Response(JSON.stringify({ ok: true, job, events: events.results || [], reviewDecisions: decisions.results || [] }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    const publication = await env.DB.prepare(
+      'SELECT id,slug,title,version,status,storage_key,sale_storage_key,sale_sha256,sale_bytes,sale_rendered_at,published_at,published_by FROM topic_pdf_publications WHERE job_id=? LIMIT 1',
+    ).bind(detailMatch[1]).first<any>();
+    return new Response(JSON.stringify({ ok: true, job, events: events.results || [], reviewDecisions: decisions.results || [], publication }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   }
 
   const salePreviewMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/publications\/([a-zA-Z0-9_-]{8,100})\/preview$/);
