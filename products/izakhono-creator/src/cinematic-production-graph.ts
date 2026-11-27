@@ -153,7 +153,9 @@ export interface ProductionAsset {
   contentHash?: string;
   mimeType?: string;
   /** Immutable intake evidence for original user-supplied source media. */
-  sourceEvidence?: SourceMediaEvidence;\n  /** Append-only, hash-bound rights-review decisions for original source media. */\n  rightsReviews?: SourceRightsReviewEvidence[];
+  sourceEvidence?: SourceMediaEvidence;
+  /** Append-only, hash-bound rights-review decisions for original source media. */
+  rightsReviews?: SourceRightsReviewEvidence[];
   /** Machine QA evidence bound to the exact exported bytes by SHA-256. */
   mediaQa?: MediaQaEvidence;
   /** Append-only human review history for the final distribution export. */
