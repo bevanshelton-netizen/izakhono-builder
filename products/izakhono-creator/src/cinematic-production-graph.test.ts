@@ -151,8 +151,8 @@ const missingFastStartQa: CinematicProduction = {
 };
 if (buildProductionManifest(missingFastStartQa).summary.readyForDistribution) throw new Error('Facebook QA without fast-start verification must not unlock distribution');
 const duplicateQaCheck: CinematicProduction = {
-  ...qaVerifiedDistribution,
-  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: [...asset.mediaQa!.checks, asset.mediaQa!.checks[0]] } } : asset),
+  ...humanReviewedDistribution,
+  assets: humanReviewedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: [...asset.mediaQa!.checks, asset.mediaQa!.checks[0]] } } : asset),
 };
 if (buildProductionManifest(duplicateQaCheck).summary.readyForDistribution) throw new Error('Duplicate QA check IDs must not unlock distribution');
 const unauditedQaTimestamp: CinematicProduction = {
