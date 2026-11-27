@@ -68,8 +68,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     const maxBytes = 100 * 1024 * 1024;
     if (!Number.isSafeInteger(declaredLength) || declaredLength < 1 || declaredLength > maxBytes) return response({ error: 'Source media must declare a content length between 1 byte and 100 MB.' }, 413);
     const filenameRaw = request.headers.get('x-creator-filename') || 'source-media';
-    const filename = filenameRaw.split('/').join('_').split(String.fromCharCode(92)).join('_').replace(/[\r
-\0]/g, '_').trim().slice(0, 180);
+    const filename = filenameRaw.split('/').join('_').split(String.fromCharCode(92)).join('_').replace(/[\r\n\0]/g, '_').trim().slice(0, 180);
     const receivedBy = request.headers.get('x-creator-uploader-id')?.trim() || '';
     const licence = request.headers.get('x-creator-licence')?.trim() || '';
     const consentStatus = request.headers.get('x-creator-consent-status');
@@ -443,7 +442,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   }
 
 
-  const sourceRightsReviewRoute = url.pathname.match(/^\\/api\\/cinematic\\/projects\\/([^/]+)\\/assets\\/([^/]+)\\/rights-review$/);
+  const sourceRightsReviewRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/rights-review$/);
   if (sourceRightsReviewRoute) {
     if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
     const id = decodeURIComponent(sourceRightsReviewRoute[1]);
