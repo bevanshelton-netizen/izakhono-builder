@@ -27,8 +27,9 @@ export async function resolveOriginalSourceImage(
     || !asset.sourceEvidence || !asset.storageKey
     || asset.storageKey !== `projects/${projectId}/source/${asset.id}`
     || !asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)
+    || typeof asset.sourceEvidence.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(asset.sourceEvidence.sha256)
     || asset.sourceEvidence.sha256.toLowerCase() !== asset.contentHash.toLowerCase()
-    || asset.sourceEvidence.mimeType !== asset.mimeType
+    || typeof asset.sourceEvidence.mimeType !== 'string' || asset.sourceEvidence.mimeType !== asset.mimeType
     || !hasVerifiedSourceRights(asset)) {
     throw new Error('Original source image is not eligible: completed storage, matching provenance and latest verified rights evidence are required.');
   }
