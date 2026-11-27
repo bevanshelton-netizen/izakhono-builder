@@ -141,6 +141,28 @@ async function run() {
     body: JSON.stringify({ evidence: rightsReviewEvidence }),
   }), sourceEnv);
   assert.equal(rejectedDuplicateRightsReview?.status, 400, 'duplicate rights-review IDs are rejected');
+  const rejectedRightsReview = {
+    ...rightsReviewEvidence,
+    reviewId: 'rights-review-2',
+    decision: 'rejected' as const,
+    basis: 'The supplied declaration did not establish sufficient rights for production use.',
+  };
+  const rejectedRightsResponse = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ evidence: rejectedRightsReview }),
+  }), sourceEnv);
+  assert.equal(rejectedRightsResponse?.status, 200, 'a subsequent rejection is retained rather than overwriting the earlier decision');
+  const afterRejection = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
+  assert.equal(buildProductionManifest(afterRejection).entries.find(entry => entry.id === sourcePayload.asset.id)?.state, 'missing', 'latest rejected rights decision blocks source readiness despite an earlier verification');
+  const wrongHashReview = { ...rightsReviewEvidence, reviewId: 'rights-review-wrong-hash', assetContentHash: 'f'.repeat(64) };
+  const wrongHashResponse = await handleCinematicApi(new Request(`https://creator.example/api/cinematic/projects/qa-project/assets/${sourcePayload.asset.id}/rights-review`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ evidence: wrongHashReview }),
+  }), sourceEnv);
+  assert.equal(wrongHashResponse?.status, 400, 'rights decisions for different source bytes are rejected');
+
 
   const sourceRightsReviewForgery = {
     ...afterRightsReview,
