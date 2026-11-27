@@ -14,6 +14,7 @@ import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
+import { topicPdfRequestRoute } from './topic-pdf-request-api';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -1327,6 +1328,9 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const topicPdfRequests = await topicPdfRequestRoute(req, env, url);
+    if (topicPdfRequests) return topicPdfRequests;
 
     if ((url.pathname === '/jarvis' || url.pathname === '/jarvis/') && req.method === 'GET') {
       const page = new URL(req.url);
