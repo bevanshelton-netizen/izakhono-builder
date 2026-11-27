@@ -68,7 +68,8 @@ A generation job is not itself a saleable product. Only an approved publication 
 - Research and model calls must go through the configured IZAKHONO-owned AI gateway/provider adapter. No provider key is hard-coded and no direct third-party subscription is assumed.
 - PDF rendering reuses the existing ReportLab renderer after the manuscript passes review.
 - Generated PDFs should be stored in private object storage; delivery uses short-lived, authorized links.
-- Customer accounts, request quotas, abuse controls, payment and fulfilment are separate capabilities with explicit security review.
+- Customer requests now have a Worker route using the existing customer-session resolver, per-customer hourly quota, request-size limits, ownership-scoped status lookup, D1 audit events and duplicate-request fingerprinting. The route is fail-closed unless `TOPIC_PDF_REQUESTS_ENABLED=true` is configured server-side. The route does not itself create accounts or issue sessions.
+- Bot protection, IP-level abuse controls, payment and fulfilment remain separate capabilities with explicit security review.
 - No service-role key, provider credential or private storage credential may reach the browser.
 - All externally supplied content is untrusted input; generated content is also untrusted until reviewed.
 
@@ -94,8 +95,8 @@ Do not display “ready” merely because text generation completed. Show the jo
 
 ## Launch gates
 
-1. Secure customer identity and ownership checks.
-2. Public endpoint rate limits, bot protection, abuse monitoring and request quotas.
+1. Customer identity and ownership checks are implemented in the request adapter using existing active customer sessions; full end-to-end sign-in/session issuance and customer UX still need verification.
+2. A per-customer hourly quota and request-size limits are implemented. Bot protection, IP-level rate limits and abuse monitoring remain launch gates.
 3. Provider routing, budget limits, timeout/retry/idempotency controls and audit logs.
 4. Research adapter with source-quality scoring and citation persistence.
 5. Evidence-to-claim validation and stale-source detection.
@@ -108,4 +109,4 @@ Do not display “ready” merely because text generation completed. Show the jo
 
 ## Implementation status
 
-The deterministic request/plan/risk/release-gate core is implemented and unit tested. D1 migration is prepared. Live AI research, text generation, PDF job execution, public customer API, authentication, payments and delivery remain separate implementation stages and must not be represented as operational until integrated and tested.
+The deterministic request/plan/risk/release-gate core is implemented and unit tested. An authenticated customer request/status API adapter is implemented and wired into the Worker; it uses existing customer bearer sessions, ownership-scoped reads, a per-customer hourly quota, bounded request bodies, duplicate fingerprints and audit events. It is disabled by default behind TOPIC_PDF_REQUESTS_ENABLED and must not be activated until the D1 migration is applied and the customer session lifecycle is verified end to end. The D1 migration is prepared but not applied. Live AI research, text generation, background job execution, customer-facing request UI, bot/IP abuse controls, PDF job execution, payments and delivery remain unimplemented.
