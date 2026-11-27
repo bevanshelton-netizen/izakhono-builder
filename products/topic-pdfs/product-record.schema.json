@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.example/schemas/topic-pdf-product-v1.json",
+  "title": "$7 Topic PDF Product",
+  "type": "object",
+  "required": [
+    "product_id",
+    "slug",
+    "title",
+    "topic",
+    "reader_problem",
+    "reader_profile",
+    "promise",
+    "scope",
+    "jurisdiction",
+    "language",
+    "sources",
+    "rights_review",
+    "editorial_review",
+    "status",
+    "version",
+    "price_target_usd"
+  ],
+  "properties": {
+    "product_id": { "type": "string", "pattern": "^TPDF-[A-Z0-9-]+$" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 5 },
+    "subtitle": { "type": "string" },
+    "topic": { "type": "string" },
+    "category": { "type": "string" },
+    "keywords": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "reader_problem": { "type": "string", "minLength": 20 },
+    "reader_profile": { "type": "string" },
+    "promise": { "type": "string", "minLength": 20 },
+    "scope": { "type": "string" },
+    "exclusions": { "type": "array", "items": { "type": "string" } },
+    "jurisdiction": { "type": "array", "items": { "type": "string" } },
+    "language": { "type": "string" },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "url", "accessed_on", "use"],
+        "properties": {
+          "title": { "type": "string" },
+          "publisher": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "published_on": { "type": "string", "format": "date" },
+          "accessed_on": { "type": "string", "format": "date" },
+          "use": { "type": "string" },
+          "rights_notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "author": { "type": "string", "default": "Bevan Shelton" },
+    "editor": { "type": "string" },
+    "specialist_reviewer": { "type": "string" },
+    "rights_review": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["pending", "passed", "blocked"] },
+        "notes": { "type": "string" },
+        "reviewed_on": { "type": "string", "format": "date" }
+      }
+    },
+    "editorial_review": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["pending", "passed", "needs-revision", "blocked"] },
+        "reviewer": { "type": "string" },
+        "reviewed_on": { "type": "string", "format": "date" },
+        "notes": { "type": "string" }
+      }
+    },
+    "status": {
+      "enum": ["idea", "scoping", "research", "draft", "review", "approved", "published", "update-needed", "withdrawn"]
+    },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "publication_date": { "type": "string", "format": "date" },
+    "next_review_date": { "type": "string", "format": "date" },
+    "pdf_file": { "type": "string" },
+    "page_count": { "type": "integer", "minimum": 1 },
+    "qa": {
+      "type": "object",
+      "properties": {
+        "rendered_pdf_inspected": { "type": "boolean" },
+        "links_checked": { "type": "boolean" },
+        "accessibility_checked": { "type": "boolean" },
+        "proofread": { "type": "boolean" },
+        "source_list_checked": { "type": "boolean" },
+        "file_integrity_checked": { "type": "boolean" }
+      }
+    },
+    "price_target_usd": { "const": 7 },
+    "actual_price": { "type": "string" },
+    "storefront_url": { "type": "string", "format": "uri" },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": false
+}
