@@ -8,12 +8,15 @@
 - PostgreSQL compatibility adapter and Node.js 22 HTTP runtime; the existing registry API handler is wired through the PostgreSQL adapter.
 - Local Compose development profile with database and application ports bound to loopback only.
 - Live PostgreSQL 17 schema/seed/API integration tests and actual container HTTP/PostgreSQL smoke test in CI.
+- Protected full-registry JSON export endpoint at `/api/export/registry.json` for the transitional D1 API; it emits a versioned allowlisted dataset including audit and agency correspondence, and does not expose runtime secrets.
 - Dry-run-first D1 JSON export → PostgreSQL importer with strict table/column allowlists, ISBN/evidence validation, dependency-ordered inserts, transactional rollback by default and explicit `--apply` commit mode.
 - Migration-tool tests covering checksum validation, unknown data rejection, missing allocation evidence, verified ISBN allocation dates and dry-run/apply transaction outcomes.
 - Initial publisher/imprint/author/application records and six SELFHELP Stories development works; no unconfirmed editions or ISBNs are invented.
 - NLSA correspondence history for 6 October, 14 October and 26 November 2026. Outgoing messages are not represented as agency acknowledgement or allocation.
 
 ## Latest verification
+
+- Latest full-registry export changes are committed on the feature branch; CI for the export endpoint, auth rejection test and documentation is pending at the time of this status update.
 
 - Commit `eaa646d341aaa464ec8c399962f71f6cf7cb7960`: all 18 reported GitHub checks completed successfully, including the ISBN registry integration suite, PostgreSQL 17 API integration, Docker image build, and actual container smoke test.
 - Commit `410ba2ec30eb9e3db7584ca2cc8b715443bac2e8`: the ISBN registry CI job passed the migration unit tests, live PostgreSQL 17 schema/API integration, live D1-to-PostgreSQL importer dry-run and commit rehearsal, runtime syntax, Docker image build and actual container smoke test. The rehearsal used a synthetic fixture in an isolated schema, proved dry-run leaves zero rows, verified explicit commit and append-only correspondence, then dropped the test schema.
