@@ -15,7 +15,7 @@ import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import { topicPdfRequestRoute } from './topic-pdf-request-api';
-import { processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
+import { processOneApprovedTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -1329,6 +1329,7 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async scheduled(_event: ScheduledEvent, env: any, _ctx: ExecutionContext): Promise<void> {
     await processOneTopicPdfJob(env);
+    await processOneApprovedTopicPdfJob(env);
   },
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
