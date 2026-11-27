@@ -13,6 +13,9 @@ interface TopicPdfWorkerEnv {
   IZAKHONO_SUPER_AI_URL?: string;
   IZAKHONO_SUPER_AI_INTERNAL_KEY?: string;
   IZAKHONO_SUPER_AI_WORKFLOW_KEY?: string;
+  TOPIC_PDF_RENDER_URL?: string;
+  TOPIC_PDF_RENDER_KEY?: string;
+  TOPIC_PDF_BUCKET?: { put(key: string, value: ArrayBuffer | Uint8Array, options?: Record<string, unknown>): Promise<unknown> };
 }
 
 type ClaimedJob = {
@@ -317,4 +320,101 @@ export async function topicPdfOwnerReviewRoute(
     specialistReviewPassed: specialist, editorialApproval: editorial, notes,
   });
   return new Response(JSON.stringify({ ok: true, request: { id: job.id, status, saleEligible: false } }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+}
+
+
+/** Render an approved manuscript into a private bucket; never publishes or emails it. */
+export async function processOneApprovedTopicPdfJob(env: TopicPdfWorkerEnv): Promise<{ processed: boolean; jobId?: string; status?: string; reason?: string }> {
+  if (env.TOPIC_PDF_PIPELINE_ENABLED !== 'true') return { processed: false, reason: 'pipeline-disabled' };
+  if (!env.TOPIC_PDF_RENDER_URL || !env.TOPIC_PDF_RENDER_KEY || !env.TOPIC_PDF_BUCKET) {
+    return { processed: false, reason: 'private-renderer-or-object-storage-not-configured' };
+  }
+  const now = new Date();
+  const lease = new Date(now.getTime() + 3 * 60_000).toISOString();
+  const job = await env.DB.prepare(
+    `UPDATE topic_pdf_generation_jobs
+     SET status='rendering',lease_until=?,render_attempt_count=render_attempt_count+1,updated_at=?
+     WHERE id=(
+       SELECT id FROM topic_pdf_generation_jobs
+       WHERE status IN ('approved','rendering')
+         AND manuscript_json IS NOT NULL
+         AND pdf_storage_key IS NULL
+         AND (next_attempt_at IS NULL OR next_attempt_at<=?)
+         AND (lease_until IS NULL OR lease_until<?)
+       ORDER BY updated_at ASC LIMIT 1
+     )
+     AND status IN ('approved','rendering')
+     RETURNING id,request_json,plan_json,manuscript_json,render_attempt_count`,
+  ).bind(lease, now.toISOString(), now.toISOString(), now.toISOString()).first<any>();
+  if (!job) return { processed: false, reason: 'approved-render-queue-empty' };
+
+  try {
+    const manuscript = JSON.parse(job.manuscript_json);
+    const endpoint = env.TOPIC_PDF_RENDER_URL.replace(/\\/+$/, '') + '/render';
+    const rendered = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer ' + env.TOPIC_PDF_RENDER_KEY,
+      },
+      body: JSON.stringify({ manuscript }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!rendered.ok) throw new Error('Private renderer returned HTTP ' + rendered.status + '.');
+    if (!(rendered.headers.get('content-type') || '').toLowerCase().includes('application/pdf')) {
+      throw new Error('Private renderer did not return application/pdf.');
+    }
+    const pdf = new Uint8Array(await rendered.arrayBuffer());
+    if (pdf.length < 1000 || pdf.length > 25 * 1024 * 1024 ||
+        new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') {
+      throw new Error('Private renderer returned an invalid or oversized PDF.');
+    }
+    const digest = await crypto.subtle.digest('SHA-256', pdf);
+    const sha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    const storageKey = 'topic-pdfs/' + job.id + '/editorial-draft-' + sha256.slice(0, 16) + '.pdf';
+    await env.TOPIC_PDF_BUCKET.put(storageKey, pdf, {
+      httpMetadata: { contentType: 'application/pdf', cacheControl: 'private, no-store' },
+      customMetadata: { jobId: job.id, status: 'editorial-draft-not-for-sale', sha256 },
+    });
+    const plan = safeObject(job.plan_json) || {};
+    const title = String(manuscript.title || 'topic-guide').slice(0, 180);
+    const slugBase = title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'topic-guide';
+    const slug = slugBase + '-' + job.id.slice(-8);
+    const publicationId = 'tpdfpub_' + crypto.randomUUID().replaceAll('-', '');
+    const specialistPassed = plan.risk?.requiresSpecialistReview === true ? 1 : 0;
+    await env.DB.prepare(
+      `INSERT INTO topic_pdf_publications
+       (id,job_id,slug,title,language,geography,version,storage_key,price_target_usd,status,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,created_at,updated_at)
+       VALUES(?,?,?,?,?,?,?, ?,7,'approved',1,1,?,?,?,?)`,
+    ).bind(
+      publicationId, job.id, slug, title,
+      String(manuscript.language || 'English'),
+      String(manuscript.geography || 'International'),
+      String(manuscript.version || '1.0'),
+      storageKey,
+      specialistPassed,
+      1,
+      new Date().toISOString(),
+      new Date().toISOString(),
+    ).run();
+    await env.DB.prepare(
+      "UPDATE topic_pdf_generation_jobs SET status='approved',pdf_storage_key=?,pdf_sha256=?,pdf_bytes=?,lease_until=NULL,last_error=NULL,updated_at=? WHERE id=?",
+    ).bind(storageKey, sha256, pdf.length, new Date().toISOString(), job.id).run();
+    await appendEvent(env, job.id, 'pdf.rendered.private', {
+      storageKey, sha256, bytes: pdf.length,
+      watermark: 'EDITORIAL DRAFT — NOT FOR SALE',
+      publicDistribution: false,
+    });
+    return { processed: true, jobId: job.id, status: 'approved' };
+  } catch (error) {
+    const message = String(error instanceof Error ? error.message : error).slice(0, 900);
+    const attempts = Number(job.render_attempt_count || 1);
+    const failed = attempts >= 3;
+    const retryAt = new Date(Date.now() + Math.min(60, 5 * attempts) * 60_000).toISOString();
+    await env.DB.prepare(
+      "UPDATE topic_pdf_generation_jobs SET status=?,lease_until=NULL,next_attempt_at=?,last_error=?,updated_at=? WHERE id=?",
+    ).bind(failed ? 'failed' : 'approved', failed ? null : retryAt, message, new Date().toISOString(), job.id).run();
+    await appendEvent(env, job.id, failed ? 'pdf.render_failed' : 'pdf.render_retry_scheduled', { attempt: attempts, error: message });
+    return { processed: true, jobId: job.id, status: failed ? 'failed' : 'approved', reason: message };
+  }
 }
