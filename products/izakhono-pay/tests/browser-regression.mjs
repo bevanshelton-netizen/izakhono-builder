@@ -129,7 +129,8 @@ try {
   } catch (error) {
     const message = await device.locator('#connectMessage').textContent().catch(() => '');
     const scriptErrors = await device.evaluate(() => JSON.stringify(window.__scriptErrors));
-    throw new Error('Merchant workspace did not open. Connect message: ' + message + '. Script errors: ' + scriptErrors + '. Browser diagnostics: ' + browserDiagnostics.join(' | '), { cause: error });
+    const failingScriptContext = await device.evaluate(() => { const scripts = [...document.scripts]; const script = scripts.find(item => item.textContent.includes('var printReceipt')) || scripts.find(item => item.textContent.trim()); if (!script) return 'No inline script element found'; const lines = script.textContent.split('\\n'); const location = window.__scriptErrors?.[0]; const line = location?.lineno || 117; return JSON.stringify({ scriptCount: scripts.length, line, sourceLine: lines[line - 1] || null, previousLine: lines[line - 2] || null, nextLine: lines[line] || null, scriptStart: script.textContent.slice(0, 120) }); });
+    throw new Error('Merchant workspace did not open. Connect message: ' + message + '. Script errors: ' + scriptErrors + '. Failing script context: ' + failingScriptContext + '. Browser diagnostics: ' + browserDiagnostics.join(' | '), { cause: error });
   }
   await device.locator('#linkTitle').fill('Browser regression payment');
   await device.locator('#linkAmount').fill('125');
