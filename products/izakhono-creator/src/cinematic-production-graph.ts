@@ -124,7 +124,7 @@ export interface SourceMediaEvidence {
   receivedAt: string;
   receivedBy: string;
   licenceDeclaration: string;
-  rightsReviewStatus: 'unverified';
+  rightsReviewStatus: 'unverified' | 'verified' | 'rejected';
   consentStatus: 'provided' | 'not_applicable' | 'unverified';
 }
 
