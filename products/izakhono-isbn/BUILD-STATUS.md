@@ -28,7 +28,8 @@
 
 ## Latest verification
 - The architecture/documentation commit `af4d83b1ba5d16606093399fa974ded9a9e6c96a` completed all 18 checks successfully, including the repository Worker build. That preview is a repository artifact, not the self-owned registry runtime.
-- The CI run for commit `c8ef320bf30b7d56e6703146648b949e9dbc24f7` exposed a dashboard syntax-check command failure before the registry test suite could run. The workflow command was corrected and adapter/runtime checks were added; the updated branch CI must complete successfully before verification can be claimed.
+- The latest ISBN registry CI job passed on commit `c4f069f2bc0f7abe5c7e5d304376ef6b6369a17e`: dashboard syntax, NODE01 lifecycle, ISBN-13 validation, D1 migration integrity, PostgreSQL adapter unit tests, PostgreSQL schema/contract checks, live PostgreSQL 17 schema/seed/API integration, runtime syntax and Docker image build all succeeded.
+- The broader repository workflow has one separate validation job still running; all other checks observed for this commit have completed successfully.
 - No live PostgreSQL server or Docker container has been started in this environment.
 
 ## Not complete / not claimed
@@ -36,7 +37,7 @@
 - No NLSA publisher prefix or publisher registration has been confirmed.
 - No self-owned production PostgreSQL instance, application runtime, DNS service or public edge has been provisioned. A local-only PostgreSQL Compose definition is provided for development; it has not been started or tested in this environment.
 - No self-hosted production deployment or production URL is claimed.
-- CI live PostgreSQL integration and container build results must pass before this branch is verified. Local deployment, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
+- The ISBN registry-specific CI acceptance suite and container image build have passed. Local deployment, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
 - NODE01 production runtime evidence and operational integration remain outstanding.
 - No hosting, hardware, bandwidth or subscription expenditure is authorised by this work.
 
