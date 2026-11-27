@@ -9,6 +9,7 @@ MIGRATIONS = [
     ROOT / "migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql",
     ROOT / "migrations/0035_topic_pdf_render_storage.sql",
     ROOT / "migrations/0036_topic_pdf_customer_auth_limits.sql",
+    ROOT / "migrations/0037_topic_pdf_customer_fulfilment.sql",
 ]
 
 
@@ -16,6 +17,7 @@ class TopicPdfMigrationTests(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
         self.db.execute("PRAGMA foreign_keys=ON")
+        self.db.execute("CREATE TABLE builder_customers (id TEXT PRIMARY KEY)")
         for migration in MIGRATIONS:
             self.db.executescript(migration.read_text(encoding="utf-8"))
 
@@ -32,6 +34,9 @@ class TopicPdfMigrationTests(unittest.TestCase):
         review_columns = {row[1] for row in self.db.execute("PRAGMA table_info(topic_pdf_review_decisions)")}
         self.assertTrue({"specialist_reviewer_name", "specialist_credentials", "specialist_reviewed_at"}.issubset(review_columns))
         self.assertIsNotNone(self.db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topic_pdf_auth_rate_limits'").fetchone())
+        entitlement_columns = {row[1] for row in self.db.execute("PRAGMA table_info(topic_pdf_customer_entitlements)")}
+        self.assertTrue({"customer_id", "publication_id", "payment_reference", "status", "purchased_at"}.issubset(entitlement_columns))
+        self.assertIsNotNone(self.db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='topic_pdf_download_events'").fetchone())
 
     def test_customer_idempotency_key_is_unique(self):
         values = ("job_1", "{}", "{}", "requested", "standard", "customer_1", "fingerprint_1", "request-key-0001")
