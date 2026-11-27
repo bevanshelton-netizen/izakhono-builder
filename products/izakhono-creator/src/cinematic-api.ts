@@ -4,6 +4,8 @@ import {
   recordMediaQaEvidence,
   recordHumanMediaReview,
   hasPassingHumanMediaReview,
+  recordSourceRightsReview,
+  hasVerifiedSourceRights,
   updateTaskWithEvidence,
   validateProductionGraph,
   type ApprovalGate,
