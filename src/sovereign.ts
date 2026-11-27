@@ -17,7 +17,7 @@ import { COMMANDS, commandStats, commandSummary, findCommand } from './commands'
 import { topicPdfRequestRoute } from './topic-pdf-request-api';
 import { topicPdfFulfilmentRoute } from './topic-pdf-fulfilment-api';
 import { topicPdfCustomerAuthRoute } from './topic-pdf-customer-auth-api';
-import { processOneApprovedTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
+import { processOneApprovedTopicPdfJob, processOneSaleEditionTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -1332,6 +1332,7 @@ export default {
   async scheduled(_event: ScheduledEvent, env: any, _ctx: ExecutionContext): Promise<void> {
     await processOneTopicPdfJob(env);
     await processOneApprovedTopicPdfJob(env);
+    await processOneSaleEditionTopicPdfJob(env);
   },
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
