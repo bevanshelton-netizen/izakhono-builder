@@ -15,7 +15,10 @@ interface TopicPdfWorkerEnv {
   IZAKHONO_SUPER_AI_WORKFLOW_KEY?: string;
   TOPIC_PDF_RENDER_URL?: string;
   TOPIC_PDF_RENDER_KEY?: string;
-  TOPIC_PDF_BUCKET?: { put(key: string, value: ArrayBuffer | Uint8Array, options?: Record<string, unknown>): Promise<unknown> };
+  TOPIC_PDF_BUCKET?: {
+    put(key: string, value: ArrayBuffer | Uint8Array, options?: Record<string, unknown>): Promise<unknown>;
+    get(key: string): Promise<{ body: ReadableStream<Uint8Array>; httpMetadata?: { contentType?: string }; size?: number } | null>;
+  };
 }
 
 type ClaimedJob = {
@@ -276,6 +279,41 @@ export async function topicPdfOwnerReviewRoute(
     ).all();
     return new Response(JSON.stringify({ ok: true, items: rows.results || [] }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   }
+  const detailMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/requests\/([a-zA-Z0-9_-]{8,80})$/);
+  if (detailMatch && req.method === 'GET') {
+    if (!(await authorize(req))) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    const job = await env.DB.prepare(
+      'SELECT id,request_json,plan_json,research_json,manuscript_json,status,risk_level,last_error,pdf_sha256,pdf_bytes,created_at,updated_at FROM topic_pdf_generation_jobs WHERE id=? LIMIT 1',
+    ).bind(detailMatch[1]).first<any>();
+    if (!job) return new Response(JSON.stringify({ ok: false, error: 'Request not found.' }), { status: 404, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    const events = await (env.DB as any).prepare(
+      'SELECT event_type,actor,detail_json,created_at FROM topic_pdf_generation_events WHERE job_id=? ORDER BY created_at ASC',
+    ).bind(detailMatch[1]).all();
+    const decisions = await (env.DB as any).prepare(
+      'SELECT reviewer_name,reviewer_role,decision,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,specialist_reviewer_name,specialist_credentials,notes,created_at FROM topic_pdf_review_decisions WHERE job_id=? ORDER BY created_at DESC',
+    ).bind(detailMatch[1]).all();
+    return new Response(JSON.stringify({ ok: true, job, events: events.results || [], reviewDecisions: decisions.results || [] }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  }
+
+  const previewMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/requests\/([a-zA-Z0-9_-]{8,80})\/preview$/);
+  if (previewMatch && req.method === 'GET') {
+    if (!(await authorize(req))) return new Response('Unauthorized', { status: 401, headers: { 'cache-control': 'no-store' } });
+    if (!env.TOPIC_PDF_BUCKET) return new Response('Private PDF storage is not configured.', { status: 503, headers: { 'cache-control': 'no-store' } });
+    const job = await env.DB.prepare('SELECT pdf_storage_key FROM topic_pdf_generation_jobs WHERE id=? LIMIT 1').bind(previewMatch[1]).first<any>();
+    if (!job?.pdf_storage_key) return new Response('Editorial PDF preview is not ready.', { status: 404, headers: { 'cache-control': 'no-store' } });
+    const object = await env.TOPIC_PDF_BUCKET.get(job.pdf_storage_key);
+    if (!object) return new Response('Editorial PDF preview was not found.', { status: 404, headers: { 'cache-control': 'no-store' } });
+    return new Response(object.body, {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'inline; filename="topic-guide-editorial-draft.pdf"',
+        'cache-control': 'private, no-store',
+        'x-content-type-options': 'nosniff',
+        'content-length': String(object.size || ''),
+      },
+    });
+  }
+
   const match = url.pathname.match(/^\/api\/owner\/topic-pdfs\/requests\/([a-zA-Z0-9_-]{8,80})\/review$/);
   if (!match || req.method !== 'POST') return null;
   if (!(await authorize(req))) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
