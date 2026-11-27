@@ -162,6 +162,7 @@ Database migrations `0032`–`0037` are prepared but have not been applied. No p
 - On-demand generation pipeline: `ON-DEMAND-GENERATION-ENGINE.md`
 - Generation request/risk/release-gate core: `src/generation-core.ts` and `src/generation-core.test.ts`
 - Authenticated customer request API adapter: `../../src/topic-pdf-request-api.ts` and guard tests: `../../src/topic-pdf-request-api.test.ts` (disabled by default; requires migration and explicit feature activation)
+- Entitlement-gated customer fulfilment API and tests: `../../src/topic-pdf-fulfilment-api.ts` and `../../src/topic-pdf-fulfilment-api.test.ts`; private library/download endpoints require a published record and an active purchase entitlement
 - D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`, private PDF metadata: `../../migrations/0035_topic_pdf_render_storage.sql`, customer-auth throttling: `../../migrations/0036_topic_pdf_customer_auth_limits.sql`, purchase entitlements and download audit: `../../migrations/0037_topic_pdf_customer_fulfilment.sql`
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
