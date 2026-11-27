@@ -1,8 +1,8 @@
 /**
  * Private publisher review application service.
  *
- * Authentication is resolved from a live FORTRESS identity session. The
- * authorization port must then make a separate resource/action decision.
+ * A production session adapter must validate a live owner-approved FORTRESS
+ * identity session. The authorization port then makes a separate resource/action decision.
  * The persistence port must atomically commit case, immutable decision, audit
  * evidence and idempotency receipt. No production adapters are wired here.
  */
@@ -125,11 +125,11 @@ export class ReviewServiceError extends Error {
   constructor(readonly code: ReviewServiceErrorCode, message = code) { super(message); this.name = 'ReviewServiceError'; }
 }
 const permissionByAction: Record<ReviewDecisionKind, string> = {
-  approve: 'publishing:review:approve',
-  reject: 'publishing:review:reject',
-  request_evidence: 'publishing:review:request_evidence',
-  return_to_queue: 'publishing:review:assign',
-  close: 'publishing:review:close',
+  approve: 'publishing.review.approve',
+  reject: 'publishing.review.reject',
+  request_evidence: 'publishing.review.request_evidence',
+  return_to_queue: 'publishing.review.assign',
+  close: 'publishing.review.close',
 };
 const targetByAction: Record<ReviewDecisionKind, ReviewCaseStatus> = {
   approve: 'approved', reject: 'rejected', request_evidence: 'awaiting_evidence',
@@ -160,7 +160,7 @@ export class PublisherReviewService {
     const session = await this.resolveSession(sessionCredential);
     const auth = await this.ports.authorization.authorize({
       tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
-      resourceRef: `publisher-review:${caseId}`, permission: 'publishing:review:read',
+      resourceRef: `publisher-review:${caseId}`, permission: 'publishing.review.read',
       purpose: 'publisher_review',
     });
     if (!auth.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
@@ -255,7 +255,6 @@ export class PublisherReviewService {
     const now = this.clock();
     const caseErrors = validateReviewCase(current, now);
     if (caseErrors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', caseErrors.join(','));
-    const requestFingerprint = await fingerprint(command, session);
     const action: ReviewAction = {
       from: current.status, to: targetByAction[command.action], action: command.action,
       actor: this.toReviewAuthorization(authorization), occurredAt: now,
