@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { processOneApprovedTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
+import { processOneApprovedTopicPdfJob, processOneSaleEditionTopicPdfJob, processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 
 class FakeDB {
   calls = 0;
@@ -38,6 +38,11 @@ async function main() {
   const noRenderer = await processOneApprovedTopicPdfJob({ DB: db, TOPIC_PDF_PIPELINE_ENABLED: 'true' });
   assert.deepEqual(noRenderer, { processed: false, reason: 'private-renderer-or-object-storage-not-configured' });
 
+  const saleDisabled = await processOneSaleEditionTopicPdfJob({ DB: db, TOPIC_PDF_PIPELINE_ENABLED: 'true', TOPIC_PDF_SALE_RELEASE_ENABLED: 'false' });
+  assert.deepEqual(saleDisabled, { processed: false, reason: 'sale-edition-release-disabled' });
+  const saleNotConfigured = await processOneSaleEditionTopicPdfJob({ DB: db, TOPIC_PDF_PIPELINE_ENABLED: 'true', TOPIC_PDF_SALE_RELEASE_ENABLED: 'true' });
+  assert.deepEqual(saleNotConfigured, { processed: false, reason: 'separate-release-renderer-or-private-storage-not-configured' });
+
   const url = new URL('https://example.test/api/owner/topic-pdfs/review-queue');
   const unauthorized = await topicPdfOwnerReviewRoute(
     new Request(url),
@@ -46,6 +51,15 @@ async function main() {
     async () => false,
   );
   assert.equal(unauthorized?.status, 401);
+
+  const publishUrl = new URL('https://example.test/api/owner/topic-pdfs/publications/pub_12345678/publish');
+  const noSaleCandidate = await topicPdfOwnerReviewRoute(
+    new Request(publishUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmPublication: true }) }),
+    { DB: db, TOPIC_PDF_BUCKET: { async get() { return null; } } },
+    publishUrl,
+    async () => true,
+  );
+  assert.equal(noSaleCandidate?.status, 409);
 
   const unrelated = await topicPdfOwnerReviewRoute(
     new Request('https://example.test/other'),
