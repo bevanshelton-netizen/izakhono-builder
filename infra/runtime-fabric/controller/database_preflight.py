@@ -19,7 +19,7 @@ REQUIRED_COLUMNS = {
         "deployment_id", "workload", "state", "metadata", "tenant_id",
         "application_id", "environment_id", "updated_at",
     },
-    "fortress_audit_events": {
+    "izakhono_deploy_audit_events": {
         "event_id", "job_id", "tenant_id", "operation_id", "event_type",
         "actor", "adapter", "state", "observed_at", "data",
     },
@@ -47,7 +47,7 @@ def inspect_runtime_database(
                        current_setting('server_version'),
                        current_setting('transaction_read_only'),
                        to_regclass('izakhono_runtime_deployments')::text,
-                       to_regclass('fortress_audit_events')::text,
+                       to_regclass('izakhono_deploy_audit_events')::text,
                        to_regclass('izakhono_runtime_schema_migrations')::text
                 """
             )
@@ -63,7 +63,7 @@ def inspect_runtime_database(
                   JOIN pg_attribute a ON a.attrelid = c.oid
                  WHERE c.oid IN (
                      to_regclass('izakhono_runtime_deployments'),
-                     to_regclass('fortress_audit_events'),
+                     to_regclass('izakhono_deploy_audit_events'),
                      to_regclass('izakhono_runtime_schema_migrations')
                  )
                    AND a.attnum > 0
@@ -99,7 +99,7 @@ def inspect_runtime_database(
                            EXISTS (
                                SELECT 1 FROM pg_trigger t
                                 WHERE t.tgrelid = audit.oid
-                                  AND t.tgname = 'fortress_audit_events_no_mutation'
+                                  AND t.tgname = 'izakhono_deploy_audit_events_no_mutation'
                                   AND t.tgenabled IN ('O', 'A')
                                   AND NOT t.tgisinternal
                            )
@@ -107,7 +107,7 @@ def inspect_runtime_database(
                       CROSS JOIN pg_class audit
                       CROSS JOIN pg_class ledger
                      WHERE runtime.oid = to_regclass('izakhono_runtime_deployments')
-                       AND audit.oid = to_regclass('fortress_audit_events')
+                       AND audit.oid = to_regclass('izakhono_deploy_audit_events')
                        AND ledger.oid = to_regclass('izakhono_runtime_schema_migrations')
                     """
                 )
@@ -126,10 +126,10 @@ def inspect_runtime_database(
         )
         jsonb_contract = (
             column_types.get(("izakhono_runtime_deployments", "metadata")) == "jsonb"
-            and column_types.get(("fortress_audit_events", "data")) == "jsonb"
+            and column_types.get(("izakhono_deploy_audit_events", "data")) == "jsonb"
         )
         runtime_owner = role_info[0] if role_info else None
-        fortress_owner = role_info[1] if role_info else None
+        deploy_audit_owner = role_info[1] if role_info else None
         migration_owner = role_info[2] if role_info else None
         runtime_permissions = role_info[3:6] if role_info else (False, False, False)
         audit_permissions = role_info[6:11] if role_info else (False, False, False, False, False)
@@ -148,7 +148,7 @@ def inspect_runtime_database(
             "required_columns_present": required_columns_present,
             "jsonb_contract": jsonb_contract,
             "same_database_connection": bool(runtime_reg and fortress_reg and migration_reg),
-            "runtime_role_is_not_table_owner": bool(role_info and database_role not in (runtime_owner, fortress_owner, migration_owner)),
+            "runtime_role_is_not_table_owner": bool(role_info and database_role not in (runtime_owner, deploy_audit_owner, migration_owner)),
             "runtime_deployment_select_insert_update": all(runtime_permissions),
             "fortress_audit_select_insert_only": (
                 audit_permissions[0] and audit_permissions[1] and not any(audit_permissions[2:])
@@ -183,7 +183,7 @@ def inspect_runtime_database(
             },
             "table_owners": {
                 "runtime_deployments": runtime_owner,
-                "fortress_audit_events": fortress_owner,
+                "izakhono_deploy_audit_events": deploy_audit_owner,
                 "izakhono_runtime_schema_migrations": migration_owner,
             },
             "tables": {
@@ -192,10 +192,10 @@ def inspect_runtime_database(
                     "schema": table_schemas.get("izakhono_runtime_deployments"),
                     "columns": sorted(columns["izakhono_runtime_deployments"]),
                 },
-                "fortress_audit_events": {
+                "izakhono_deploy_audit_events": {
                     "resolved_name": fortress_reg,
-                    "schema": table_schemas.get("fortress_audit_events"),
-                    "columns": sorted(columns["fortress_audit_events"]),
+                    "schema": table_schemas.get("izakhono_deploy_audit_events"),
+                    "columns": sorted(columns["izakhono_deploy_audit_events"]),
                 },
             },
             "checks": checks,
