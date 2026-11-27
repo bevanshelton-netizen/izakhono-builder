@@ -8,6 +8,9 @@ on:
       - "src/topic-pdf-request-api.test.ts"
       - "src/topic-pdf-customer-auth-api.ts"
       - "src/topic-pdf-customer-auth-api.test.ts"
+      - "src/topic-pdf-fulfilment-api.ts"
+      - "src/topic-pdf-fulfilment-api.test.ts"
+      - "migrations/0037_topic_pdf_customer_fulfilment.sql"
       - "migrations/0036_topic_pdf_customer_auth_limits.sql"
       - "public/topic-guides/**"
       - "src/topic-pdf-generation-worker.ts"
@@ -51,10 +54,12 @@ jobs:
         run: npx --yes tsx@4.20.3 src/topic-pdf-request-api.test.ts
       - name: Test verified customer authentication guards
         run: npx --yes tsx@4.20.3 src/topic-pdf-customer-auth-api.test.ts
+      - name: Test entitlement-gated customer PDF fulfilment
+        run: npx --yes tsx@4.20.3 src/topic-pdf-fulfilment-api.test.ts
       - name: Test on-demand generation worker and review guards
         run: npx --yes tsx@4.20.3 src/topic-pdf-generation-worker.test.ts
       - name: Typecheck topic PDF request and worker services
-        run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/topic-pdf-request-api.ts src/topic-pdf-customer-auth-api.ts src/topic-pdf-generation-worker.ts
+        run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/topic-pdf-request-api.ts src/topic-pdf-customer-auth-api.ts src/topic-pdf-fulfilment-api.ts src/topic-pdf-generation-worker.ts
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
