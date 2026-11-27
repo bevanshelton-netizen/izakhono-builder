@@ -15,6 +15,7 @@ import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import { topicPdfRequestRoute } from './topic-pdf-request-api';
+import { processOneTopicPdfJob, topicPdfOwnerReviewRoute } from './topic-pdf-generation-worker';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -1326,11 +1327,16 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 }
 
 export default {
+  async scheduled(_event: ScheduledEvent, env: any, _ctx: ExecutionContext): Promise<void> {
+    await processOneTopicPdfJob(env);
+  },
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
 
     const topicPdfRequests = await topicPdfRequestRoute(req, env, url);
     if (topicPdfRequests) return topicPdfRequests;
+    const topicPdfReview = await topicPdfOwnerReviewRoute(req, env, url, request => ownerAuthorized(request, env));
+    if (topicPdfReview) return topicPdfReview;
 
     if ((url.pathname === '/jarvis' || url.pathname === '/jarvis/') && req.method === 'GET') {
       const page = new URL(req.url);
