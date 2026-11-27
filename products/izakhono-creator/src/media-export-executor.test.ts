@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { executeMediaExport, exportAndStore, type MediaExportRuntime } from './media-export-executor';
 
+async function run() {
+
 function box(type: string, payload: number[] = []): number[] {
   const size = payload.length + 8;
   return [(size >>> 24) & 255, (size >>> 16) & 255, (size >>> 8) & 255, size & 255, ...Array.from(type).map(char => char.charCodeAt(0)), ...payload];
@@ -74,3 +76,6 @@ assert.equal(slowStart.mediaQa.checks.find(check => check.id === 'mp4-fast-start
 
 outputBytes = validBytes;
 console.log('IZAKHONO Creator executable FFmpeg export, hash binding and storage gate: PASS');
+}
+
+run().catch(error => { console.error(error); process.exitCode = 1; });
