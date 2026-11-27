@@ -21,6 +21,7 @@ export async function resolveOriginalSourceImage(
   projectId: string,
   asset: ProductionAsset,
   readPrivateObject: PrivateSourceReader,
+  target?: { shotId: string; sceneId: string },
   maxBytes = 12_000_000,
 ): Promise<ResolvedOriginalSourceImage> {
   if (asset.role !== 'source' || asset.kind !== 'image' || asset.status !== 'completed'
@@ -32,6 +33,10 @@ export async function resolveOriginalSourceImage(
     || typeof asset.sourceEvidence.mimeType !== 'string' || asset.sourceEvidence.mimeType !== asset.mimeType
     || !hasVerifiedSourceRights(asset)) {
     throw new Error('Original source image is not eligible: completed storage, matching provenance and latest verified rights evidence are required.');
+  }
+  if (target && ((asset.shotId && asset.shotId !== target.shotId)
+    || (asset.sceneId && asset.sceneId !== target.sceneId))) {
+    throw new Error('Original source image is assigned to a different shot or scene and cannot be reused for this shot.');
   }
   const mimeType = asset.mimeType;
   if (mimeType !== 'image/png' && mimeType !== 'image/jpeg' && mimeType !== 'image/webp') {
