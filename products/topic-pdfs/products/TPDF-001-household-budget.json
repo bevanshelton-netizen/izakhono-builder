@@ -57,6 +57,14 @@
       "accessed_on": "2026-11-27",
       "use": "Consumer support and debt-related escalation information; confirm current contact details.",
       "rights_notes": "Use as reference; do not reproduce the document."
+    },
+    {
+      "title": "Budgeting",
+      "publisher": "First National Bank, South Africa",
+      "url": "https://www.fnb.co.za/education/budgeting.html",
+      "accessed_on": "2026-11-27",
+      "use": "Secondary consumer education reference for budgeting categories and practical budget planning; exact content and current availability must be verified before release.",
+      "rights_notes": "No permission to reproduce text, graphics or page design is recorded; use factual reference only."
     }
   ],
   "author": "Bevan Shelton",
@@ -84,5 +92,5 @@
   },
   "price_target_usd": 7,
   "actual_price": "",
-  "notes": "Draft stored at drafts/TPDF-001-household-budget.md. Not approved for sale; no storefront or payment setup."
+  "notes": "Draft stored at drafts/TPDF-001-household-budget.md. Not approved for sale; no storefront or payment setup. Internal evidence ledger: products/TPDF-001-source-ledger.json; all claims and sources remain pending independent verification."
 }
