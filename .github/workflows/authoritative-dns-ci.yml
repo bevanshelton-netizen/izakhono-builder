@@ -57,5 +57,7 @@ jobs:
           grep -Fq 'authoritative-dns:5.1.5' infra/authoritative-dns/primary.compose.yaml
           grep -Fq 'authoritative-dns:5.1.5' infra/authoritative-dns/secondary.compose.yaml
           grep -Fq "VALUES('\$PRIMARY_PUBLIC_IPV4','\$PRIMARY_NS_FQDN','izakhono');" infra/authoritative-dns/entrypoint.sh
-          grep -Fq 'PRIMARY_NS_FQDN contains invalid characters' infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'PRIMARY_NS_FQDN must be a valid DNS hostname' infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'SECONDARY_NS_FQDN must be a valid DNS hostname' infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'SECONDARY_PUBLIC_IPV4 must be a valid IPv4 address' infra/authoritative-dns/entrypoint.sh
           grep -Fq 'PRIMARY_PUBLIC_IPV4 must be a valid IPv4 address' infra/authoritative-dns/entrypoint.sh
