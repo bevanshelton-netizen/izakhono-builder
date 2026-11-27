@@ -186,3 +186,24 @@ The worker's object-store adapter and Creator API credential are injected by the
 A machine-QA-passed export is not automatically approved for distribution. The append-only `humanReviews` history on a distribution asset records a named reviewer, timestamp, review ID, Facebook profile and the exact export SHA-256. The required checks cover full-file playback integrity, dialogue/music/effects clarity and sync, captions and mobile safe areas, continuity/titles/credits, and playback after a private staging upload. Each check carries a reviewer finding.
 
 The authenticated endpoint `POST /api/cinematic/projects/:projectId/assets/:assetId/human-review` records this evidence. Generic graph PATCH cannot create, alter or remove human review history. Distribution approval is rejected unless the project has a completed stored distribution export with matching passing machine QA and a passing latest human review bound to the same bytes. A failed later review blocks distribution again; a subsequent passing review is appended rather than overwriting history.
+
+
+### Original source-media ingestion
+
+The authenticated cinematic API accepts original source footage, audio and reference images at:
+
+`POST /api/cinematic/projects/:projectId/source-media`
+
+Send the raw binary request body with:
+- `content-type`: supported image, video or audio MIME type
+- `content-length`: required, 1 byte to 100 MB
+- `x-creator-filename`: original filename (stored as provenance metadata, never used as a storage path)
+- `x-creator-uploader-id`: authenticated operator identity
+- `x-creator-licence`: explicit licence/rights declaration
+- `x-creator-consent-status`: `provided`, `not_applicable` or `unverified`
+- `x-creator-consent-record-ids`: required comma-separated record IDs when consent status is `provided`
+- `x-creator-shot-id`: optional existing shot ID to associate the original with a shot
+
+The route computes SHA-256 server-side, stores the original in the private Creator R2 binding under a server-generated project-scoped key, and appends a source asset plus hash-bound intake evidence to the canonical production graph. It does not return a public media URL. Source evidence is immutable through the general graph PATCH route. Missing or unverified consent is recorded as such; the system does not infer permission from an upload. The endpoint requires the existing server-side Creator secret and D1 plus private R2 storage.
+
+The request limit is currently 100 MB and content type is checked against an explicit allowlist. A failed graph save after object upload can leave a private orphan object; the API reports the failure and requires operator reconciliation before retry. No production bucket or source files are configured by this code change.
