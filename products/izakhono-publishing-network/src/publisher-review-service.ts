@@ -136,7 +136,7 @@ const nonBlank = (value: string): boolean => typeof value === 'string' && value.
 function sameTenant(a: ReviewTenantScope, b: ReviewTenantScope): boolean {
   return a.platformId === b.platformId && a.entityId === b.entityId;
 }
-async function fingerprint(command: TransitionReviewCommand, session: VerifiedReviewSession): Promise<string> {
+async function fingerprint(command: Pick<TransitionReviewCommand, 'sessionCredential' | 'caseId' | 'reasonCode' | 'reviewerNoteRef' | 'expectedVersion' | 'idempotencyKey'> & { action?: ReviewDecisionKind }, session: VerifiedReviewSession, requestPayload: Record<string, string> = {}): Promise<string> {
   const canonical = JSON.stringify({
     tenant: { platformId: session.tenant.platformId, entityId: session.tenant.entityId },
     principalRef: session.principalRef,
@@ -146,6 +146,8 @@ async function fingerprint(command: TransitionReviewCommand, session: VerifiedRe
     reviewerNoteRef: command.reviewerNoteRef,
     expectedVersion: command.expectedVersion,
     idempotencyKey: command.idempotencyKey,
+    action: command.action ?? 'request_evidence',
+    requestPayload,
   });
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -170,7 +172,8 @@ export class PublisherReviewService {
   async requestEvidence(command: RequestEvidenceCommand): Promise<ReviewCommitResult> {
     if (!nonBlank(command.idempotencyKey) || command.idempotencyKey.length > 200) throw new ReviewServiceError('REVIEW_IDEMPOTENCY_KEY_REQUIRED');
     if (!nonBlank(command.caseId) || !nonBlank(command.correlationRef) || !nonBlank(command.requestId)
-      || !Number.isFinite(Date.parse(command.dueAt)) || !command.reasonCode.startsWith('EVIDENCE_')) {
+      || !Number.isFinite(Date.parse(command.dueAt)) || !command.reasonCode.startsWith('EVIDENCE_')
+      || (command.reviewerNoteRef !== null && !/^ref:[A-Za-z0-9._:/-]{3,200}$/.test(command.reviewerNoteRef))) {
       throw new ReviewServiceError('REVIEW_EVIDENCE_REQUEST_INVALID');
     }
     const session = await this.resolveSession(command.sessionCredential);
@@ -200,12 +203,10 @@ export class PublisherReviewService {
       ...current, status: 'awaiting_evidence', evidenceRequests: [...current.evidenceRequests, request],
       updatedAt: now, version: current.version + 1,
     };
-    const requestFingerprint = await fingerprint({
-      sessionCredential: command.sessionCredential, caseId: command.caseId, action: 'request_evidence',
-      reasonCode: command.reasonCode, reviewerNoteRef: command.reviewerNoteRef,
-      expectedVersion: command.expectedVersion, idempotencyKey: command.idempotencyKey,
-    }, session);
     if (command.expectedVersion !== current.version) throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
+    const requestFingerprint = await fingerprint(command, session, {
+      requestId: command.requestId, kind: command.kind, dueAt: command.dueAt,
+    });
     const decision: Omit<ImmutableReviewDecision, 'auditEventRef'> = {
       decisionId: `decision:${requestFingerprint.slice(0, 32)}`, caseId: current.caseId,
       tenant: session.tenant, kind: 'request_evidence', actorPrincipalRef: session.principalRef,
