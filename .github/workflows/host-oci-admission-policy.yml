@@ -1,0 +1,34 @@
+name: HOST OCI workload admission policy
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-host/runtime/provisioner/oci-workload-policy.mjs'
+      - 'products/izakhono-host/runtime/provisioner/oci-workload-policy.test.mjs'
+      - '.github/workflows/host-oci-admission-policy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-host/runtime/provisioner/oci-workload-policy.mjs'
+      - 'products/izakhono-host/runtime/provisioner/oci-workload-policy.test.mjs'
+      - '.github/workflows/host-oci-admission-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admission-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Syntax-check policy
+        run: node --check products/izakhono-host/runtime/provisioner/oci-workload-policy.mjs
+      - name: Run admission security tests
+        run: node --test products/izakhono-host/runtime/provisioner/oci-workload-policy.test.mjs
