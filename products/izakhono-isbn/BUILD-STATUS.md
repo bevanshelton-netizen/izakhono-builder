@@ -1,47 +1,45 @@
 # Build status — IZAKHONO ISBN & Publishing Registry v1
 
 ## Delivered in this branch
-- Cloudflare Worker API foundation.
-- D1 schema for publisher, imprint, author, work, edition, ISBN, application, append-only agency correspondence history and audit records; database triggers reject updates and deletions.
+- Publishing registry API and dashboard foundation with protected management endpoints.
+- D1 prototype schema and migrations for publisher, imprint, author, work, edition, ISBN, application, append-only agency correspondence and audit records.
 - Preserves the 6 October and 14 October 2026 NLSA application emails and the 26 November 2026 escalation as dated correspondence records; no reply or ISBN allocation is implied.
-- Seeds the six first-season SELFHELP Stories titles as development works only; does not invent edition formats, author/pen-name assignments or ISBNs.
+- Seeds six first-season SELFHELP Stories titles as development works only; no unconfirmed formats, author assignments or ISBNs are invented.
 - ISBN-13 checksum validation and digits-only canonicalisation; no ISBN generation/allocation.
-- Database-level SQLite triggers enforce ISBN-13 prefix/checksum, canonical storage, allocation authority/evidence and allocation dates before a record can be marked verified.
-- Migration integration test covers valid 978/979 numbers and rejects bad checksums, noncanonical formatting, missing evidence/dates and invalid updates.
-- ISBN validation regression tests and a repository test command.
-- Edition-level catalogue endpoint and corrected multi-edition dashboard rendering.
-- Removed caller-controlled audit actor and suppressed raw internal exception details in API responses.
-- Bearer-token protection for management endpoints.
-- CSV catalogue export.
-- Private dashboard UI with work, edition, author/pen-name, contributor, agency application, agency-allocated ISBN and legal-deposit management forms.
-- Audited PATCH updates for application and publishing metadata.
-- Protected append-only agency correspondence API and dashboard form for incoming/outgoing messages, evidence references and dated summaries; no edit/delete endpoint.
-- Edition-level catalogue showing the ISBN verification state.
-- Automated GitHub Actions test workflow for ISBN validation and fail-closed API checks.
-- Operating boundary and deployment runbook.
-- Explicitly documented NODE01 as an IZAKHONO software node, not a physical server; no physical-server enrolment is required just to define or instantiate its software identity.
+- Database-level SQLite guards for ISBN checksum, canonical storage, allocation authority/evidence and allocation dates.
+- API regression tests, SQLite migration integrity tests and dashboard syntax checks.
+- Edition-level catalogue, contributor links, agency correspondence, legal deposit tracking and CSV export.
+- Bearer-token protection, audit logging and fail-closed behaviour.
+- NODE01 is documented as an IZAKHONO software node, not a physical server.
 
-## Latest verification (26 November 2026)
-- All 18 GitHub check-runs on the latest observed commit completed successfully, including ISBN Registry tests, NODE01 software identity enforcement, repository validation and Cloudflare Worker build.
-- The registry-specific Worker/D1 runtime is still not deployed; the successful Cloudflare check is a repository build/preview artifact, not proof of a provisioned registry database or production service.
+## IZAKHONO Edge / PostgreSQL portability work
+- Accepted architecture decision: `products/izakhono-platform/IZAKHONO-EDGE-ARCHITECTURE-ADR-0001.md`.
+- Added PostgreSQL target schema: `postgresql/0001_initial_schema.sql`.
+- Added idempotent initial publisher, imprint, author, work, edition, application, first-season catalogue and NLSA correspondence seed: `postgresql/0002_seed_initial_catalogue.sql`.
+- Added PostgreSQL database-level ISBN-13 checksum guard and immutable agency-correspondence trigger.
+- Added provider-neutral TypeScript persistence contract: `src/storage/contract.ts`.
+- Added CI checks for the PostgreSQL schema and provider-neutral contract.
+- These are schema and contract foundations only. The PostgreSQL driver/adapter is not implemented, API routes are not wired to it, and no PostgreSQL instance has been provisioned.
 
-## Not yet complete / not claimed
+## Latest verification
+- The architecture/documentation commit `af4d83b1ba5d16606093399fa974ded9a9e6c96a` completed all 18 checks successfully, including the repository Worker build. That preview is a repository artifact, not the self-owned registry runtime.
+- New PostgreSQL portability files and CI checks are committed after that SHA; their CI run is pending and must pass before this latest work is considered verified.
+
+## Not complete / not claimed
 - No official ISBN has been allocated or verified.
 - No NLSA publisher prefix or publisher registration has been confirmed.
-- No remote D1 database has been provisioned.
-- No production deployment or public URL exists.
-- Barcode artwork generation is deferred until a real ISBN is verified.
-- Cloudflare Access policy and backup/restore acceptance remain production gates.
-- NODE01 software-node runtime evidence and its operational integration with the registry have not yet been demonstrated in the production substrate.
+- No self-owned PostgreSQL instance, application runtime, DNS service or public edge has been provisioned.
+- No self-hosted production deployment or production URL is claimed.
+- PostgreSQL API adapter, integration tests, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
+- NODE01 production runtime evidence and operational integration remain outstanding.
+- No hosting, hardware, bandwidth or subscription expenditure is authorised by this work.
 
 ## Release gates
-1. Confirm NLSA publisher registration and agency allocation procedure.
-2. Confirm an authorised, zero-cost/free-tier deployment path or obtain explicit cost approval before provisioning any infrastructure.
-3. Connect the authorised Cloudflare account through the secure integration flow.
-4. Provision D1 only after the cost and account checks are satisfied.
-5. Set Worker secret; never commit credentials.
-6. Configure Cloudflare Access for the management interface.
-7. Apply migrations and run API/security tests.
-8. Verify backups and restore.
-9. Validate NODE01 runtime evidence and the registry integration.
-10. Deploy to a private preview, then obtain acceptance before production promotion.
+1. Implement the PostgreSQL adapter and wire the registry API to the provider-neutral contract.
+2. Run live PostgreSQL schema, API, ISBN integrity and correspondence immutability integration tests.
+3. Select and verify an execution substrate and resource budget.
+4. Configure organisation-controlled access, secret handling, monitoring and encrypted off-node backups.
+5. Demonstrate restore and rollback.
+6. Implement owned DNS/TLS/WAF/ingress and complete operational acceptance.
+7. Obtain explicit cost approval before any paid hosting, hardware, bandwidth or subscription commitment.
+8. Obtain NLSA publisher registration and record ISBNs only after authorised allocation.
