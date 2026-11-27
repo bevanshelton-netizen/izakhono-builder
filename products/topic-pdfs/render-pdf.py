@@ -79,22 +79,23 @@ def build_styles():
     }
 
 
-def page_decor(canvas, doc):
+def page_decor(canvas, doc, publication=False):
     canvas.saveState()
     page_w, page_h = A4
-    canvas.setFillColor(colors.HexColor("#a33b2f"))
-    canvas.setFont("Helvetica-Bold", 8)
-    canvas.drawCentredString(page_w / 2, page_h - 10 * mm, DRAFT_MARK)
+    if not publication:
+        canvas.setFillColor(colors.HexColor("#a33b2f"))
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.drawCentredString(page_w / 2, page_h - 10 * mm, DRAFT_MARK)
     canvas.setStrokeColor(colors.HexColor("#d5dce2"))
     canvas.line(18 * mm, 14 * mm, page_w - 18 * mm, 14 * mm)
     canvas.setFillColor(colors.HexColor("#65727e"))
     canvas.setFont("Helvetica", 8)
-    canvas.drawString(18 * mm, 9 * mm, "Bevan Shelton • Topic PDF Publishing Programme")
-    canvas.drawRightString(page_w - 18 * mm, 9 * mm, f"Proof • {doc.page}")
+    canvas.drawString(18 * mm, 9 * mm, "Bevan Shelton • Topic Guides")
+    canvas.drawRightString(page_w - 18 * mm, 9 * mm, ("Page " if publication else "Proof • ") + str(doc.page))
     canvas.restoreState()
 
 
-def render_markdown(source: Path, output: Path):
+def render_markdown(source: Path, output: Path, publication: bool = False):
     text = source.read_text(encoding="utf-8")
     lines = text.splitlines()
     styles = build_styles()
@@ -123,7 +124,7 @@ def render_markdown(source: Path, output: Path):
         Spacer(1, 4 * mm),
         Paragraph(html.escape(edition), styles["small"]),
         Spacer(1, 4 * mm),
-        Paragraph("DRAFT PROOF • NOT FOR SALE", styles["small"]),
+        Paragraph("PUBLICATION EDITION" if publication else "DRAFT PROOF • NOT FOR SALE", styles["small"]),
         PageBreak(),
     ])
 
@@ -174,20 +175,22 @@ def render_markdown(source: Path, output: Path):
         rightMargin=18 * mm, leftMargin=18 * mm,
         topMargin=18 * mm, bottomMargin=20 * mm,
         title=title, author=author,
-        subject="Editorial proof for the $7 Topic PDF Publishing Programme",
+        subject="Topic Guides publication edition" if publication else "Editorial proof for the $7 Topic PDF Publishing Programme",
     )
-    doc.build(story, onFirstPage=page_decor, onLaterPages=page_decor)
+    doc.build(story, onFirstPage=lambda canvas, doc: page_decor(canvas, doc, publication), onLaterPages=lambda canvas, doc: page_decor(canvas, doc, publication))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="Markdown manuscript")
     parser.add_argument("output", type=Path, help="Output PDF path")
+    parser.add_argument("--publication", action="store_true", help="Render an approved sale edition without draft watermark")
     args = parser.parse_args()
-    render_markdown(args.source, args.output)
+    render_markdown(args.source, args.output, publication=args.publication)
     if not args.output.exists() or args.output.stat().st_size < 1000:
         raise SystemExit("PDF generation failed or output is unexpectedly small")
-    print(f"Rendered editorial proof: {args.output} ({args.output.stat().st_size} bytes)")
+    label = "publication edition" if args.publication else "editorial proof"
+    print(f"Rendered {label}: {args.output} ({args.output.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":
