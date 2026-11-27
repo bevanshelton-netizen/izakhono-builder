@@ -176,4 +176,4 @@ Database migrations `0032`–`0037` are prepared but have not been applied. No p
 - First product record: `products/TPDF-001-household-budget.json`
 - First editorial draft: `drafts/TPDF-001-household-budget.md`
 
-The first guide is a South African editorial draft. Its rights review and editorial review are pending; it is not yet a finished PDF or approved for sale.
+The first guide is a South African editorial draft with a watermarked PDF proof. Its rights review and editorial review are pending; no non-watermarked sale edition has been released or approved for sale.
