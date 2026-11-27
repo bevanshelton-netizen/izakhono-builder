@@ -89,7 +89,7 @@ async function run() {
       async get() { return null; },
     },
   };
-  const sourceBytes = new TextEncoder().encode('mock image source bytes');
+  const sourceBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02, 0x03, 0x04]);
   const sourceResponse = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/source-media', {
     method: 'POST',
     headers: {
@@ -118,6 +118,16 @@ async function run() {
     body: JSON.stringify({ production: sourceEvidenceForgery }),
   }), sourceEnv);
   assert.equal(sourceForgeryResponse?.status, 409, 'generic graph PATCH cannot alter source intake evidence');
+  const wrongSignature = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/source-media', {
+    method: 'POST',
+    headers: {
+      'content-type': 'image/jpeg', 'content-length': String(sourceBytes.length),
+      'x-creator-filename': 'mislabelled.jpg', 'x-creator-uploader-id': 'producer-1',
+      'x-creator-licence': 'Declared source licence', 'x-creator-consent-status': 'unverified',
+      'x-creator-generation-secret': 'server-only-secret',
+    }, body: sourceBytes,
+  }), sourceEnv);
+  assert.equal(wrongSignature?.status, 415, 'source intake rejects a MIME type that does not match the file signature');
   const missingConsent = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/source-media', {
     method: 'POST',
     headers: {
