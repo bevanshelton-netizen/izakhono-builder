@@ -8,7 +8,6 @@ const pool: PgPoolLike = {
     if (sql.startsWith("SELECT")) return { rows: [{ n: 4 }], rowCount: 1 };
     return { rows: [], rowCount: 2 };
   },
-  async connect() { throw new Error("not_used"); }
 };
 const db = createPostgresD1Adapter(pool);
 const count = await db.prepare("SELECT COUNT(*) n FROM works WHERE publisher_id=? AND title=?").bind("pub-1", "A title").first<{n:number}>();
