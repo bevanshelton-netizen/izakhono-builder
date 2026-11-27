@@ -62,3 +62,5 @@ jobs:
         run: node --experimental-strip-types products/izakhono-isbn/runtime/postgres-integration.test.mjs
       - name: Check self-hosted runtime server syntax
         run: node --check products/izakhono-isbn/runtime/server.mjs
+      - name: Build self-hosted registry container image
+        run: docker build -f products/izakhono-isbn/runtime/Dockerfile -t izakhono-isbn-registry:ci .
