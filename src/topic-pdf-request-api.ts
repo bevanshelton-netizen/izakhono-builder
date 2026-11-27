@@ -1,4 +1,5 @@
 import { resolveCustomerSession } from './customer-auth';
+import { getTopicPdfSessionToken } from './topic-pdf-customer-auth-api';
 import { planTopicPdfGeneration, validateTopicPdfRequest } from '../products/topic-pdfs/src/generation-core';
 
 interface Statement {
@@ -22,12 +23,6 @@ function response(data: unknown, status = 200): Response {
   });
 }
 
-function bearer(req: Request): string {
-  const value = req.headers.get('authorization') || '';
-  const match = value.match(/^Bearer ([a-f0-9]{64})$/i);
-  return match?.[1] || '';
-}
-
 async function fingerprint(value: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -48,7 +43,7 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
   const origin = req.headers.get('origin');
   if (origin && origin !== url.origin) return response({ ok: false, error: 'Cross-origin request rejected.' }, 403);
 
-  const token = bearer(req);
+  const token = getTopicPdfSessionToken(req);
   if (!token) return response({ ok: false, error: 'A valid customer session is required.' }, 401);
   const customer = await resolveCustomerSession(env.DB as any, token);
   if (!customer) return response({ ok: false, error: 'Customer session is invalid or expired.' }, 401);
