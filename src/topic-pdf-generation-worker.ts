@@ -298,6 +298,53 @@ export async function topicPdfOwnerReviewRoute(
     return new Response(JSON.stringify({ ok: true, job, events: events.results || [], reviewDecisions: decisions.results || [] }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   }
 
+  const publishMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/publications\/([a-zA-Z0-9_-]{8,100})\/publish$/);
+  if (publishMatch && req.method === 'POST') {
+    if (!(await authorize(req))) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    let body: any = {};
+    try { body = await req.json(); } catch { return new Response(JSON.stringify({ ok: false, error: 'Expected JSON confirmation.' }), { status: 400, headers: { 'content-type': 'application/json' } }); }
+    if (body?.confirmPublication !== true) return new Response(JSON.stringify({ ok: false, error: 'Explicit publication confirmation is required.' }), { status: 400, headers: { 'content-type': 'application/json' } });
+    if (!env.TOPIC_PDF_BUCKET) return new Response(JSON.stringify({ ok: false, error: 'Private publication storage is not configured.' }), { status: 503, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    const publication = await env.DB.prepare(
+      `SELECT p.id,p.job_id,p.status,p.sale_storage_key,p.sale_sha256,p.sale_bytes,
+              j.status AS job_status,j.plan_json
+       FROM topic_pdf_publications p
+       JOIN topic_pdf_generation_jobs j ON j.id=p.job_id
+       WHERE p.id=? LIMIT 1`,
+    ).bind(publishMatch[1]).first<any>();
+    if (!publication || publication.status !== 'approved' || publication.job_status !== 'approved' ||
+        !publication.sale_storage_key || !publication.sale_sha256 || !publication.sale_bytes) {
+      return new Response(JSON.stringify({ ok: false, error: 'A fully approved sale-edition PDF candidate is required before publication.' }), { status: 409, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+    const plan = safeObject(publication.plan_json) || {};
+    const review = await env.DB.prepare(
+      'SELECT decision,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,specialist_reviewer_name,specialist_credentials FROM topic_pdf_review_decisions WHERE job_id=? ORDER BY created_at DESC LIMIT 1',
+    ).bind(publication.job_id).first<any>();
+    const specialistRequired = plan.risk?.requiresSpecialistReview === true;
+    if (!review || review.decision !== 'approved' || Number(review.rights_reviewed) !== 1 ||
+        Number(review.factual_review_passed) !== 1 || Number(review.editorial_approved) !== 1 ||
+        (specialistRequired && (Number(review.specialist_review_passed) !== 1 || !review.specialist_reviewer_name || !review.specialist_credentials))) {
+      return new Response(JSON.stringify({ ok: false, error: 'Publication is blocked until all applicable human review gates are recorded.' }), { status: 409, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+    const object = await env.TOPIC_PDF_BUCKET.get(publication.sale_storage_key);
+    if (!object || object.customMetadata?.status !== 'sale-edition-candidate-not-published' ||
+        object.customMetadata?.sha256 !== publication.sale_sha256 || Number(object.size || 0) !== Number(publication.sale_bytes)) {
+      return new Response(JSON.stringify({ ok: false, error: 'Sale-edition object metadata or integrity does not match the approved release record.' }), { status: 409, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      "UPDATE topic_pdf_publications SET storage_key=sale_storage_key,status='published',published_at=?,published_by='owner',updated_at=? WHERE id=? AND status='approved' AND sale_storage_key=? AND published_at IS NULL",
+    ).bind(now, now, publication.id, publication.sale_storage_key).run();
+    const confirmed = await env.DB.prepare("SELECT status FROM topic_pdf_publications WHERE id=? LIMIT 1").bind(publication.id).first<any>();
+    if (confirmed?.status !== 'published') return new Response(JSON.stringify({ ok: false, error: 'Publication state changed before release could be confirmed.' }), { status: 409, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    await appendEvent(env, publication.job_id, 'publication.published', {
+      publicationId: publication.id, publishedAt: now, publishedBy: 'owner',
+      sha256: publication.sale_sha256, bytes: publication.sale_bytes,
+      saleEditionOnly: true,
+    });
+    return new Response(JSON.stringify({ ok: true, publication: { id: publication.id, status: 'published', publishedAt: now } }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  }
+
   const previewMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/requests\/([a-zA-Z0-9_-]{8,80})\/preview$/);
   if (previewMatch && req.method === 'GET') {
     if (!(await authorize(req))) return new Response('Unauthorized', { status: 401, headers: { 'cache-control': 'no-store' } });
