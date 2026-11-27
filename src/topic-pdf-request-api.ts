@@ -75,7 +75,7 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
   }
 
   const validated = validateTopicPdfRequest(input);
-  if (!validated.ok) return response({ ok: false, errors: validated.errors }, 400);
+  if (validated.ok === false) return response({ ok: false, errors: validated.errors }, 400);
   const plan = planTopicPdfGeneration(validated.request);
   const canonical = JSON.stringify({ customerId: customer.id, request: validated.request });
   const requestFingerprint = await fingerprint(canonical);
