@@ -142,6 +142,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         publication = self.path == "/render-publication"
         token = os.environ.get("TOPIC_PDF_RELEASE_RENDER_TOKEN" if publication else "TOPIC_PDF_RENDER_TOKEN", "")
+        if publication and token and token == os.environ.get("TOPIC_PDF_RENDER_TOKEN", ""):
+            self._send(503, b'{"ok":false,"error":"Publication and editorial renderer tokens must be distinct."}')
+            return
         if not token or self.headers.get("Authorization", "") != "Bearer " + token:
             self._send(401, b'{"ok":false,"error":"Unauthorized."}')
             return
@@ -171,8 +174,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    if not (os.environ.get("TOPIC_PDF_RENDER_TOKEN") or os.environ.get("TOPIC_PDF_RELEASE_RENDER_TOKEN")):
+    draft_token = os.environ.get("TOPIC_PDF_RENDER_TOKEN", "")
+    release_token = os.environ.get("TOPIC_PDF_RELEASE_RENDER_TOKEN", "")
+    if not (draft_token or release_token):
         raise SystemExit("At least one private PDF renderer token must be configured.")
+    if draft_token and release_token and draft_token == release_token:
+        raise SystemExit("Draft and publication renderer tokens must be different.")
     host = os.environ.get("TOPIC_PDF_RENDER_HOST", "127.0.0.1")
     port = int(os.environ.get("TOPIC_PDF_RENDER_PORT", "8788"))
     ThreadingHTTPServer((host, port), Handler).serve_forever()
