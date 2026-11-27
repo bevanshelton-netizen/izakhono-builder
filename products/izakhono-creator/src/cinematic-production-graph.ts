@@ -128,6 +128,17 @@ export interface SourceMediaEvidence {
   consentStatus: 'provided' | 'not_applicable' | 'unverified';
 }
 
+export interface SourceRightsReviewEvidence {
+  schema: 'izakhono.creator/source-rights-review-v1';
+  reviewId: ProductionId;
+  assetContentHash: string;
+  decision: 'verified' | 'rejected';
+  basis: string;
+  evidenceReferences: string[];
+  recordedAt: string;
+  recordedBy: string;
+}
+
 export interface ProductionAsset {
   id: ProductionId;
   kind: MediaKind;
@@ -142,7 +153,7 @@ export interface ProductionAsset {
   contentHash?: string;
   mimeType?: string;
   /** Immutable intake evidence for original user-supplied source media. */
-  sourceEvidence?: SourceMediaEvidence;
+  sourceEvidence?: SourceMediaEvidence;\n  /** Append-only, hash-bound rights-review decisions for original source media. */\n  rightsReviews?: SourceRightsReviewEvidence[];
   /** Machine QA evidence bound to the exact exported bytes by SHA-256. */
   mediaQa?: MediaQaEvidence;
   /** Append-only human review history for the final distribution export. */
@@ -416,6 +427,57 @@ export function hasPassingHumanMediaReview(asset: ProductionAsset): boolean {
 }
 
 /** Append a human review to the immutable review history for a machine-QA-passed export. */
+/** Append a rights decision for original source media, bound to its exact stored bytes. */
+export function recordSourceRightsReview(
+  project: CinematicProduction,
+  assetId: ProductionId,
+  evidence: SourceRightsReviewEvidence,
+): CinematicProduction {
+  const asset = project.assets.find(item => item.id === assetId);
+  if (!asset || asset.role !== 'source' || !asset.sourceEvidence || asset.status !== 'completed'
+    || !asset.storageKey?.startsWith(`projects/${project.id}/source/`)) {
+    throw new Error('Rights review can only be recorded against a completed, stored original source-media asset.');
+  }
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)
+    || evidence.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
+    throw new Error('Rights review must be bound to the exact current source-media SHA-256.');
+  }
+  if (evidence.schema !== 'izakhono.creator/source-rights-review-v1'
+    || !['verified', 'rejected'].includes(evidence.decision)) throw new Error('Unsupported source rights-review schema or decision.');
+  if (!evidence.reviewId?.trim() || !evidence.recordedBy?.trim()
+    || !Number.isFinite(Date.parse(evidence.recordedAt)) || !evidence.basis?.trim()
+    || !Array.isArray(evidence.evidenceReferences) || !evidence.evidenceReferences.length
+    || evidence.evidenceReferences.some(value => typeof value !== 'string' || !value.trim())
+    || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
+    throw new Error('Rights review requires a unique ID, reviewer, timestamp, decision basis and distinct evidence references.');
+  }
+  if (asset.rightsReviews?.some(item => item.reviewId === evidence.reviewId)) throw new Error('Source rights-review ID already exists.');
+  const review = { ...evidence, evidenceReferences: [...evidence.evidenceReferences] };
+  return {
+    ...project,
+    assets: project.assets.map(item => item.id === assetId
+      ? { ...item, rightsReviews: [...(item.rightsReviews ?? []), review] }
+      : item),
+    metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
+  };
+}
+
+/** Only the latest hash-matched verified decision clears source-media rights. */
+export function hasVerifiedSourceRights(asset: ProductionAsset): boolean {
+  if (asset.role !== 'source' || !asset.sourceEvidence || !asset.contentHash
+    || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) return false;
+  const latest = asset.rightsReviews?.at(-1);
+  return Boolean(latest
+    && latest.schema === 'izakhono.creator/source-rights-review-v1'
+    && latest.decision === 'verified'
+    && latest.assetContentHash.toLowerCase() === asset.contentHash.toLowerCase()
+    && latest.reviewId.trim() && latest.recordedBy.trim()
+    && Number.isFinite(Date.parse(latest.recordedAt))
+    && latest.basis.trim() && Array.isArray(latest.evidenceReferences)
+    && latest.evidenceReferences.length > 0
+    && latest.evidenceReferences.every(value => value.trim()));
+}
+
 export function recordHumanMediaReview(
   project: CinematicProduction,
   assetId: ProductionId,
