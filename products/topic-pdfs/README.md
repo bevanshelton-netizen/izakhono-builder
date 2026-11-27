@@ -78,6 +78,10 @@ Topic selection is global, but advice must be localised when laws, regulators, p
 - Never market an independent guide as institution-approved without documented permission.
 - Keep revision history and withdraw or correct material when important errors are found.
 
+## Evidence and source control
+
+Every guide maintains an internal evidence source ledger mapping material claims to named sources, exact passages, jurisdiction, access date, reliability limitations and rights notes. See `EVIDENCE-SOURCE-LEDGER-GUIDE.md`. The TPDF-001 working ledger is `products/TPDF-001-source-ledger.json`; it is deliberately marked pending until a human verifies each source and claim.
+
 ## Product metadata
 
 Each product record should include:
