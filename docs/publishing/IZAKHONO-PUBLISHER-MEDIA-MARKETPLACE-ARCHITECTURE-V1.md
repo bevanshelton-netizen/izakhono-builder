@@ -460,3 +460,18 @@ The private review service now supports an authenticated, tenant-scoped evidence
 ### Idempotency and retry safety
 
 The application service now resolves a tenant-scoped idempotency receipt only after authenticating the session and receiving the current action authorization decision, but before checking the case's current version. An identical retry returns the original immutable result even though the successful first request advanced the case version. Reusing the same key with a different request fingerprint fails closed. The persistence adapter must enforce the same rule atomically inside `commitMutation` to close concurrent-request races; the in-memory fake demonstrates the expected contract only and is not a production persistence implementation.
+
+
+## 20. Private evidence submission and reviewer decision service
+
+A separate evidence application-service boundary now defines the publisher submission and staff review side of the evidence lifecycle.
+
+- A publisher session must resolve to a publisher principal, tenant and exact publisher record. The publisher cannot nominate another publisher ID in the submission command.
+- Submission requires the distinct `publishing.evidence.submit` authorization decision. The service then asks an injected secure-storage verifier to confirm that the opaque reference exists, is immutable and belongs to the same tenant, evidence request and publisher.
+- The service never accepts raw file bytes, document contents, public URLs or credentials. A future storage adapter must own upload scanning, encryption, retention, access logging and private retrieval.
+- Reviewer acceptance/rejection is a separate operation requiring `publishing.evidence.review`, a staff session, an exact resource-scoped authorization decision and the expected evidence version. Publisher principals cannot review their own or another publisher's evidence.
+- Submission and review mutations carry tenant scope, an idempotency key, request fingerprint, expected version and an audit event. The persistence adapter must atomically commit the record, audit event and receipt. Identical retries replay; changed-payload key reuse and stale versions conflict.
+- The evidence record begins in `awaiting_submission`, a state created by the future persistence adapter when it materializes an approved evidence request. This service does not invent or create requests independently of the review case.
+- Evidence acceptance is only a review outcome. It does not itself approve or list a publisher; the onboarding approval gates and publisher-review case remain authoritative.
+
+The service is provider-neutral and has deterministic test coverage for publisher ownership binding, opaque-reference scope verification, separate submit/review permissions, idempotent replay, stale-version rejection and publisher/reviewer separation. No live storage, FORTRESS adapter, database adapter, upload route, notification or portal is configured. Production use remains blocked on owner-approved identity, authorization, secure evidence storage and canonical DATABASE interfaces.
