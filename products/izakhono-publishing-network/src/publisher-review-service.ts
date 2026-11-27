@@ -141,7 +141,6 @@ async function fingerprint(command: Pick<TransitionReviewCommand, 'sessionCreden
     tenant: { platformId: session.tenant.platformId, entityId: session.tenant.entityId },
     principalRef: session.principalRef,
     caseId: command.caseId,
-    action: command.action,
     reasonCode: command.reasonCode,
     reviewerNoteRef: command.reviewerNoteRef,
     expectedVersion: command.expectedVersion,
