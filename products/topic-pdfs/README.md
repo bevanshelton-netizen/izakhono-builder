@@ -114,6 +114,7 @@ Build a repeatable, quality-controlled publishing system before attempting volum
 
 ## International market and storefront artefacts
 
+- Static storefront homepage prototype: `storefront-prototype/index.html` (non-production; no checkout, analytics or customer-data collection)
 - International storefront specification: `INTERNATIONAL-STOREFRONT-SPECIFICATION.md`
 - International go-to-market playbook: `GO-TO-MARKET-PLAYBOOK.md`
 - Reusable product-page content template: `PRODUCT-PAGE-TEMPLATE.md`
