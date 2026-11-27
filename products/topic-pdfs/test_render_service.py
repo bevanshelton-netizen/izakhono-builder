@@ -1,6 +1,8 @@
 import importlib.util
 import unittest
+from io import BytesIO
 from pathlib import Path
+from pypdf import PdfReader
 
 MODULE_PATH = Path(__file__).with_name("render-service.py")
 SPEC = importlib.util.spec_from_file_location("topic_pdf_render_service", MODULE_PATH)
@@ -27,6 +29,19 @@ def sample_manuscript():
     }
 
 
+def approved_manuscript():
+    manuscript = sample_manuscript()
+    manuscript.update({
+        "version": "1.0",
+        "rightsReviewed": True,
+        "factualReviewPassed": True,
+        "specialistReviewRequired": False,
+        "specialistReviewPassed": True,
+        "editorialApproval": True,
+    })
+    return manuscript
+
+
 class RenderServiceTests(unittest.TestCase):
     def test_markdown_contains_draft_warning_and_sources(self):
         markdown = MODULE.manuscript_to_markdown(sample_manuscript())
@@ -45,6 +60,31 @@ class RenderServiceTests(unittest.TestCase):
         payload = MODULE.render_manuscript(sample_manuscript())
         self.assertTrue(payload.startswith(b"%PDF-"))
         self.assertGreater(len(payload), 1000)
+
+    def test_publication_markdown_requires_review_gates_and_has_no_draft_warning(self):
+        markdown = MODULE.manuscript_to_markdown(approved_manuscript(), publication=True)
+        self.assertIn("Publication edition", markdown)
+        self.assertNotIn("EDITORIAL DRAFT", markdown)
+        self.assertNotIn("NOT FOR SALE", markdown)
+        unapproved = sample_manuscript()
+        with self.assertRaises(ValueError):
+            MODULE.manuscript_to_markdown(unapproved, publication=True)
+
+    def test_high_stakes_publication_requires_specialist_credentials(self):
+        manuscript = approved_manuscript()
+        manuscript.update({"specialistReviewRequired": True, "specialistReviewPassed": True})
+        with self.assertRaises(ValueError):
+            MODULE.manuscript_to_markdown(manuscript, publication=True)
+        manuscript.update({"specialistReviewerName": "Qualified Reviewer", "specialistCredentials": "Relevant professional registration"})
+        self.assertIn("Publication edition", MODULE.manuscript_to_markdown(manuscript, publication=True))
+
+    def test_publication_pdf_has_no_editorial_draft_watermark(self):
+        payload = MODULE.render_manuscript(approved_manuscript(), publication=True)
+        self.assertTrue(payload.startswith(b"%PDF-"))
+        text = "\\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(payload)).pages)
+        self.assertIn("PUBLICATION EDITION", text)
+        self.assertNotIn("EDITORIAL DRAFT", text)
+        self.assertNotIn("DRAFT PROOF", text)
 
     def test_rejects_non_https_source(self):
         manuscript = sample_manuscript()
