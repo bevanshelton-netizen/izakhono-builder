@@ -109,7 +109,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
         schema: 'izakhono.creator/source-media-evidence-v1', origin: 'user_upload',
         originalFilename: filename, mimeType: contentType, byteSize: bytes.byteLength,
         sha256, receivedAt, receivedBy, licenceDeclaration: licence,
-        consentStatus: consentStatus as 'provided' | 'not_applicable' | 'unverified',
+        rightsReviewStatus: 'unverified', consentStatus: consentStatus as 'provided' | 'not_applicable' | 'unverified',
       },
     };
     const updatedGraph: CinematicProduction = {
