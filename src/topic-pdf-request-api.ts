@@ -50,7 +50,7 @@ export async function topicPdfRequestRoute(req: Request, env: TopicPdfEnv, url: 
 
   if (req.method === 'GET' && isCollection) {
     const rows = await (env.DB as any).prepare(
-      'SELECT id,json_extract(request_json,'$.topic') AS topic,status,risk_level,CASE WHEN pdf_storage_key IS NULL THEN 0 ELSE 1 END AS pdf_ready,created_at,updated_at FROM topic_pdf_generation_jobs WHERE requested_by=? ORDER BY created_at DESC LIMIT 50',
+      "SELECT id,json_extract(request_json,'$.topic') AS topic,status,risk_level,CASE WHEN pdf_storage_key IS NULL THEN 0 ELSE 1 END AS pdf_ready,created_at,updated_at FROM topic_pdf_generation_jobs WHERE requested_by=? ORDER BY created_at DESC LIMIT 50",
     ).bind(customer.id).all();
     return response({ ok: true, requests: rows.results || [] });
   }
