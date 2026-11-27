@@ -119,6 +119,66 @@ async function run() {
   }), env);
   assert.equal(mismatched?.status, 400, 'API rejects evidence for different export bytes');
 
+
+  let storedGraph = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
+  storedGraph = {
+    ...storedGraph,
+    approvals: storedGraph.approvals.map((item: any) => item.gate === 'master'
+      ? { ...item, status: 'approved', approverId: 'producer-1', decidedAt: '2026-11-26T09:00:00.000Z' }
+      : item),
+  };
+  await saveProject(env, { id: 'qa-project', brief: storedGraph.brief, packageData: { cinematicProduction: storedGraph } });
+  const distributionBeforeHumanReview = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/approvals/distribution', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ approverId: 'publisher-1', decision: 'approved' }),
+  }), env);
+  assert.equal(distributionBeforeHumanReview?.status, 409, 'distribution approval is blocked until human review passes');
+
+  const humanReview = {
+    schema: 'izakhono.creator/human-media-review-v1',
+    profileId: 'facebook-reels-1080x1920-v1',
+    reviewId: 'review-api-001',
+    passed: true,
+    recordedAt: '2026-11-26T09:20:00.000Z',
+    recordedBy: 'human-reviewer-1',
+    checks: [
+      { id: 'full-playback-integrity', passed: true, finding: 'Full playback reviewed without freezes or black frames.' },
+      { id: 'dialogue-music-effects', passed: true, finding: 'Dialogue, music and effects reviewed for clarity and sync.' },
+      { id: 'captions-safe-areas', passed: true, finding: 'Captions and mobile safe areas reviewed.' },
+      { id: 'continuity-titles-credits', passed: true, finding: 'Continuity, titles, credits and end card reviewed.' },
+      { id: 'private-upload-playback', passed: true, finding: 'Private staging upload played back successfully.' },
+    ],
+  };
+  const humanReviewResponse = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/assets/facebook-export/human-review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ evidence: humanReview }),
+  }), env);
+  assert.equal(humanReviewResponse?.status, 200, 'authenticated reviewer can append a complete human review');
+  storedGraph = JSON.parse(String(projectRow?.package_json)).cinematicProduction;
+  assert.equal(storedGraph.assets[0].humanReviews?.[0]?.reviewId, 'review-api-001', 'human review is persisted on the canonical export asset');
+
+  const tamperedReviewGraph = {
+    ...storedGraph,
+    assets: storedGraph.assets.map((asset: any) => asset.id === 'facebook-export'
+      ? { ...asset, humanReviews: [{ ...humanReview, recordedBy: 'spoofed-reviewer' }] }
+      : asset),
+  };
+  const reviewBypass = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ production: tamperedReviewGraph }),
+  }), env);
+  assert.equal(reviewBypass?.status, 409, 'generic graph PATCH cannot forge or replace human review history');
+
+  const distributionAfterHumanReview = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/approvals/distribution', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ approverId: 'publisher-1', decision: 'approved' }),
+  }), env);
+  assert.equal(distributionAfterHumanReview?.status, 200, 'distribution approval succeeds after machine QA and human review pass');
+
   console.log('Cinematic API security boundary tests passed.');
 }
 
