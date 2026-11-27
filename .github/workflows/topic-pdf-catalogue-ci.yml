@@ -10,6 +10,7 @@ on:
       - "src/topic-pdf-generation-worker.test.ts"
       - "migrations/0032_topic_pdf_generation_jobs.sql"
       - "migrations/0033_topic_pdf_job_execution_and_reviews.sql"
+      - "migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql"
       - "wrangler.jsonc"
       - "src/customer-auth.ts"
       - "src/sovereign.ts"
@@ -41,6 +42,8 @@ jobs:
         run: npx --yes tsx@4.20.3 src/topic-pdf-request-api.test.ts
       - name: Test on-demand generation worker and review guards
         run: npx --yes tsx@4.20.3 src/topic-pdf-generation-worker.test.ts
+      - name: Typecheck topic PDF request and worker services
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/topic-pdf-request-api.ts src/topic-pdf-generation-worker.ts
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
