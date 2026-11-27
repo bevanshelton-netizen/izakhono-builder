@@ -419,6 +419,35 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   }
 
 
+  const sourceRightsReviewRoute = url.pathname.match(/^\\/api\\/cinematic\\/projects\\/([^/]+)\\/assets\\/([^/]+)\\/rights-review$/);
+  if (sourceRightsReviewRoute) {
+    if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
+    const id = decodeURIComponent(sourceRightsReviewRoute[1]);
+    const assetId = decodeURIComponent(sourceRightsReviewRoute[2]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    const body = await parseBody(request);
+    if (!body?.evidence || typeof body.evidence !== 'object') return response({ error: 'source rights-review evidence object is required.' }, 400);
+    try {
+      const updated = recordSourceRightsReview(graph, assetId, body.evidence as import('./cinematic-production-graph').SourceRightsReviewEvidence);
+      const checked = validate(updated);
+      if (!checked.valid) return response({ error: 'Source rights review violates production graph rules.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      const reviewedAsset = updated.assets.find(asset => asset.id === assetId)!;
+      return response({
+        status: 'recorded',
+        assetId,
+        rightsReviews: reviewedAsset.rightsReviews,
+        productionVersion: updated.metadata.version,
+        readiness: buildProductionReadinessReport(updated),
+      });
+    } catch (error) {
+      return response({ error: error instanceof Error ? error.message : 'Source rights-review evidence could not be recorded.' }, 400);
+    }
+  }
+
   const humanReviewRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/human-review$/);
   if (humanReviewRoute) {
     if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
@@ -481,6 +510,14 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     for (const assetId of sourceEvidenceAssetIds) {
       if (JSON.stringify(currentSourceEvidence.get(assetId) ?? null) !== JSON.stringify(candidateSourceEvidence.get(assetId) ?? null)) {
         return response({ error: 'Source-media intake evidence can only be created by the authenticated source-media ingestion endpoint and cannot be altered through general graph PATCH.' }, 409);
+      }
+    }
+    const currentRightsReviews = new Map(graph.assets.map(asset => [asset.id, asset.rightsReviews ?? null]));
+    const candidateRightsReviews = new Map(candidate.assets.map(asset => [asset.id, asset.rightsReviews ?? null]));
+    const rightsReviewAssetIds = new Set([...currentRightsReviews.keys(), ...candidateRightsReviews.keys()]);
+    for (const assetId of rightsReviewAssetIds) {
+      if (JSON.stringify(currentRightsReviews.get(assetId) ?? null) !== JSON.stringify(candidateRightsReviews.get(assetId) ?? null)) {
+        return response({ error: 'Source rights-review evidence can only be appended through the dedicated authenticated rights-review endpoint.' }, 409);
       }
     }
     const currentReviews = new Map(graph.assets.map(asset => [asset.id, asset.humanReviews ?? null]));
