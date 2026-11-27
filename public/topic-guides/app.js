@@ -28,6 +28,7 @@
     $('#welcome').textContent = 'Welcome, ' + (customer.displayName || 'reader');
     $('#account-email').textContent = customer.email || '';
     loadRequests();
+    loadLibrary();
   }
 
   function showSignedOut() {
@@ -101,6 +102,44 @@
     }
   }
 
+  function renderLibrary(items) {
+    const root = $('#library-list');
+    root.replaceChildren();
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = 'Purchased and published guides will appear here after a confirmed payment.';
+      root.append(empty);
+      return;
+    }
+    for (const item of items) {
+      const card = document.createElement('article');
+      card.className = 'library-item';
+      const title = document.createElement('strong');
+      title.textContent = item.title || 'Topic guide';
+      const meta = document.createElement('small');
+      meta.textContent = [item.language, item.version ? 'Edition ' + item.version : '', item.purchased_at ? 'Purchased ' + new Date(item.purchased_at).toLocaleDateString() : ''].filter(Boolean).join(' · ');
+      const link = document.createElement('a');
+      link.className = 'library-download';
+      link.href = '/api/topic-pdfs/download/' + encodeURIComponent(item.slug);
+      link.textContent = 'Download PDF';
+      link.setAttribute('aria-label', 'Download ' + (item.title || 'topic guide') + ' PDF');
+      card.append(title, meta, link);
+      root.append(card);
+    }
+  }
+
+  async function loadLibrary() {
+    const root = $('#library-list');
+    root.textContent = 'Loading your library…';
+    try {
+      const data = await api('/api/topic-pdfs/library');
+      renderLibrary(data.items || []);
+    } catch (error) {
+      root.textContent = error.message;
+    }
+  }
+
   $('#login-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -165,6 +204,7 @@
   });
 
   $('#refresh-button').addEventListener('click', loadRequests);
+  $('#library-refresh-button').addEventListener('click', loadLibrary);
 
   async function verifyFromLink() {
     const match = location.hash.match(/^#verify=([a-f0-9]{64})$/i);
