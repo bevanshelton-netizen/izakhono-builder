@@ -2,6 +2,6 @@
   "name": "izakhono-isbn-registry-runtime",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node --experimental-strip-types server.mjs" },
+  "scripts": { "start": "node --experimental-strip-types runtime/server.mjs" },
   "dependencies": { "pg": "8.16.3" }
 }
