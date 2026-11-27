@@ -33,3 +33,10 @@ jobs:
         run: |
           python products/topic-pdfs/render-pdf.py products/topic-pdfs/drafts/TPDF-001-household-budget.md /tmp/TPDF-001-editorial-proof.pdf
           test -s /tmp/TPDF-001-editorial-proof.pdf
+      - name: Upload non-sale editorial proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: TPDF-001-editorial-proof
+          path: /tmp/TPDF-001-editorial-proof.pdf
+          if-no-files-found: error
+          retention-days: 14
