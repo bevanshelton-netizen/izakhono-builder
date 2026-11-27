@@ -175,7 +175,7 @@
         method: 'POST',
         body: JSON.stringify({ token: match[1] }),
       });
-      showAccount(data.customer || { displayName: 'reader', email: '' });
+      await refreshSession();
       message('Your email is verified. You are now signed in.', 'success');
     } catch (error) { message(error.message, 'error'); }
     return true;
