@@ -112,6 +112,15 @@ The intended standard price is **US$7 per focused PDF guide**. Local currency pr
 Build a repeatable, quality-controlled publishing system before attempting volume. Start with a small set of carefully chosen, well-researched topics; learn from reader needs and product performance; then expand the catalogue systematically.
 
 
+## International market and storefront artefacts
+
+- International storefront specification: `INTERNATIONAL-STOREFRONT-SPECIFICATION.md`
+- International go-to-market playbook: `GO-TO-MARKET-PLAYBOOK.md`
+- Reusable product-page content template: `PRODUCT-PAGE-TEMPLATE.md`
+- Reusable marketing campaign template: `MARKETING-CAMPAIGN-TEMPLATE.md`
+
+These documents define the proposed customer experience, brand and trust requirements, product presentation, acquisition channels, launch sequence and measurement approach. They are planning and implementation specifications, not approval to launch publicly, process live payments, or incur costs. Final brand identity and all commercial commitments remain subject to the owner's approval.
+
 ## Current build artefacts
 
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
