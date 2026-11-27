@@ -85,12 +85,53 @@ before(async () => {
 
 beforeEach(async () => {
   if (!enabled) return;
-  await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE; DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE; DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
+  await pool.query("DROP TABLE IF EXISTS izakhono_deploy_audit_events CASCADE; DROP TABLE IF EXISTS fortress_audit_events CASCADE; DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE; DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
   const migration = await readFile(new URL("./migrations/0001_runtime_fabric_deploy.sql", import.meta.url), "utf8");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // Recreate the pre-DEPLOY Runtime Fabric schema and shared FORTRESS
+    // Provisioner audit contract before applying the migration.
+    await client.query(`CREATE TABLE izakhono_runtime_deployments (
+      deployment_id TEXT PRIMARY KEY, workload TEXT NOT NULL, state TEXT NOT NULL,
+      node TEXT, checkpoint TEXT, attempts INTEGER NOT NULL DEFAULT 0,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`);
+    await client.query(`CREATE TABLE fortress_audit_events (
+      event_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, tenant_id TEXT NOT NULL,
+      operation_id TEXT NOT NULL, event_type TEXT NOT NULL, actor TEXT NOT NULL,
+      adapter TEXT, state TEXT NOT NULL, observed_at TIMESTAMPTZ NOT NULL,
+      data JSONB NOT NULL DEFAULT '{}'::jsonb, UNIQUE (job_id, operation_id, event_type)
+    )`);
+    await client.query(
+      `INSERT INTO izakhono_runtime_deployments
+       (deployment_id, workload, state, metadata)
+       VALUES ('legacy-deployment', 'web', 'DISCOVERED',
+       '{"tenant_id":"tenant-legacy","application_id":"app-legacy","environment_id":"staging"}'::jsonb)`
+    );
+    await client.query(
+      `INSERT INTO fortress_audit_events
+       (event_id, job_id, tenant_id, operation_id, event_type, actor, state, observed_at)
+       VALUES ('provisioner-before', 'provisioner-job-before', 'tenant-provisioner',
+       'op-before', 'PROVISIONED', 'provisioner', 'SUCCEEDED', now())`
+    );
     await client.query(migration);
+    await client.query(
+      `INSERT INTO fortress_audit_events
+       (event_id, job_id, tenant_id, operation_id, event_type, actor, state, observed_at)
+       VALUES ('provisioner-after', 'provisioner-job-after', 'tenant-provisioner',
+       'op-after', 'PROVISIONED', 'provisioner', 'SUCCEEDED', now())`
+    );
+    const preserved = await client.query(
+      "SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id LIKE 'provisioner-job-%'"
+    );
+    assert.equal(preserved.rows[0].n, 2);
+    const upgraded = await client.query(
+      "SELECT tenant_id, application_id, environment_id FROM izakhono_runtime_deployments WHERE deployment_id = 'legacy-deployment'"
+    );
+    assert.deepEqual(upgraded.rows[0], {
+      tenant_id: "tenant-legacy", application_id: "app-legacy", environment_id: "staging"
+    });
     await client.query(
       "CREATE TABLE izakhono_runtime_schema_migrations (" +
       "migration_id TEXT PRIMARY KEY, checksum_sha256 CHAR(64) NOT NULL, " +
@@ -119,7 +160,7 @@ after(async () => {
 
 const integration = (name, fn) => test(name, { skip: !enabled }, fn);
 
-integration("commits Runtime Fabric state, idempotency result and FORTRESS audit together", async () => {
+integration("commits Runtime Fabric state, idempotency result and DEPLOY audit together", async () => {
   const auth = await principal(), id = await seed();
   const result = await run(auth, id, "atomic-1");
   assert.equal(result.deployment.state, "VALIDATED");
@@ -129,7 +170,7 @@ integration("commits Runtime Fabric state, idempotency result and FORTRESS audit
   );
   assert.equal(row.rows[0].state, "VALIDATED");
   assert.equal(row.rows[0].keys, 1);
-  const audit = await pool.query("SELECT count(*)::int AS n, min(actor) AS actor FROM fortress_audit_events WHERE job_id = $1", [id]);
+  const audit = await pool.query("SELECT count(*)::int AS n, min(actor) AS actor FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id]);
   assert.equal(audit.rows[0].n, 1);
   assert.equal(audit.rows[0].actor, "integration-operator");
 });
@@ -140,7 +181,7 @@ integration("returns the committed result for exact replay without duplicating a
   const replay = await run(auth, id, key);
   assert.equal(replay.replayed, true);
   assert.deepEqual(replay.deployment, first.deployment);
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id])).rows[0].n, 1);
 });
 
 integration("rejects a conflicting request hash for an already-used key", async () => {
@@ -150,13 +191,13 @@ integration("rejects a conflicting request hash for an already-used key", async 
     run(auth, id, key, { evidence: { source_commit: sourceCommit, policy_passed: false } }),
     { code: "IDEMPOTENCY_CONFLICT" }
   );
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id])).rows[0].n, 1);
 });
 
-integration("rolls back Runtime Fabric state and idempotency metadata when FORTRESS audit append fails", async () => {
+integration("rolls back Runtime Fabric state and idempotency metadata when DEPLOY audit append fails", async () => {
   const auth = await principal(), id = await seed(), key = "rollback-1";
   await pool.query(`CREATE FUNCTION reject_deploy_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected audit failure'; END $$`);
-  await pool.query("CREATE TRIGGER reject_deploy_audit BEFORE INSERT ON fortress_audit_events FOR EACH ROW EXECUTE FUNCTION reject_deploy_audit()");
+  await pool.query("CREATE TRIGGER reject_deploy_audit BEFORE INSERT ON izakhono_deploy_audit_events FOR EACH ROW EXECUTE FUNCTION reject_deploy_audit()");
   await assert.rejects(run(auth, id, key), /injected audit failure/);
   const row = await pool.query(
     "SELECT metadata->'deploy_control'->'record'->>'state' AS state, metadata->'deploy_control'->'idempotency' AS idem FROM izakhono_runtime_deployments WHERE deployment_id = $1",
@@ -164,8 +205,8 @@ integration("rolls back Runtime Fabric state and idempotency metadata when FORTR
   );
   assert.equal(row.rows[0].state, "DISCOVERED");
   assert.deepEqual(row.rows[0].idem, {});
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events")).rows[0].n, 0);
-  await pool.query("DROP TRIGGER reject_deploy_audit ON fortress_audit_events");
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events")).rows[0].n, 0);
+  await pool.query("DROP TRIGGER reject_deploy_audit ON izakhono_deploy_audit_events");
   await pool.query("DROP FUNCTION reject_deploy_audit()");
 });
 
@@ -174,7 +215,7 @@ integration("serializes concurrent identical requests to one transition and one 
   const results = await Promise.all([run(auth, id, key), run(auth, id, key)]);
   assert.equal(results.filter(result => result.replayed === false).length, 1);
   assert.equal(results.filter(result => result.replayed === true).length, 1);
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id])).rows[0].n, 1);
 });
 
 integration("rejects concurrent conflicting requests without a second mutation", async () => {
@@ -185,18 +226,18 @@ integration("rejects concurrent conflicting requests without a second mutation",
   ]);
   assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
   assert.equal(results.filter(result => result.status === "rejected" && result.reason.code === "IDEMPOTENCY_CONFLICT").length, 1);
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id])).rows[0].n, 1);
 });
 
 integration("enforces tenant, application and environment scope in the Runtime Fabric row lookup", async () => {
   const auth = await principal();
   const id = await seed("deployment-" + randomUUID(), { ...resource, environmentId: "production" });
   await assert.rejects(run(auth, id, "scope-1"), { code: "DEPLOYMENT_NOT_FOUND" });
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events")).rows[0].n, 0);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events")).rows[0].n, 0);
 });
 
 
-integration("HTTP API authenticates a FORTRESS-verified capability and commits a scoped transition", async () => {
+integration("HTTP API authenticates a DEPLOY-verified capability and commits a scoped transition", async () => {
   const id = await seed();
   const issuedAt = Math.floor(Date.now() / 1000) - 5;
   const claims = {
@@ -236,7 +277,7 @@ integration("HTTP API authenticates a FORTRESS-verified capability and commits a
   assert.equal(result.deployment.state, "VALIDATED");
   assert.equal(result.replayed, false);
   assert.ok(result.request_id);
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id])).rows[0].n, 1);
 });
 
 integration("HTTP API returns the committed result on exact replay without a second audit event", async () => {
@@ -270,7 +311,7 @@ integration("HTTP API returns the committed result on exact replay without a sec
   assert.equal(first.replayed, false);
   assert.equal(replay.replayed, true);
   assert.deepEqual(replay.deployment, first.deployment);
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id])).rows[0].n, 1);
 });
 
 integration("HTTP API fails closed on identity-service outage and cross-tenant path scope", async () => {
@@ -307,7 +348,7 @@ integration("HTTP API fails closed on identity-service outage and cross-tenant p
   });
   const forbidden = await crossTenant(crossTenantRequest);
   assert.equal(forbidden.status, 403);
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events")).rows[0].n, 0);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM izakhono_deploy_audit_events")).rows[0].n, 0);
 });
 
 
@@ -371,7 +412,7 @@ integration("signed migration runner applies atomically and is idempotent on exa
     }));
     assert.equal(discovered.status, "IDENTITY_ONLY");
     assert.equal(discovered.database_fingerprint, databaseFingerprint);
-    await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE");
+    await pool.query("DROP TABLE IF EXISTS izakhono_deploy_audit_events CASCADE");
     await pool.query("DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
     await pool.query("DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
     const checked = JSON.parse(execFileSync(process.execPath, [runnerPath, "--check"], {
