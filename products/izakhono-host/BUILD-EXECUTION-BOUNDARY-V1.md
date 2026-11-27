@@ -109,7 +109,27 @@ A worker-reported `succeeded` status is not acceptance evidence. An artifact wit
 | Failure recovery | Daemon restart does not duplicate accepted artifacts or lose audit trail |
 | Builder Alpha handoff | Alpha independently verifies and rejects tampered artifacts |
 
-## 8. Rollout sequence
+## 8. B0 audit — existing Builder Alpha (source inspection)
+
+The existing `.github/workflows/izakhono-build-to-alpha.yml` is the authoritative current Alpha build-and-health workflow. Source inspection confirms:
+
+- It validates a version-3 `.izakhono.json` manifest, confines manifest/build-context/Dockerfile paths to the repository, checks required metadata and infrastructure evidence labels, and validates the declared container port and health path.
+- Its central preflight checks the build context for selected obvious credential patterns and rejects remote-URL `ADD` instructions in the Dockerfile.
+- The `container-gate` currently invokes `docker build` on the GitHub Actions runner, tags the image with the application slug and a 12-character commit prefix, and applies product/commit/channel labels.
+- The health gate invokes `docker run` on that runner, binds the test port to loopback, polls the declared health route, and removes the temporary container on exit.
+- Optional database/application rehearsal and Windows packaging are separate jobs. A final result job blocks a passing Alpha result unless required gates pass.
+
+**Integration implications:**
+
+1. Preserve this manifest validation, preflight, rehearsal, packaging and health-gate behavior. Do not create a second Alpha pipeline.
+2. The current workflow uses the runner's Docker CLI/daemon path; it does not yet call HOST's compute manager or a rootless BuildKit broker.
+3. The current workflow does not publish a digest-addressed OCI artifact with a signed provenance/SBOM envelope for an external executor handoff. The build image is local to the ephemeral Actions runner.
+4. Therefore the first integration must be an opt-in, non-production executor adapter that returns an immutable artifact and evidence to the existing Alpha gate. The Alpha gate must independently verify and load that artifact before running its existing health test.
+5. Do not remove or bypass the current Docker-based path until the rootless path has passed equivalent tests and the owner approves a controlled migration.
+
+This audit is source-level evidence only. It does not prove that a current workflow run succeeded or that the workflow has been changed to use HOST.
+
+## 9. Rollout sequence
 
 - **B0 — Existing pipeline audit:** identify Builder Alpha's current manifest validation, image build, runtime test and artifact interfaces. Preserve its existing acceptance logic; do not create a parallel Builder product.
 - **B1 — Contract and policy:** define typed request/result schemas, authorization, idempotency, quotas and audit events.
