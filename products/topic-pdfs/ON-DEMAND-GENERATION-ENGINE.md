@@ -64,7 +64,10 @@ A generation job is not itself a saleable product. Only an approved publication 
 
 - Existing IZAKHONO Builder Worker / D1 stack remains the hosting boundary for the first integration.
 - Provider-neutral orchestration contract lives in `src/generation-core.ts`.
-- D1 persists generation jobs, immutable event history and publication metadata.
+- D1 persists generation jobs, immutable event history, retry/lease state, source/manuscript records, review decisions and publication metadata.
+- A five-minute Worker cron claims at most one eligible generation job per tick, recovers expired leases, and retries failed attempts up to three times with backoff. It is inert unless the pipeline feature flag and all required provider configuration are present.
+- A configured research adapter returns an evidence ledger; the existing IZAKHONO SUPER AI gateway drafts the original manuscript from that ledger. The Worker validates source URLs and manuscript depth, but does not claim the source facts are independently verified.
+- Owner-only review queue and decision endpoints record editorial gate outcomes. High-stakes approvals additionally require a named specialist reviewer and relevant credentials. No AI-generated approval flags are accepted.
 - Research and model calls must go through the configured IZAKHONO-owned AI gateway/provider adapter. No provider key is hard-coded and no direct third-party subscription is assumed.
 - PDF rendering reuses the existing ReportLab renderer after the manuscript passes review.
 - Generated PDFs should be stored in private object storage; delivery uses short-lived, authorized links.
@@ -97,10 +100,10 @@ Do not display “ready” merely because text generation completed. Show the jo
 
 1. Customer identity and ownership checks are implemented in the request adapter using existing active customer sessions; full end-to-end sign-in/session issuance and customer UX still need verification.
 2. A per-customer hourly quota and request-size limits are implemented. Bot protection, IP-level rate limits and abuse monitoring remain launch gates.
-3. Provider routing, budget limits, timeout/retry/idempotency controls and audit logs.
-4. Research adapter with source-quality scoring and citation persistence.
+3. Provider routing, budget limits, timeout/retry/idempotency controls and audit logs. Basic bounded retry, lease recovery and customer-scoped idempotency are implemented; global spend/budget enforcement still needs configuration.
+4. Research adapter with source-quality scoring and citation persistence. The adapter contract and evidence persistence are implemented; a live research endpoint and its credentials still need to be provisioned and verified.
 5. Evidence-to-claim validation and stale-source detection.
-6. Human editorial and specialist review queues.
+6. Human editorial and specialist review queues. An owner-only review queue and auditable decisions are implemented; independent reviewer identity/credential verification and a full reviewer workflow remain required.
 7. PDF rendering and automated plus human visual inspection.
 8. Private storage and secure delivery.
 9. Payment sandbox and refund/failed-fulfilment handling.
@@ -109,4 +112,4 @@ Do not display “ready” merely because text generation completed. Show the jo
 
 ## Implementation status
 
-The deterministic request/plan/risk/release-gate core is implemented and unit tested. An authenticated customer request/status API adapter is implemented and wired into the Worker; it uses existing customer bearer sessions, ownership-scoped reads, a per-customer hourly quota, bounded request bodies, duplicate fingerprints and audit events. It is disabled by default behind TOPIC_PDF_REQUESTS_ENABLED and must not be activated until the D1 migration is applied and the customer session lifecycle is verified end to end. The D1 migration is prepared but not applied. Live AI research, text generation, background job execution, customer-facing request UI, bot/IP abuse controls, PDF job execution, payments and delivery remain unimplemented.
+The deterministic request/plan/risk/release-gate core, authenticated customer request API adapter, D1-backed scheduled generation worker and owner-only review endpoints are implemented in code. Customer requests use existing active bearer sessions, ownership-scoped reads, per-customer hourly quotas, bounded request bodies, persisted idempotency keys and audit events. The scheduled worker is disabled by default; when explicitly configured, it uses a separately configured research adapter and the existing IZAKHONO SUPER AI generation endpoint to produce a structured editorial draft, never a publication. Drafts enter a human-review queue; high-stakes approval requires named specialist credentials. Migrations 0032-0034 are prepared but not applied. No live research endpoint, credentials, customer login/session issuance path, customer-facing request/status UI, PDF renderer endpoint, private storage binding, secure delivery, checkout or payment flow has been configured or verified. The cron is present but inert unless TOPIC_PDF_PIPELINE_ENABLED=true and all provider settings exist.
