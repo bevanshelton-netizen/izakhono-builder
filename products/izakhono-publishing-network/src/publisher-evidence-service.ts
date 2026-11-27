@@ -112,13 +112,13 @@ export class PublisherEvidenceService {
     const now = this.clock();
     const result = await this.ports.store.commit({tenant:actor.tenant,evidenceId:next.evidenceId,expectedVersion,next,audit:{tenant:actor.tenant,actorPrincipalRef:actor.principalRef,authorizationDecisionRef:decisionRef,action,resourceRef:`publisher-evidence:${next.evidenceId}`,reasonCode,occurredAt:now,correlationRef},idempotencyKey:key,requestFingerprint:fp});
     if (result.status === 'conflict') throw new EvidenceServiceError('EVIDENCE_VERSION_CONFLICT');
-    if (!sameTenant(result.record.tenant,actor.tenant)) throw new EvidenceServiceError('EVIDENCE_NOT_FOUND');
+    if (!sameTenant(result.record.tenant,actor.tenant) || result.record.evidenceId !== next.evidenceId || result.record.version !== next.version) throw new EvidenceServiceError('EVIDENCE_NOT_FOUND');
     return result;
   }
   private async actor(credential: string): Promise<EvidenceActor> {
     if (!nonBlank(credential) || credential.length > 8192) throw new EvidenceServiceError('EVIDENCE_SESSION_INVALID');
     const actor = await this.ports.sessions.verify(credential);
-    if (!actor || !nonBlank(actor.principalRef) || !nonBlank(actor.tenant.platformId) || !nonBlank(actor.tenant.entityId) || (actor.role === 'publisher' && !nonBlank(actor.publisherId ?? ''))) throw new EvidenceServiceError('EVIDENCE_SESSION_INVALID');
+    if (!actor || !nonBlank(actor.principalRef) || !nonBlank(actor.tenant.platformId) || !nonBlank(actor.tenant.entityId) || !['owner','administrator','technician','auditor','viewer','publisher'].includes(actor.role) || (actor.role === 'publisher' && !nonBlank(actor.publisherId ?? ''))) throw new EvidenceServiceError('EVIDENCE_SESSION_INVALID');
     return actor;
   }
   private authorized(auth: Awaited<ReturnType<EvidenceAuthorizationPort['authorize']>>,actor: EvidenceActor,resourceRef: string,permission: string): void {
