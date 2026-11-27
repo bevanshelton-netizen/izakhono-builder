@@ -1,0 +1,26 @@
+name: Topic PDF Catalogue CI
+
+on:
+  pull_request:
+    paths:
+      - "products/topic-pdfs/**"
+      - ".github/workflows/topic-pdf-catalogue-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/topic-pdfs/**"
+      - ".github/workflows/topic-pdf-catalogue-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate topic candidate catalogue
+        run: node products/topic-pdfs/validate-catalog.mjs
