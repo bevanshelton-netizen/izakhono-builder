@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createPostgresD1Adapter, type PgPoolLike } from "./postgresql-adapter.js";
 
+async function main() {
 const calls: Array<{ sql: string; values?: readonly unknown[] }> = [];
 const pool: PgPoolLike = {
   async query(sql, values) {
@@ -17,3 +18,6 @@ const result = await db.prepare("UPDATE works SET title=? WHERE id=?").bind("Upd
 assert.equal(result.meta.changes, 2);
 await assert.rejects(db.prepare("SELECT 1; SELECT 2").all(), /single_statement_required/);
 console.log("PostgreSQL compatibility adapter tests passed (4 assertions).");
+}
+
+void main();
