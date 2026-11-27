@@ -234,7 +234,7 @@ const evidenceForRecording = {
 const qaRecorded = recordMediaQaEvidence(qaAssetBase, 'export-1', evidenceForRecording);
 if (qaRecorded.assets.find(asset => asset.id === 'export-1')?.mediaQa?.assetContentHash !== 'c'.repeat(64)) throw new Error('Media QA evidence was not attached to the canonical export asset');
 if (qaRecorded.metadata.version !== qaAssetBase.metadata.version + 1) throw new Error('Recording QA evidence must increment the production graph version');
-if (!buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Recorded hash-bound QA evidence should satisfy the export QA gate when other gates pass');
+if (buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Recorded machine QA alone must not satisfy distribution readiness without human review');
 
 if (buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Machine QA alone must not unlock distribution without human review');
 const humanReviewEvidence = {
@@ -259,6 +259,7 @@ try { recordHumanMediaReview(qaRecorded, 'export-1', { ...humanReviewEvidence, r
 if (!wrongHashHumanReviewRejected) throw new Error('Human review must be bound to the exact export SHA-256');
 
 const humanReviewed = recordHumanMediaReview(qaRecorded, 'export-1', humanReviewEvidence);
+if (!buildProductionManifest(humanReviewed).summary.readyForDistribution) throw new Error('Recorded passing human review plus machine QA should satisfy distribution readiness when other gates pass');
 if (!buildProductionManifest(humanReviewed).summary.readyForDistribution) throw new Error('Audited passing human review should unlock distribution readiness when all approvals exist');
 const failedHumanReview = { ...humanReviewEvidence, reviewId: 'human-review-002', passed: false, checks: humanReviewEvidence.checks.map(check => check.id === 'captions-safe-areas' ? { ...check, passed: false, finding: 'Caption timing needs correction.' } : check) };
 const withFailedReview = recordHumanMediaReview(humanReviewed, 'export-1', failedHumanReview);
