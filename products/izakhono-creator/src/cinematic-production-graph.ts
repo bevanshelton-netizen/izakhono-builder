@@ -93,6 +93,16 @@ export interface Shot {
   generationPrompt?: string;
 }
 
+export interface HumanMediaReviewEvidence {
+  schema: 'izakhono.creator/human-media-review-v1';
+  profileId: string;
+  reviewId: ProductionId;
+  passed: boolean;
+  recordedAt: string;
+  recordedBy: string;
+  checks: Array<{ id: string; passed: boolean; finding: string }>;
+}
+
 export interface MediaQaEvidence {
   schema: 'izakhono.creator/media-qa-evidence-v1';
   profileId: string;
@@ -118,6 +128,8 @@ export interface ProductionAsset {
   mimeType?: string;
   /** Machine QA evidence bound to the exact exported bytes by SHA-256. */
   mediaQa?: MediaQaEvidence;
+  /** Append-only human review history for the final distribution export. */
+  humanReviews?: HumanMediaReviewEvidence[];
   width?: number;
   height?: number;
   durationSeconds?: number;
@@ -343,6 +355,65 @@ export function recordMediaQaEvidence(
   return {
     ...project,
     assets: project.assets.map(item => item.id === assetId ? { ...item, mediaQa: { ...evidence, assetContentHash: evidence.assetContentHash.toLowerCase(), checks: evidence.checks.map(check => ({ ...check })) } } : item),
+    metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
+  };
+}
+
+
+const requiredHumanMediaReviewCheckIds = [
+  'full-playback-integrity',
+  'dialogue-music-effects',
+  'captions-safe-areas',
+  'continuity-titles-credits',
+  'private-upload-playback',
+] as const;
+
+export function hasPassingHumanMediaReview(asset: ProductionAsset): boolean {
+  const latest = asset.humanReviews?.at(-1);
+  if (!latest || !latest.passed || latest.schema !== 'izakhono.creator/human-media-review-v1'
+    || !latest.recordedBy.trim() || !Number.isFinite(Date.parse(latest.recordedAt))
+    || latest.profileId !== 'facebook-reels-1080x1920-v1') return false;
+  const checks = new Map(latest.checks.map(check => [check.id, check]));
+  return checks.size === requiredHumanMediaReviewCheckIds.length
+    && requiredHumanMediaReviewCheckIds.every(id => checks.get(id)?.passed === true && Boolean(checks.get(id)?.finding.trim()));
+}
+
+/** Append a human review to the immutable review history for a machine-QA-passed export. */
+export function recordHumanMediaReview(
+  project: CinematicProduction,
+  assetId: ProductionId,
+  evidence: HumanMediaReviewEvidence,
+): CinematicProduction {
+  const asset = project.assets.find(item => item.id === assetId);
+  if (!asset || asset.kind !== 'video' || asset.role !== 'distribution_export'
+    || asset.status !== 'completed' || !asset.storageKey?.trim()) {
+    throw new Error('Human review can only be recorded against a completed, stored video distribution export.');
+  }
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)
+    || !asset.mediaQa?.passed || asset.mediaQa.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
+    throw new Error('A matching passing machine QA record is required before human review.');
+  }
+  if (evidence.schema !== 'izakhono.creator/human-media-review-v1'
+    || evidence.profileId !== 'facebook-reels-1080x1920-v1') throw new Error('Unsupported human media review schema or profile.');
+  if (!evidence.reviewId.trim() || !evidence.recordedBy.trim() || !Number.isFinite(Date.parse(evidence.recordedAt))) {
+    throw new Error('Human review requires a review ID, reviewer identity and valid timestamp.');
+  }
+  if (asset.humanReviews?.some(item => item.reviewId === evidence.reviewId)) throw new Error('Human review ID already exists for this export.');
+  if (!Array.isArray(evidence.checks)) throw new Error('Human review checks must be an array.');
+  const checks = new Map(evidence.checks.map(check => [check.id, check]));
+  if (checks.size !== evidence.checks.length
+    || checks.size !== requiredHumanMediaReviewCheckIds.length
+    || !requiredHumanMediaReviewCheckIds.every(id => checks.has(id))
+    || evidence.checks.some(check => !check.id?.trim() || !check.finding?.trim())) {
+    throw new Error('Human review must contain every required playback, audio, captions, continuity and private-upload check exactly once with findings.');
+  }
+  const checksPassed = evidence.checks.every(check => check.passed === true);
+  if (evidence.passed !== checksPassed) throw new Error('Human review overall result must agree with all recorded checks.');
+  return {
+    ...project,
+    assets: project.assets.map(item => item.id === assetId
+      ? { ...item, humanReviews: [...(item.humanReviews ?? []), { ...evidence, checks: evidence.checks.map(check => ({ ...check })) }] }
+      : item),
     metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
   };
 }
