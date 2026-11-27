@@ -35,6 +35,12 @@ class FakeStore implements ReviewStore {
   reads = 0;
   commit: ReviewMutationCommit | null = null;
   conflict = false;
+  receipt: { key: string; fingerprint: string; reviewCase: PublisherReviewCase; decision: ImmutableReviewDecision } | null = null;
+  async lookupIdempotency(scope: typeof session.tenant, key: string, fingerprint: string): Promise<Extract<ReviewCommitResult, { status: 'replayed' | 'conflict' }> | null> {
+    if (!this.receipt || this.receipt.key !== key) return null;
+    if (this.receipt.fingerprint !== fingerprint || scope.entityId !== this.receipt.reviewCase.tenant.entityId) return { status: 'conflict' };
+    return { status: 'replayed', reviewCase: this.receipt.reviewCase, decision: this.receipt.decision, replayed: true };
+  }
   async getCase(scope: typeof session.tenant, caseId: string): Promise<PublisherReviewCase | null> {
     this.reads++;
     if (!this.record || caseId !== this.record.caseId || scope.entityId !== this.record.tenant.entityId) return null;
@@ -43,8 +49,13 @@ class FakeStore implements ReviewStore {
   async commitMutation(input: ReviewMutationCommit): Promise<ReviewCommitResult> {
     this.commit = input;
     if (this.conflict) return { status: 'conflict' };
+    if (this.receipt && this.receipt.key === input.idempotencyKey) {
+      if (this.receipt.fingerprint !== input.requestFingerprint) return { status: 'conflict' };
+      return { status: 'replayed', reviewCase: this.receipt.reviewCase, decision: this.receipt.decision, replayed: true };
+    }
     const decision: ImmutableReviewDecision = { ...input.decision, auditEventRef: 'audit:event:1' };
     this.record = input.nextCase;
+    this.receipt = { key: input.idempotencyKey, fingerprint: input.requestFingerprint, reviewCase: input.nextCase, decision };
     return { status: 'committed', reviewCase: input.nextCase, decision, replayed: false };
   }
 }
@@ -63,6 +74,11 @@ async function main() {
   expect(auth.requests[0].permission === 'publishing:review:approve', 'service must request exact action permission');
   expect(auth.requests[0].identityRole === 'SECURITY_ADMIN', 'verified FORTRESS role is context, not caller input');
   expect(store.commit?.decision.auditEventRef === undefined, 'audit event reference is assigned atomically by persistence');
+  const replay = await service.transition(command);
+  expect(replay.status === 'replayed' && store.reads === 1, 'identical idempotent retry must replay without rereading a changed case version');
+  let idempotencyConflict = '';
+  try { await service.transition({ ...command, reasonCode: 'DIFFERENT_REASON' }); } catch (error) { idempotencyConflict = (error as ReviewServiceError).code; }
+  expect(idempotencyConflict === 'REVIEW_IDEMPOTENCY_CONFLICT' && store.reads === 1, 'reusing an idempotency key for a different request must fail before case lookup');
   const deniedAuth = new FakeAuthorization(); deniedAuth.allowed = false;
   const deniedStore = new FakeStore(); const denied = new PublisherReviewService({ sessions, authorization: deniedAuth, store: deniedStore, now: () => now });
   let deniedCode = '';
@@ -103,9 +119,11 @@ async function main() {
   expect(evidenceResult.reviewCase.evidenceRequests[0].requestId === 'evidence-request:1', 'evidence request must be persisted in the case');
   expect(evidenceStore.commit?.decision.evidenceRequestIds[0] === 'evidence-request:1', 'immutable decision must reference the requested evidence');
   expect(evidenceAuth.requests[0].permission === 'publishing:review:request_evidence', 'evidence request must use exact FORTRESS action permission');
-  let duplicateEvidenceCode = '';
-  try { await evidenceService.requestEvidence({ ...evidenceCommand, expectedVersion: 3 }); } catch (error) { duplicateEvidenceCode = (error as ReviewServiceError).code; }
-  expect(duplicateEvidenceCode === 'REVIEW_CASE_INVALID' || duplicateEvidenceCode === 'REVIEW_EVIDENCE_REQUEST_INVALID', 'duplicate evidence request must fail closed');
+  const evidenceReplay = await evidenceService.requestEvidence(evidenceCommand);
+  expect(evidenceReplay.status === 'replayed', 'identical evidence request retry must replay the original result');
+  let evidenceKeyConflict = '';
+  try { await evidenceService.requestEvidence({ ...evidenceCommand, requestId: 'evidence-request:other' }); } catch (error) { evidenceKeyConflict = (error as ReviewServiceError).code; }
+  expect(evidenceKeyConflict === 'REVIEW_IDEMPOTENCY_CONFLICT', 'evidence request idempotency key cannot be reused with a changed payload');
   console.log('IZAKHONO PUBLISHER REVIEW SERVICE: PASS');
 }
 void main();
