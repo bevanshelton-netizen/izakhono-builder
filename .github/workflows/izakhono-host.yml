@@ -69,6 +69,11 @@ jobs:
         run: test -s products/izakhono-host/mail/README.md && test -s products/izakhono-host/mail/MAILBOX-PROVISIONING.md
       - name: Build owned runtime image
         run: docker build -t izakhono-host-runtime-ci products/izakhono-host/runtime/control-plane
+      - name: Exercise native HOST control-plane smoke tests
+        run: |
+          node --check products/izakhono-host/runtime/control-plane/server.mjs
+          node --check products/izakhono-host/runtime/control-plane/smoke.mjs
+          node products/izakhono-host/runtime/control-plane/smoke.mjs
       - name: Build contact gateway image
         run: docker build -t izakhono-contact-gateway-ci products/izakhono-host/runtime/contact-gateway
       - name: Validate host contract
