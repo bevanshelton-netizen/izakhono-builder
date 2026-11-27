@@ -43,6 +43,42 @@ export default {
     const actor = "registry-admin";
 
     try {
+      if (request.method === "GET" && url.pathname === "/api/export/registry.json") {
+        // Fixed allowlist only: registry records, no environment/configuration or secrets.
+        const exportTables = [
+          "publishers",
+          "imprints",
+          "authors",
+          "works",
+          "work_authors",
+          "editions",
+          "agency_applications",
+          "isbn_records",
+          "legal_deposit_records",
+          "audit_events",
+          "agency_correspondence"
+        ] as const;
+        const tables: Record<string, Row[]> = {};
+        for (const table of exportTables) {
+          const result = await db.prepare(`SELECT * FROM ${table}`).all<Row>();
+          tables[table] = result.results ?? [];
+        }
+        const document = {
+          formatVersion: 1,
+          source: "izakhono-isbn-d1-export",
+          exportedAt: new Date().toISOString(),
+          tables
+        };
+        return new Response(JSON.stringify(document, null, 2), {
+          status: 200,
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "content-disposition": 'attachment; filename="izakhono-isbn-d1-export.json"',
+            "cache-control": "no-store"
+          }
+        });
+      }
+
       if (request.method === "GET" && url.pathname === "/api/catalogue") {
         const result = await db.prepare(`SELECT w.id AS work_id,w.title,w.subtitle,w.language_code,e.id AS edition_id,e.edition_statement,e.format_code,e.publication_date,e.status AS edition_status,i.isbn13,i.verification_status,i.publisher_of_record FROM works w JOIN editions e ON e.work_id=w.id LEFT JOIN isbn_records i ON i.edition_id=e.id ORDER BY w.title,e.language_code,e.format_code`).all<Row>();
         return json({ items: result.results ?? [] });
