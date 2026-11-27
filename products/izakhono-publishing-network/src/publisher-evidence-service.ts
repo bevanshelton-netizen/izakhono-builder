@@ -4,7 +4,7 @@
  * module accepts opaque references only; it never receives raw documents.
  */
 export type EvidenceKind = 'legal_identity' | 'authorized_representative' | 'domain_control' | 'editorial_policy' | 'sample_content' | 'traffic_metrics' | 'audience_metrics' | 'other';
-export type EvidenceStatus = 'submitted' | 'accepted' | 'rejected';
+export type EvidenceStatus = 'awaiting_submission' | 'submitted' | 'accepted' | 'rejected';
 export interface EvidenceTenant { platformId: string; entityId: string; }
 export interface EvidenceActor { principalRef: string; tenant: EvidenceTenant; role: 'owner' | 'administrator' | 'technician' | 'auditor' | 'viewer' | 'publisher'; }
 export interface EvidenceSessionPort { verify(credential: string): Promise<EvidenceActor | null>; }
@@ -81,9 +81,9 @@ export class PublisherEvidenceService {
     const current = await this.ports.store.get(actor.tenant,command.evidenceId);
     if (!current || !sameTenant(current.tenant,actor.tenant)) throw new EvidenceServiceError('EVIDENCE_NOT_FOUND');
     if (current.version !== command.expectedVersion) throw new EvidenceServiceError('EVIDENCE_VERSION_CONFLICT');
-    if (current.status !== 'submitted' || current.requestId !== command.requestId || current.publisherId !== command.publisherId || current.kind !== command.kind) throw new EvidenceServiceError('EVIDENCE_STATE_INVALID');
+    if (current.status !== 'awaiting_submission' || current.requestId !== command.requestId || current.publisherId !== command.publisherId || current.kind !== command.kind) throw new EvidenceServiceError('EVIDENCE_STATE_INVALID');
     const now = this.clock();
-    const next = {...current,opaqueRef:command.opaqueRef,submittedBy:actor.principalRef,submittedAt:now,version:current.version+1};
+    const next = {...current,status:'submitted' as const,opaqueRef:command.opaqueRef,submittedBy:actor.principalRef,submittedAt:now,version:current.version+1};
     return this.commit(actor,next,'submit',auth.decisionRef,'EVIDENCE_SUBMITTED',command.correlationRef,command.idempotencyKey,fp,command.expectedVersion);
   }
   async review(command: ReviewEvidenceCommand): Promise<EvidenceMutationResult> {
