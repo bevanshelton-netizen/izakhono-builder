@@ -15,5 +15,5 @@ assert.deepEqual(count, { n: 4 });
 assert.deepEqual(calls[0], { sql:"SELECT COUNT(*) n FROM works WHERE publisher_id=$1 AND title=$2", values:["pub-1","A title"] });
 const result = await db.prepare("UPDATE works SET title=? WHERE id=?").bind("Updated", "work-1").run();
 assert.equal(result.meta.changes, 2);
-assert.throws(() => db.prepare("SELECT 1; SELECT 2"), /single_statement_required/);
+await assert.rejects(db.prepare("SELECT 1; SELECT 2").all(), /single_statement_required/);
 console.log("PostgreSQL compatibility adapter tests passed (4 assertions).");
