@@ -139,6 +139,7 @@ async function run() {
     schema: 'izakhono.creator/human-media-review-v1',
     profileId: 'facebook-reels-1080x1920-v1',
     reviewId: 'review-api-001',
+    assetContentHash: 'c'.repeat(64),
     passed: true,
     recordedAt: '2026-11-26T09:20:00.000Z',
     recordedBy: 'human-reviewer-1',
