@@ -6,6 +6,11 @@ on:
       - "products/topic-pdfs/**"
       - "src/topic-pdf-request-api.ts"
       - "src/topic-pdf-request-api.test.ts"
+      - "src/topic-pdf-generation-worker.ts"
+      - "src/topic-pdf-generation-worker.test.ts"
+      - "migrations/0032_topic_pdf_generation_jobs.sql"
+      - "migrations/0033_topic_pdf_job_execution_and_reviews.sql"
+      - "wrangler.jsonc"
       - "src/customer-auth.ts"
       - "src/sovereign.ts"
       - ".github/workflows/topic-pdf-catalogue-ci.yml"
@@ -34,6 +39,8 @@ jobs:
         run: npx --yes tsx@4.20.3 products/topic-pdfs/src/generation-core.test.ts
       - name: Test authenticated customer request API guards
         run: npx --yes tsx@4.20.3 src/topic-pdf-request-api.test.ts
+      - name: Test on-demand generation worker and review guards
+        run: npx --yes tsx@4.20.3 src/topic-pdf-generation-worker.test.ts
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
