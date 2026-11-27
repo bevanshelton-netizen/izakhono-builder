@@ -45,6 +45,13 @@ A product may move to **published** only after every applicable release gate is 
 ## Commercial release
 - [ ] Product description matches the actual guide.
 - [ ] Price is set to the US$7 target or an approved local equivalent.
+- [ ] The final sale PDF is rendered separately from editorial proofs and contains no “EDITORIAL DRAFT — NOT FOR SALE” watermark.
+- [ ] Publication status is explicitly set to published only after all review and PDF QA gates pass.
+- [ ] Checkout uses the approved currency, exact price, product/publication identity and customer identity.
+- [ ] Payment completion is verified server-to-server with signature validation and idempotent event processing; browser redirects alone never grant access.
+- [ ] Active customer entitlements are granted only after confirmed payment and revoked/refunded through verified refund/dispute events.
+- [ ] Customer library and private download are tested for ownership, entitlement, withdrawn/unpublished status, expired/revoked payment, storage outage and audit logging.
+- [ ] Downloaded files are private, attachment-delivered, integrity-checked and not exposed through public object URLs.
 - [ ] Storefront, refund, tax and delivery settings are reviewed before launch.
 - [ ] No paid service or advertising is activated without explicit approval.
 - [ ] Customer feedback and correction process are ready.
