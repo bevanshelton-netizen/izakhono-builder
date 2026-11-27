@@ -81,6 +81,19 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     let bytes: Uint8Array;
     try { bytes = new Uint8Array(await request.arrayBuffer()); } catch { return response({ error: 'Source media body could not be read.' }, 400); }
     if (bytes.byteLength !== declaredLength || bytes.byteLength < 1 || bytes.byteLength > maxBytes) return response({ error: 'Source media body size does not match its declared content length or exceeds the limit.' }, 413);
+    const starts = (...signature: number[]) => signature.every((value, index) => bytes[index] === value);
+    const hasFtyp = bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70;
+    const signatureMatches = contentType === 'image/jpeg' ? starts(0xff, 0xd8, 0xff)
+      : contentType === 'image/png' ? starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+      : contentType === 'image/webp' ? starts(0x52, 0x49, 0x46, 0x46) && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+      : contentType === 'video/mp4' ? hasFtyp
+      : contentType === 'video/quicktime' ? hasFtyp && bytes[8] === 0x71 && bytes[9] === 0x74
+      : contentType === 'video/webm' || contentType === 'audio/webm' ? starts(0x1a, 0x45, 0xdf, 0xa3)
+      : contentType === 'audio/wav' || contentType === 'audio/x-wav' ? starts(0x52, 0x49, 0x46, 0x46) && bytes[8] === 0x57 && bytes[9] === 0x41 && bytes[10] === 0x56 && bytes[11] === 0x45
+      : contentType === 'audio/mp4' ? hasFtyp
+      : contentType === 'audio/mpeg' ? starts(0x49, 0x44, 0x33) || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)
+      : false;
+    if (!signatureMatches) return response({ error: 'Uploaded bytes do not match the declared media type.' }, 415);
     const digest = await crypto.subtle.digest('SHA-256', bytes);
     const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
     const assetId = 'src_' + crypto.randomUUID();
