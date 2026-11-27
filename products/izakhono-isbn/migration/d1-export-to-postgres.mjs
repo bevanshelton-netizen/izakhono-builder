@@ -5,7 +5,9 @@
  * Use --apply only after independently backing up both databases and approving the target.
  */
 import { readFile } from "node:fs/promises";
-import pg from "pg";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export const TABLES = Object.freeze({
   publishers: ["id","legal_name","company_registration","country_code","physical_address","postal_address","contact_name","contact_email","contact_phone","website_url","created_at","updated_at"],
@@ -116,10 +118,12 @@ async function main() {
   if (checked.errors.length) throw new Error("Export rejected:\n" + checked.errors.join("\n"));
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is required; no connection attempted.");
+  const require = createRequire(new URL("../runtime/package.json", import.meta.url));
+  const pg = require("pg");
   const pool = new pg.Pool({ connectionString, max: 2, connectionTimeoutMillis: 5000, statement_timeout: 15000 });
   try {
     const result = await importExport(pool, doc, { apply });
     process.stdout.write(JSON.stringify({ ...result, note: apply ? "Committed. Verify row counts and retain the source backup." : "No data committed. Validation transaction was rolled back." }, null, 2) + "\n");
   } finally { await pool.end(); }
 }
-if (import.meta.url === `file://${process.argv[1]}`) main().catch(error => { process.stderr.write(String(error.stack ?? error) + "\n"); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main().catch(error => { process.stderr.write(String(error.stack ?? error) + "\n"); process.exitCode = 1; });
