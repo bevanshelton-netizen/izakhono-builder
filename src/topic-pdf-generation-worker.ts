@@ -15,9 +15,12 @@ interface TopicPdfWorkerEnv {
   IZAKHONO_SUPER_AI_WORKFLOW_KEY?: string;
   TOPIC_PDF_RENDER_URL?: string;
   TOPIC_PDF_RENDER_KEY?: string;
+  TOPIC_PDF_SALE_RELEASE_ENABLED?: string;
+  TOPIC_PDF_RELEASE_RENDER_URL?: string;
+  TOPIC_PDF_RELEASE_RENDER_KEY?: string;
   TOPIC_PDF_BUCKET?: {
     put(key: string, value: ArrayBuffer | Uint8Array, options?: Record<string, unknown>): Promise<unknown>;
-    get(key: string): Promise<{ body: ReadableStream<Uint8Array>; httpMetadata?: { contentType?: string }; size?: number } | null>;
+    get(key: string): Promise<{ body: ReadableStream<Uint8Array>; httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string>; size?: number } | null>;
   };
 }
 
@@ -359,6 +362,113 @@ export async function topicPdfOwnerReviewRoute(
   return new Response(JSON.stringify({ ok: true, request: { id: job.id, status, saleEligible: false } }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
 
+
+
+/** Create a separate non-watermarked sale-edition candidate after recorded human approval.
+ * It is not published or delivered until an owner performs the explicit release action.
+ */
+export async function processOneSaleEditionTopicPdfJob(env: TopicPdfWorkerEnv): Promise<{ processed: boolean; jobId?: string; status?: string; reason?: string }> {
+  if (env.TOPIC_PDF_PIPELINE_ENABLED !== 'true' || env.TOPIC_PDF_SALE_RELEASE_ENABLED !== 'true') {
+    return { processed: false, reason: 'sale-edition-release-disabled' };
+  }
+  if (!env.TOPIC_PDF_RELEASE_RENDER_URL || !env.TOPIC_PDF_RELEASE_RENDER_KEY || !env.TOPIC_PDF_BUCKET) {
+    return { processed: false, reason: 'separate-release-renderer-or-private-storage-not-configured' };
+  }
+  const now = new Date();
+  const lease = new Date(now.getTime() + 3 * 60_000).toISOString();
+  const publication = await env.DB.prepare(
+    `UPDATE topic_pdf_publications
+     SET sale_render_lease_until=?,sale_render_attempt_count=sale_render_attempt_count+1,updated_at=?
+     WHERE id=(
+       SELECT p.id FROM topic_pdf_publications p
+       JOIN topic_pdf_generation_jobs j ON j.id=p.job_id
+       WHERE p.status='approved' AND p.sale_storage_key IS NULL
+         AND j.status='approved' AND j.manuscript_json IS NOT NULL
+         AND (p.sale_render_lease_until IS NULL OR p.sale_render_lease_until<?)
+       ORDER BY p.updated_at ASC LIMIT 1
+     )
+     AND status='approved' AND sale_storage_key IS NULL
+     RETURNING id,job_id,sale_render_attempt_count`,
+  ).bind(lease, now.toISOString(), now.toISOString()).first<any>();
+  if (!publication) return { processed: false, reason: 'sale-edition-queue-empty' };
+
+  try {
+    const job = await env.DB.prepare(
+      'SELECT id,plan_json,manuscript_json FROM topic_pdf_generation_jobs WHERE id=? AND status=\'approved\' LIMIT 1',
+    ).bind(publication.job_id).first<any>();
+    if (!job?.manuscript_json) throw new Error('Approved manuscript is missing.');
+    const plan = safeObject(job.plan_json) || {};
+    const review = await env.DB.prepare(
+      'SELECT id,reviewer_name,decision,rights_reviewed,factual_review_passed,specialist_review_passed,editorial_approved,specialist_reviewer_name,specialist_credentials FROM topic_pdf_review_decisions WHERE job_id=? ORDER BY created_at DESC LIMIT 1',
+    ).bind(job.id).first<any>();
+    const specialistRequired = plan.risk?.requiresSpecialistReview === true;
+    if (!review || review.decision !== 'approved' || Number(review.rights_reviewed) !== 1 ||
+        Number(review.factual_review_passed) !== 1 || Number(review.editorial_approved) !== 1 ||
+        (specialistRequired && (Number(review.specialist_review_passed) !== 1 || !review.specialist_reviewer_name || !review.specialist_credentials))) {
+      throw new Error('Sale-edition rendering requires the latest recorded approval decision and every applicable review gate.');
+    }
+
+    const manuscript = safeObject(job.manuscript_json);
+    if (!manuscript) throw new Error('Approved manuscript JSON is invalid.');
+    const releaseManuscript = {
+      ...manuscript,
+      version: '1.0',
+      rightsReviewed: true,
+      factualReviewPassed: true,
+      specialistReviewRequired: specialistRequired,
+      specialistReviewPassed: !specialistRequired || Number(review.specialist_review_passed) === 1,
+      specialistReviewerName: review.specialist_reviewer_name || '',
+      specialistCredentials: review.specialist_credentials || '',
+      editorialApproval: true,
+    };
+    const endpoint = env.TOPIC_PDF_RELEASE_RENDER_URL.replace(/\/+$/, '') + '/render-publication';
+    const rendered = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer ' + env.TOPIC_PDF_RELEASE_RENDER_KEY,
+      },
+      body: JSON.stringify({ manuscript: releaseManuscript }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!rendered.ok) throw new Error('Publication renderer returned HTTP ' + rendered.status + '.');
+    if (!(rendered.headers.get('content-type') || '').toLowerCase().includes('application/pdf') ||
+        rendered.headers.get('x-topic-pdf-mode') !== 'publication') {
+      throw new Error('Separate publication renderer did not attest publication mode.');
+    }
+    const pdf = new Uint8Array(await rendered.arrayBuffer());
+    if (pdf.length < 1000 || pdf.length > 25 * 1024 * 1024 ||
+        new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') {
+      throw new Error('Publication renderer returned an invalid or oversized PDF.');
+    }
+    const digest = await crypto.subtle.digest('SHA-256', pdf);
+    const sha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    const storageKey = 'topic-pdfs/' + job.id + '/sale-edition/' + sha256.slice(0, 16) + '.pdf';
+    await env.TOPIC_PDF_BUCKET.put(storageKey, pdf, {
+      httpMetadata: { contentType: 'application/pdf', cacheControl: 'private, no-store' },
+      customMetadata: { jobId: job.id, status: 'sale-edition-candidate-not-published', sha256 },
+    });
+    await env.DB.prepare(
+      'UPDATE topic_pdf_publications SET sale_storage_key=?,sale_sha256=?,sale_bytes=?,sale_rendered_at=?,sale_render_lease_until=NULL,updated_at=? WHERE id=? AND status=\'approved\' AND sale_storage_key IS NULL',
+    ).bind(storageKey, sha256, pdf.length, new Date().toISOString(), new Date().toISOString(), publication.id).run();
+    await appendEvent(env, job.id, 'pdf.sale_edition.rendered', {
+      storageKey, sha256, bytes: pdf.length, publicationStatus: 'approved',
+      publicDistribution: false, requiresOwnerRelease: true,
+    });
+    return { processed: true, jobId: job.id, status: 'approved', reason: 'sale-edition-candidate-awaiting-owner-release' };
+  } catch (error) {
+    const message = String(error instanceof Error ? error.message : error).slice(0, 900);
+    const attempts = Number(publication.sale_render_attempt_count || 1);
+    const retryAt = attempts >= 3 ? null : new Date(Date.now() + Math.min(60, 5 * attempts) * 60_000).toISOString();
+    await env.DB.prepare(
+      'UPDATE topic_pdf_publications SET sale_render_lease_until=?,updated_at=? WHERE id=?',
+    ).bind(retryAt, new Date().toISOString(), publication.id).run();
+    await appendEvent(env, publication.job_id, attempts >= 3 ? 'pdf.sale_edition.failed' : 'pdf.sale_edition.retry_scheduled', {
+      attempt: attempts, error: message,
+    });
+    return { processed: true, jobId: publication.job_id, status: 'approved', reason: message };
+  }
+}
 
 /** Render an approved manuscript into a private bucket; never publishes or emails it. */
 export async function processOneApprovedTopicPdfJob(env: TopicPdfWorkerEnv): Promise<{ processed: boolean; jobId?: string; status?: string; reason?: string }> {
