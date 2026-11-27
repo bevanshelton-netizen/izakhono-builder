@@ -136,6 +136,8 @@ The initial 25-topic queue is not a restriction. The platform is being designed 
 - Product metadata contract: `product-record.schema.json`
 - Catalogue validator: `validate-catalog.mjs`
 - Reusable ReportLab proof renderer: `render-pdf.py` (stamps every page EDITORIAL DRAFT — NOT FOR SALE)
+- Reusable manuscript template: `TOPIC-GUIDE-MANUSCRIPT-TEMPLATE.md`
+- Storefront prototype validator: `validate-storefront.mjs`
 - Release checklist: `RELEASE-CHECKLIST.md`
 - First product record: `products/TPDF-001-household-budget.json`
 - First editorial draft: `drafts/TPDF-001-household-budget.md`
