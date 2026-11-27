@@ -69,15 +69,11 @@
   "editorial_review": {
     "status": "pending",
     "reviewer": "",
-    "reviewed_on": "",
     "notes": "Draft requires copy-edit, fact check, local consumer-finance review and PDF proof."
   },
   "status": "draft",
   "version": "0.1.0",
-  "publication_date": "",
-  "next_review_date": "",
   "pdf_file": "",
-  "page_count": 0,
   "qa": {
     "rendered_pdf_inspected": false,
     "links_checked": false,
@@ -88,6 +84,5 @@
   },
   "price_target_usd": 7,
   "actual_price": "",
-  "storefront_url": "",
   "notes": "Draft stored at drafts/TPDF-001-household-budget.md. Not approved for sale; no storefront or payment setup."
 }
