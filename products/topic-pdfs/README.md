@@ -142,20 +142,21 @@ Customer sign-up and login remain disabled until the transactional email adapter
 ## On-demand execution and review services
 
 The Worker now has a scheduled, D1-backed generation processor and owner-only editorial review endpoints:
-- `src/topic-pdf-generation-worker.ts` — bounded job claiming, lease recovery, configured research adapter, IZAKHONO SUPER AI manuscript drafting, source-ledger validation, retry limits, human-review queue and approved-draft rendering into a private R2 bucket.
-- `render-service.py` — self-hostable, bearer-protected ReportLab rendering adapter. It accepts structured manuscripts and always returns a draft-watermarked PDF; it never publishes or sells.
+- `src/topic-pdf-generation-worker.ts` — bounded job claiming, lease recovery, configured research adapter, IZAKHONO SUPER AI manuscript drafting, source-ledger validation, retry limits, human-review queue, private editorial-proof rendering and a separately gated sale-edition render queue.
+- `render-service.py` — self-hostable, bearer-protected ReportLab adapter. `/render` returns a draft-watermarked editorial proof; `/render-publication` requires a separate bearer token and recorded rights/factual/editorial review flags (plus specialist evidence when required), and returns a non-watermarked sale-edition candidate. The service itself never publishes or sells.
 - `test_render_service.py` — checks manuscript validation and PDF output.
 - `src/topic-pdf-generation-worker.test.ts` — disabled-by-default, provider-configuration, empty-queue and owner-auth guard tests.
 - `/api/owner/topic-pdfs/review-queue` — owner-only editorial queue.
 - `/api/owner/topic-pdfs/requests/:id` — owner-only manuscript, evidence, event and review-decision inspection.
 - `/api/owner/topic-pdfs/requests/:id/preview` — owner-only streaming of the private, watermarked editorial PDF.
 - `/api/owner/topic-pdfs/requests/:id/review` — records reviewer identity/role, gate decisions and specialist credentials for high-stakes guides.
+- `/api/owner/topic-pdfs/publications/:id/publish` — explicit owner release action. It checks the latest review decision and private R2 candidate metadata/integrity before changing the publication to `published`.
 - Worker cron: every five minutes; at most one generation job is claimed per tick.
 - Customer request idempotency keys are persisted and unique per customer.
 
 The processor is fail-closed. It does nothing unless `TOPIC_PDF_PIPELINE_ENABLED=true` and the research adapter plus existing IZAKHONO SUPER AI URL/internal/workflow credentials are configured. Research adapter contract: POST to `TOPIC_PDF_RESEARCH_URL` with a bearer `TOPIC_PDF_RESEARCH_KEY`; return JSON containing 2-30 current HTTPS sources with title, publisher, URL and claim support. The worker then requests a structured original manuscript from the configured IZAKHONO SUPER AI `/api/v1/generate` endpoint. The generated result is always an unapproved editorial draft.
 
-Database migrations `0032`–`0037` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up remains disabled pending email configuration. Customer account recovery/deletion, deployment of the private renderer, creation/configuration of the private R2 bucket binding, payment checkout/webhooks/refunds, trusted entitlement grants, a non-watermarked sale edition renderer, and end-to-end production verification remain outstanding. The fulfilment endpoint is intentionally fail-closed until those release and payment gates are complete. Do not represent the product as live or saleable.
+Database migrations `0032`–`0037` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up remains disabled pending email configuration. Customer account recovery/deletion, deployment of the private renderer, creation/configuration of the private R2 bucket binding, payment checkout/webhooks/refunds and trusted entitlement grants remain outstanding. The separate non-watermarked sale-edition renderer and owner publication gate are implemented in code but disabled pending configuration and validation. End-to-end production verification remains outstanding. The fulfilment endpoint is intentionally fail-closed until those release and payment gates are complete. Do not represent the product as live or saleable.
 
 ## Current build artefacts
 
@@ -163,7 +164,7 @@ Database migrations `0032`–`0037` are prepared but have not been applied. No p
 - Generation request/risk/release-gate core: `src/generation-core.ts` and `src/generation-core.test.ts`
 - Authenticated customer request API adapter: `../../src/topic-pdf-request-api.ts` and guard tests: `../../src/topic-pdf-request-api.test.ts` (disabled by default; requires migration and explicit feature activation)
 - Entitlement-gated customer fulfilment API and tests: `../../src/topic-pdf-fulfilment-api.ts` and `../../src/topic-pdf-fulfilment-api.test.ts`; private library/download endpoints require a published record and an active purchase entitlement
-- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`, private PDF metadata: `../../migrations/0035_topic_pdf_render_storage.sql`, customer-auth throttling: `../../migrations/0036_topic_pdf_customer_auth_limits.sql`, purchase entitlements and download audit: `../../migrations/0037_topic_pdf_customer_fulfilment.sql`
+- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`, private PDF metadata: `../../migrations/0035_topic_pdf_render_storage.sql`, customer-auth throttling: `../../migrations/0036_topic_pdf_customer_auth_limits.sql`, purchase entitlements and download audit: `../../migrations/0037_topic_pdf_customer_fulfilment.sql`, sale-edition and publication release metadata: `../../migrations/0038_topic_pdf_sale_edition_release.sql`
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
 - Catalogue validator: `validate-catalog.mjs`
