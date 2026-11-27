@@ -2,7 +2,7 @@
  * PostgreSQL transaction adapter for IZAKHONO DEPLOY.
  *
  * Reuses the existing Runtime Fabric deployment row (metadata.deploy_control)
- * and the existing FORTRESS fortress_audit_events table. It creates no tables,
+ * and the existing FORTRESS izakhono_deploy_audit_events table. It creates no tables,
  * runs no DDL, and never opens a second connection inside a transaction.
  *
  * Both tables MUST be on the same approved PostgreSQL database. If the FORTRESS
@@ -163,11 +163,11 @@ export function createPostgresTransactionRunner(pool) {
             request_hash: event.requestHash,
             evidence: event.evidence
           };
-          // Reuse the existing FORTRESS ledger. A missing table or uniqueness
-          // conflict aborts this transaction; no second audit database is used.
+          // Use the DEPLOY-owned append-only ledger. It shares this transaction
+          // without imposing deployment constraints on Provisioner FORTRESS events.
           await client.query(
-            `INSERT INTO fortress_audit_events
-              (event_id, job_id, tenant_id, operation_id, event_type, actor,
+            `INSERT INTO izakhono_deploy_audit_events
+              (event_id, deployment_id, tenant_id, operation_id, event_type, actor,
                adapter, state, observed_at, data)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)`,
             [event.eventId, event.deploymentId, event.tenantId, event.idempotencyKey,
