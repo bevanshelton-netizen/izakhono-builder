@@ -37,6 +37,12 @@ jobs:
         working-directory: products/izakhono-mail/runtime-v1
         run: shellcheck ops/*.sh
 
+      - name: Validate encrypted backup archive path safety
+        working-directory: products/izakhono-mail/runtime-v1/ops
+        run: |
+          python3 -m py_compile validate_backup_archive.py test_validate_backup_archive.py
+          python3 -m unittest -v test_validate_backup_archive.py
+
       - name: Validate required runtime files
         working-directory: products/izakhono-mail/runtime-v1
         run: |
