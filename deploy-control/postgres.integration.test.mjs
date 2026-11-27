@@ -237,6 +237,45 @@ integration("enforces tenant, application and environment scope in the Runtime F
 });
 
 
+integration("preserves the shared Provisioner FORTRESS audit contract across the DEPLOY migration", async () => {
+  const result = await pool.query(
+    "SELECT job_id FROM fortress_audit_events WHERE job_id LIKE 'provisioner-job-%' ORDER BY job_id"
+  );
+  assert.deepEqual(result.rows.map(row => row.job_id), [
+    "provisioner-job-after", "provisioner-job-before"
+  ]);
+  await pool.query(
+    `INSERT INTO fortress_audit_events
+      (event_id, job_id, tenant_id, operation_id, event_type, actor, state, observed_at)
+     VALUES ('provisioner-after-test', 'unrelated-provisioner-job', 'tenant-provisioner',
+      'op-after-test', 'PROVISIONED', 'provisioner', 'SUCCEEDED', now())`
+  );
+  assert.equal((await pool.query(
+    "SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = 'unrelated-provisioner-job'"
+  )).rows[0].n, 1);
+});
+
+integration("DEPLOY audit enforces tenant binding and append-only mutations", async () => {
+  const auth = await principal(), id = await seed();
+  await run(auth, id, "audit-immutability-1");
+  await assert.rejects(
+    pool.query("UPDATE izakhono_deploy_audit_events SET actor = 'tampered' WHERE deployment_id = $1", [id]),
+    /append-only/
+  );
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO izakhono_deploy_audit_events
+        (event_id, deployment_id, tenant_id, operation_id, event_type, actor, state, observed_at)
+       VALUES ('wrong-tenant-event', $1, 'other-tenant', 'wrong-op', 'DEPLOYED', 'operator', 'VALIDATED', now())`,
+      [id]
+    ),
+    /foreign key/
+  );
+  assert.equal((await pool.query(
+    "SELECT count(*)::int AS n FROM izakhono_deploy_audit_events WHERE deployment_id = $1", [id]
+  )).rows[0].n, 1);
+});
+
 integration("HTTP API authenticates a DEPLOY-verified capability and commits a scoped transition", async () => {
   const id = await seed();
   const issuedAt = Math.floor(Date.now() / 1000) - 5;
