@@ -1335,7 +1335,7 @@ export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
 
-    if (url.pathname === '/topic-guides' || url.pathname === '/topic-guides') {
+    if (url.pathname === '/topic-guides') {
       return Response.redirect(url.origin + '/topic-guides/', 302);
     }
     if (url.pathname.startsWith('/topic-guides/')) {
