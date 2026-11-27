@@ -43,6 +43,8 @@ jobs:
         run: node products/topic-pdfs/validate-catalog.mjs
       - name: Validate storefront prototype
         run: node products/topic-pdfs/validate-storefront.mjs
+      - name: Validate customer workspace security and UX
+        run: node products/topic-pdfs/validate-customer-workspace.mjs
       - name: Test on-demand topic generation core
         run: npx --yes tsx@4.20.3 products/topic-pdfs/src/generation-core.test.ts
       - name: Test authenticated customer request API guards
