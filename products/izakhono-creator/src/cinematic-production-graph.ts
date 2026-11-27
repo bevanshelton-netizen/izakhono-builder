@@ -279,13 +279,13 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
       if (asset.role !== 'source' || evidence.schema !== 'izakhono.creator/source-media-evidence-v1' || evidence.origin !== 'user_upload') {
         issues.push({ code: 'INVALID_SOURCE_EVIDENCE', path: `assets.${asset.id}.sourceEvidence`, message: 'Source intake evidence must belong to a user-uploaded source asset.', severity: 'error' });
       }
-      if (!asset.storageKey?.startsWith(`projects/${project.id}/source/`) || asset.status !== 'completed') {
+      if (typeof asset.storageKey !== 'string' || !asset.storageKey.startsWith(`projects/${project.id}/source/`) || asset.status !== 'completed') {
         issues.push({ code: 'SOURCE_MEDIA_NOT_STORED', path: `assets.${asset.id}`, message: 'Ingested source media must be stored under its project source namespace before it is marked completed.', severity: 'error' });
       }
-      if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || evidence.sha256.toLowerCase() !== asset.contentHash.toLowerCase()) {
+      if (typeof asset.contentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || typeof evidence.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.sha256) || evidence.sha256.toLowerCase() !== asset.contentHash.toLowerCase()) {
         issues.push({ code: 'SOURCE_HASH_MISMATCH', path: `assets.${asset.id}.sourceEvidence.sha256`, message: 'Source intake SHA-256 must match the asset content hash.', severity: 'error' });
       }
-      if (!Number.isSafeInteger(evidence.byteSize) || evidence.byteSize < 1 || evidence.mimeType !== asset.mimeType || !evidence.originalFilename.trim() || !evidence.receivedBy.trim() || !evidence.licenceDeclaration.trim() || !Number.isFinite(Date.parse(evidence.receivedAt))) {
+      if (!Number.isSafeInteger(evidence.byteSize) || evidence.byteSize < 1 || typeof evidence.mimeType !== 'string' || evidence.mimeType !== asset.mimeType || typeof evidence.originalFilename !== 'string' || !evidence.originalFilename.trim() || typeof evidence.receivedBy !== 'string' || !evidence.receivedBy.trim() || typeof evidence.licenceDeclaration !== 'string' || !evidence.licenceDeclaration.trim() || typeof evidence.receivedAt !== 'string' || !Number.isFinite(Date.parse(evidence.receivedAt))) {
         issues.push({ code: 'INCOMPLETE_SOURCE_EVIDENCE', path: `assets.${asset.id}.sourceEvidence`, message: 'Source intake evidence requires valid size, MIME type, filename, uploader, licence declaration and timestamp.', severity: 'error' });
       }
       if (evidence.consentStatus === 'provided' && asset.provenance.consentRecordIds.length === 0) {
