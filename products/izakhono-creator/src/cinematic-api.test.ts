@@ -144,6 +144,12 @@ async function run() {
   const resolvedSource = await resolveOriginalSourceImage('qa-project', reviewedSourceAsset, readSourceObject);
   assert.equal(resolvedSource.sha256, sourcePayload.asset.contentHash, 'source resolver re-hashes the private object before returning it');
   assert.ok(resolvedSource.dataUri.startsWith('data:image/png;base64,'), 'verified source resolver returns a typed image data URI');
+  await assert.rejects(
+    () => resolveOriginalSourceImage('qa-project', { ...reviewedSourceAsset, shotId: 'another-shot' }, readSourceObject, { shotId: 'target-shot', sceneId: 'target-scene' }),
+    /different shot or scene/,
+    'source resolver rejects media already assigned to a different shot',
+  );
+
   const originalSourceBytes = sourceObjects.get(sourcePayload.asset.storageKey)!;
   sourceObjects.set(sourcePayload.asset.storageKey, new Uint8Array([...originalSourceBytes.slice(0, -1), originalSourceBytes.at(-1)! ^ 0xff]));
   await assert.rejects(
