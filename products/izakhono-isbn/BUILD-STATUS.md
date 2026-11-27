@@ -1,52 +1,45 @@
 # Build status — IZAKHONO ISBN & Publishing Registry v1
 
-## Delivered in this branch
-- Publishing registry API and dashboard foundation with protected management endpoints.
-- D1 prototype schema and migrations for publisher, imprint, author, work, edition, ISBN, application, append-only agency correspondence and audit records.
-- Preserves the 6 October and 14 October 2026 NLSA application emails and the 26 November 2026 escalation as dated correspondence records; no reply or ISBN allocation is implied.
-- Seeds six first-season SELFHELP Stories titles as development works only; no unconfirmed formats, author assignments or ISBNs are invented.
-- ISBN-13 checksum validation and digits-only canonicalisation; no ISBN generation/allocation.
-- Database-level SQLite guards for ISBN checksum, canonical storage, allocation authority/evidence and allocation dates.
-- API regression tests, SQLite migration integrity tests and dashboard syntax checks.
-- Edition-level catalogue, contributor links, agency correspondence, legal deposit tracking and CSV export.
-- Bearer-token protection, audit logging and fail-closed behaviour.
-- NODE01 is documented as an IZAKHONO software node, not a physical server.
+## Implemented
 
-## IZAKHONO Edge / PostgreSQL portability work
-- Accepted architecture decision: `products/izakhono-platform/IZAKHONO-EDGE-ARCHITECTURE-ADR-0001.md`.
-- Added PostgreSQL target schema: `postgresql/0001_initial_schema.sql`.
-- Added idempotent initial publisher, imprint, author, work, edition, application, first-season catalogue and NLSA correspondence seed: `postgresql/0002_seed_initial_catalogue.sql`.
-- Added PostgreSQL database-level ISBN-13 checksum guard and immutable agency-correspondence trigger.
-- Added provider-neutral TypeScript persistence contract: `src/storage/contract.ts`.
-- Added PostgreSQL parameter-binding compatibility adapter: `src/postgresql-adapter.ts`, with adapter unit tests.
-- Added Node.js 22 HTTP runtime, PostgreSQL driver manifest and container build: `runtime/`.
-- Connected the existing registry API handler to the PostgreSQL adapter through the Node runtime without changing the domain/API route implementation.
-- Added opt-in local Compose runtime profile, with PostgreSQL and application ports bound to loopback only; local secrets are supplied through an ignored `.env` file.
-- Added live PostgreSQL schema/seed/API integration tests to CI using a PostgreSQL 17 service container; the tests cover catalogue reads, dashboard counts, author create/update, ISBN checksum enforcement and immutable correspondence.
-- Added CI container-image build validation for the self-hosted Node.js runtime.
-- The self-hosted runtime path is implemented in source. Its live CI result is pending; no local production-like stack or public service has been deployed.
+- Protected registry API and dashboard for publisher, imprint, author/pen-name, work, edition, ISBN, agency application, legal deposit, audit and agency correspondence records.
+- D1 transitional schema and migrations; ISBN-13 validation and database integrity guards.
+- PostgreSQL target schema, ISBN-13 checksum trigger, allocation-evidence constraints and append-only correspondence trigger.
+- PostgreSQL compatibility adapter and Node.js 22 HTTP runtime; the existing registry API handler is wired through the PostgreSQL adapter.
+- Local Compose development profile with database and application ports bound to loopback only.
+- Live PostgreSQL 17 schema/seed/API integration tests and actual container HTTP/PostgreSQL smoke test in CI.
+- Dry-run-first D1 JSON export → PostgreSQL importer with strict table/column allowlists, ISBN/evidence validation, dependency-ordered inserts, transactional rollback by default and explicit `--apply` commit mode.
+- Migration-tool tests covering checksum validation, unknown data rejection, missing allocation evidence, verified ISBN allocation dates and dry-run/apply transaction outcomes.
+- Initial publisher/imprint/author/application records and six SELFHELP Stories development works; no unconfirmed editions or ISBNs are invented.
+- NLSA correspondence history for 6 October, 14 October and 26 November 2026. Outgoing messages are not represented as agency acknowledgement or allocation.
 
 ## Latest verification
-- The architecture/documentation commit `af4d83b1ba5d16606093399fa974ded9a9e6c96a` completed all 18 checks successfully, including the repository Worker build. That preview is a repository artifact, not the self-owned registry runtime.
-- The latest ISBN registry CI job passed on commit `c4f069f2bc0f7abe5c7e5d304376ef6b6369a17e`: dashboard syntax, NODE01 lifecycle, ISBN-13 validation, D1 migration integrity, PostgreSQL adapter unit tests, PostgreSQL schema/contract checks, live PostgreSQL 17 schema/seed/API integration, runtime syntax and Docker image build all succeeded.
-- The broader repository workflow has one separate validation job still running; all other checks observed for this commit have completed successfully.
-- No live PostgreSQL server or Docker container has been started in this environment.
+
+- Commit `eaa646d341aaa464ec8c399962f71f6cf7cb7960`: all 18 reported GitHub checks completed successfully, including the ISBN registry integration suite, PostgreSQL 17 API integration, Docker image build, and actual container smoke test.
+- Subsequent migration tooling, migration CI test step and documentation updates have been committed to this same feature branch. Their CI run is required before treating the new migration tests as passed.
+- Pull request #793 remains OPEN and DRAFT; it has not been merged.
+
+## Migration safety
+
+- The migration importer defaults to a transaction that is rolled back after all inserts and constraints are exercised.
+- It rejects unknown tables/columns, invalid ISBN checksums, missing allocation authority/evidence and verified ISBNs without allocation dates.
+- It preserves IDs and correspondence evidence references; duplicate/unique/FK errors abort the complete transaction.
+- No automatic production migration has been run. Both source and destination backups plus a tested restore/rollback remain mandatory before a real import.
 
 ## Not complete / not claimed
-- No official ISBN has been allocated or verified.
-- No NLSA publisher prefix or publisher registration has been confirmed.
-- No self-owned production PostgreSQL instance, application runtime, DNS service or public edge has been provisioned. A local-only PostgreSQL Compose definition is provided for development; it has not been started or tested in this environment.
-- No self-hosted production deployment or production URL is claimed.
-- The ISBN registry-specific CI acceptance suite and container image build have passed. Local deployment, data migration tooling, organisation-controlled access, monitoring and tested backup/restore remain outstanding.
-- NODE01 production runtime evidence and operational integration remain outstanding.
-- No hosting, hardware, bandwidth or subscription expenditure is authorised by this work.
+
+- No official NLSA publisher registration, publisher prefix or ISBN allocation has been confirmed.
+- No self-owned production PostgreSQL instance, application runtime, DNS, public edge or IZAKHONO Edge deployment has been provisioned.
+- No production data migration, production backup/restore acceptance or rollback rehearsal has been performed.
+- Organisation-controlled access, monitoring, encrypted off-node backups, restore testing and operational acceptance remain release gates.
+- No hosting, hardware, bandwidth or subscription expenditure has been authorised.
 
 ## Release gates
-1. Run live PostgreSQL schema, API, ISBN integrity and correspondence immutability integration tests against the supplied local Compose stack.
-2. Add data migration tooling and a tested rollback plan for any transition from the D1 prototype.
-3. Select and verify an IZAKHONO Edge execution substrate and resource budget.
-4. Configure organisation-controlled access, secret handling, monitoring and encrypted off-node backups.
-5. Demonstrate restore and rollback.
-6. Implement owned DNS/TLS/WAF/ingress and complete operational acceptance.
-7. Obtain explicit cost approval before any paid hosting, hardware, bandwidth or subscription commitment.
-8. Obtain NLSA publisher registration and record ISBNs only after authorised allocation.
+
+1. Pass CI for the newly added migration-tool tests and inspect any failures.
+2. Complete an operator-led local migration rehearsal using a real, independently backed-up D1 export and disposable PostgreSQL target.
+3. Verify source/target row counts, relationships, audit history and correspondence evidence; test restore and rollback.
+4. Approve IZAKHONO Edge execution substrate, resource budget and access policy before provisioning.
+5. Configure monitoring, encrypted off-node backups, restore procedures, owned DNS/TLS/WAF/ingress and operational controls.
+6. Obtain explicit approval before any paid hosting, hardware, bandwidth or subscription commitment.
+7. Record ISBNs only after allocation by NLSA or another authorised ISBN agency.
