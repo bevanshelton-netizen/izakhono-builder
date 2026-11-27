@@ -35,5 +35,6 @@ export { recordMediaQaEvidence, type MediaQaEvidence } from './cinematic-product
 export { executeProductionDistributionExport, type ProductionExportRequest, type ProductionExportResult, type DistributionExportStore } from './cinematic-media-export-worker';
 
 export { recordHumanMediaReview, hasPassingHumanMediaReview, type HumanMediaReviewEvidence, type SourceMediaEvidence, recordSourceRightsReview, hasVerifiedSourceRights, type SourceRightsReviewEvidence } from './cinematic-production-graph';
+export { resolveOriginalSourceImage, type ResolvedOriginalSourceImage, type PrivateSourceReader } from './cinematic-source-media';
 
 export { createPrivateObjectStore, type PrivateObjectStore, type PrivateObjectClient, type PrivateObjectStoreOptions } from './private-object-store';
