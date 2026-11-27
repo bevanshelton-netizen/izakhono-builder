@@ -37,6 +37,15 @@ try {
   assert.equal(Number(dashboard.data.editions), 1);
   assert.equal(Number(dashboard.data.verifiedIsbns), 0, "seed must not invent ISBN allocations");
 
+  const fullExport = await api("/api/export/registry.json");
+  assert.equal(fullExport.response.status, 200);
+  assert.equal(fullExport.data.formatVersion, 1);
+  assert.equal(fullExport.data.source, "izakhono-isbn-d1-export");
+  assert.ok(Array.isArray(fullExport.data.tables.publishers));
+  assert.ok(Array.isArray(fullExport.data.tables.agency_correspondence));
+  assert.equal(fullExport.data.tables.agency_correspondence.length, 3);
+  assert.ok(!JSON.stringify(fullExport.data).includes(token), "export must not include the admin token");
+
   const catalogue = await api("/api/catalogue");
   assert.equal(catalogue.response.status, 200);
   assert.equal(catalogue.data.items.length, 1);
