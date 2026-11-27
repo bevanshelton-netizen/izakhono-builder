@@ -94,7 +94,8 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       : contentType === 'audio/mpeg' ? starts(0x49, 0x44, 0x33) || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)
       : false;
     if (!signatureMatches) return response({ error: 'Uploaded bytes do not match the declared media type.' }, 415);
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const bodyBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const digest = await crypto.subtle.digest('SHA-256', bodyBuffer);
     const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
     const assetId = 'src_' + crypto.randomUUID();
     const storageKey = 'projects/' + id + '/source/' + assetId;
@@ -118,7 +119,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     const checked = validate(updatedGraph);
     if (!checked.valid) return response({ error: 'Source media would violate production graph integrity.', issues: checked.issues }, 422);
     try {
-      await env.ASSETS.put(storageKey, new Response(bytes).body, { httpMetadata: { contentType } });
+      await env.ASSETS.put(storageKey, new Response(bodyBuffer).body, { httpMetadata: { contentType } });
       await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
     } catch {
       return response({ error: 'Source media storage or graph persistence failed. Upload was not confirmed; reconcile any private orphan object before retrying.' }, 503);
