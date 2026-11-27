@@ -3,7 +3,8 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY products/izakhono-isbn/runtime/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
-COPY products/izakhono-isbn/runtime/server.mjs ./server.mjs
+RUN mkdir -p runtime
+COPY products/izakhono-isbn/runtime/server.mjs ./runtime/server.mjs
 COPY products/izakhono-isbn/src ./src
 COPY products/izakhono-isbn/public ./public
 USER node
