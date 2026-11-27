@@ -20,5 +20,21 @@ services:
       retries: 10
     restart: unless-stopped
 
+  isbn-registry:
+    profiles: ["runtime"]
+    build:
+      context: ../../..
+      dockerfile: products/izakhono-isbn/runtime/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${IZAKHONO_PG_USER:-izakhono}:${IZAKHONO_PG_PASSWORD}@isbn-postgres:5432/${IZAKHONO_PG_DATABASE:-izakhono_isbn}
+      ISBN_ADMIN_TOKEN: ${ISBN_ADMIN_TOKEN:?Set ISBN_ADMIN_TOKEN in your local .env file}
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      isbn-postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   izakhono_isbn_pgdata:
