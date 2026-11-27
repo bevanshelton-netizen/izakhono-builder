@@ -15,11 +15,11 @@ for (const table of [
 }
 assert.match(schema, /CREATE FUNCTION izakhono_isbn13_valid/);
 assert.match(schema, /CREATE TRIGGER trg_isbn_integrity/);
-assert.match(schema, /verification_status = 'verified'[\\s\\S]*allocation_date IS NULL/);
+assert.match(schema, /verification_status = 'verified'[\s\S]*allocation_date IS NULL/);
 assert.match(schema, /CREATE TRIGGER agency_correspondence_no_update/);
 assert.match(schema, /BEFORE UPDATE OR DELETE ON agency_correspondence/);
 assert.match(schema, /ON DELETE CASCADE/);
-assert.match(seed, /IZAKHONO AFRICA \\(PTY\\) LTD/);
+assert.match(seed, /IZAKHONO AFRICA \(PTY\) LTD/);
 assert.match(seed, /SELFHELP Stories/);
 assert.match(seed, /gmail-message:1a21752f0d53d530/);
 assert.doesNotMatch(seed, /INSERT INTO isbn_records/i, "seed must never fabricate ISBNs");
