@@ -7,13 +7,8 @@ export interface PgQueryResult<Row = Record<string, unknown>> {
   rows: Row[];
   rowCount: number | null;
 }
-export interface PgClientLike {
-  query<Row = Record<string, unknown>>(sql: string, values?: readonly unknown[]): Promise<PgQueryResult<Row>>;
-  release?(): void;
-}
 export interface PgPoolLike {
   query<Row = Record<string, unknown>>(sql: string, values?: readonly unknown[]): Promise<PgQueryResult<Row>>;
-  connect(): Promise<PgClientLike>;
   end?(): Promise<void>;
 }
 type D1Result<Row> = { results: Row[]; success: true; meta: { changes: number } };
@@ -58,19 +53,6 @@ export function createPostgresD1Adapter(pool: PgPoolLike) {
   };
   return {
     prepare,
-    async batch<T extends Prepared[]>(statements: T) {
-      const client = await pool.connect();
-      try {
-        await client.query("BEGIN");
-        const results = [];
-        for (const statement of statements) results.push(await statement.all());
-        await client.query("COMMIT");
-        return results;
-      } catch (error) {
-        await client.query("ROLLBACK");
-        throw error;
-      } finally { client.release?.(); }
-    },
     async exec(statement: string) {
       const result = await pool.query(statement);
       return { count: result.rowCount ?? 0, duration: 0 };
