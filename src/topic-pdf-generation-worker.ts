@@ -429,7 +429,7 @@ export async function processOneSaleEditionTopicPdfJob(env: TopicPdfWorkerEnv): 
      WHERE id=(
        SELECT p.id FROM topic_pdf_publications p
        JOIN topic_pdf_generation_jobs j ON j.id=p.job_id
-       WHERE p.status='approved' AND p.sale_storage_key IS NULL
+       WHERE p.status='approved' AND p.sale_storage_key IS NULL AND p.sale_render_attempt_count<3
          AND j.status='approved' AND j.manuscript_json IS NOT NULL
          AND (p.sale_render_lease_until IS NULL OR p.sale_render_lease_until<?)
        ORDER BY p.updated_at ASC LIMIT 1
@@ -496,7 +496,7 @@ export async function processOneSaleEditionTopicPdfJob(env: TopicPdfWorkerEnv): 
       customMetadata: { jobId: job.id, status: 'sale-edition-candidate-not-published', sha256 },
     });
     await env.DB.prepare(
-      'UPDATE topic_pdf_publications SET sale_storage_key=?,sale_sha256=?,sale_bytes=?,sale_rendered_at=?,sale_render_lease_until=NULL,updated_at=? WHERE id=? AND status=\'approved\' AND sale_storage_key IS NULL',
+      'UPDATE topic_pdf_publications SET sale_storage_key=?,sale_sha256=?,sale_bytes=?,sale_rendered_at=?,sale_render_lease_until=NULL,sale_render_last_error=NULL,updated_at=? WHERE id=? AND status=\'approved\' AND sale_storage_key IS NULL',
     ).bind(storageKey, sha256, pdf.length, new Date().toISOString(), new Date().toISOString(), publication.id).run();
     await appendEvent(env, job.id, 'pdf.sale_edition.rendered', {
       storageKey, sha256, bytes: pdf.length, publicationStatus: 'approved',
@@ -508,8 +508,8 @@ export async function processOneSaleEditionTopicPdfJob(env: TopicPdfWorkerEnv): 
     const attempts = Number(publication.sale_render_attempt_count || 1);
     const retryAt = attempts >= 3 ? null : new Date(Date.now() + Math.min(60, 5 * attempts) * 60_000).toISOString();
     await env.DB.prepare(
-      'UPDATE topic_pdf_publications SET sale_render_lease_until=?,updated_at=? WHERE id=?',
-    ).bind(retryAt, new Date().toISOString(), publication.id).run();
+      'UPDATE topic_pdf_publications SET sale_render_lease_until=?,sale_render_last_error=?,updated_at=? WHERE id=?',
+    ).bind(retryAt, message, new Date().toISOString(), publication.id).run();
     await appendEvent(env, publication.job_id, attempts >= 3 ? 'pdf.sale_edition.failed' : 'pdf.sale_edition.retry_scheduled', {
       attempt: attempts, error: message,
     });
