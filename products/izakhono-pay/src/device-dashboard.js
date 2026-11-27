@@ -115,7 +115,7 @@ export function renderDeviceDashboard(nonce = '') {
   };
   var printReceipt=function(row){
     var w=window.open('','_blank');if(!w){showMessage('activityMessage','Allow pop-ups to print a receipt.',true);return}
-    w.opener=null;var doc=w.document;doc.open();doc.write('<!doctype html><html><head><title>I-PAY receipt</title></head><body></body></html>');doc.close();
+    w.opener=null;var doc=w.document;
     var style=doc.createElement('style');style.textContent='body{font:15px system-ui;max-width:520px;margin:40px auto;padding:20px;color:#111}.brand{font-weight:900;font-size:22px}.muted{color:#555}.line{border-top:1px solid #ddd;margin:20px 0}.amount{font-size:28px;font-weight:900}';doc.head.appendChild(style);
     var brand=doc.createElement('div');brand.className='brand';brand.textContent='I-PAY';doc.body.appendChild(brand);
     var note=doc.createElement('p');note.className='muted';note.textContent='Transaction receipt · Merchant copy';doc.body.appendChild(note);
