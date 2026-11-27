@@ -11,6 +11,7 @@ on:
       - "src/topic-pdf-fulfilment-api.ts"
       - "src/topic-pdf-fulfilment-api.test.ts"
       - "migrations/0037_topic_pdf_customer_fulfilment.sql"
+      - "migrations/0038_topic_pdf_sale_edition_release.sql"
       - "migrations/0036_topic_pdf_customer_auth_limits.sql"
       - "public/topic-guides/**"
       - "src/topic-pdf-generation-worker.ts"
