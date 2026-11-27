@@ -37,6 +37,8 @@ try {
   assert.equal(Number(dashboard.data.editions), 1);
   assert.equal(Number(dashboard.data.verifiedIsbns), 0, "seed must not invent ISBN allocations");
 
+  const unauthenticatedExport = await worker.fetch(new Request("http://registry.test/api/export/registry.json"), { DB: db, ISBN_ADMIN_TOKEN: token });
+  assert.equal(unauthenticatedExport.status, 401, "full registry export must require bearer authentication");
   const fullExport = await api("/api/export/registry.json");
   assert.equal(fullExport.response.status, 200);
   assert.equal(fullExport.data.formatVersion, 1);
