@@ -124,12 +124,13 @@ These documents define the proposed customer experience, brand and trust require
 
 ## On-demand generation
 
-The initial 25-topic queue is not a restriction. The platform is being designed to accept a new topic brief at any time, define audience/outcome/language/jurisdiction, assess risk, and route it through research, original drafting, review and PDF production. See `ON-DEMAND-GENERATION-ENGINE.md` for the pipeline and release controls. The deterministic request/risk/review-gate core is implemented; live model/research execution, public request API, authentication, PDF job processing, payments and delivery are not yet operational.
+The initial 25-topic queue is not a restriction. The platform is being designed to accept a new topic brief at any time, define audience/outcome/language/jurisdiction, assess risk, and route it through research, original drafting, review and PDF production. See `ON-DEMAND-GENERATION-ENGINE.md` for the pipeline and release controls. The deterministic request/risk/review-gate core and an authenticated customer request API adapter are implemented. The API requires an existing active customer bearer session and is disabled unless the server-side TOPIC_PDF_REQUESTS_ENABLED flag is explicitly set to true. Its D1 migration is prepared but not applied. Live model/research execution, background job processing, PDF generation for customer jobs, payments and delivery are not yet operational.
 
 ## Current build artefacts
 
 - On-demand generation pipeline: `ON-DEMAND-GENERATION-ENGINE.md`
 - Generation request/risk/release-gate core: `src/generation-core.ts` and `src/generation-core.test.ts`
+- Authenticated customer request API adapter: `../../src/topic-pdf-request-api.ts` and guard tests: `../../src/topic-pdf-request-api.test.ts` (disabled by default; requires migration and explicit feature activation)
 - D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
