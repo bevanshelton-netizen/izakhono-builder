@@ -39,6 +39,31 @@ allow-axfr-ips=$SECONDARY_PUBLIC_IPV4
 EOF
 elif [ "$DNS_MODE" = "secondary" ]; then
   : "${PRIMARY_PUBLIC_IPV4:?PRIMARY_PUBLIC_IPV4 is required for secondary mode}"
+  # These values enter a SQL statement below. Restrict them to valid
+  # hostname/IP characters before interpolation to prevent SQL injection.
+  case "$PRIMARY_NS_FQDN" in
+    ''|*[!A-Za-z0-9.-]*)
+      echo "PRIMARY_NS_FQDN contains invalid characters" >&2
+      exit 64
+      ;;
+  esac
+  case "$PRIMARY_PUBLIC_IPV4" in
+    ''|*[!0-9.]*)
+      echo "PRIMARY_PUBLIC_IPV4 must be an IPv4 address" >&2
+      exit 64
+      ;;
+  esac
+  if ! printf '%s\n' "$PRIMARY_PUBLIC_IPV4" | awk -F. '
+    NF != 4 { exit 1 }
+    {
+      for (i = 1; i <= 4; i++) {
+        if ($i !~ /^[0-9]+$/ || length($i) > 3 || $i + 0 > 255) exit 1
+      }
+    }
+  '; then
+    echo "PRIMARY_PUBLIC_IPV4 must be a valid IPv4 address" >&2
+    exit 64
+  fi
   cat >> "$CONFIG" <<EOF
 primary=no
 secondary=yes
