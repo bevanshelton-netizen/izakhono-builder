@@ -221,6 +221,7 @@ const humanReviewEvidence = {
   schema: 'izakhono.creator/human-media-review-v1' as const,
   profileId: 'facebook-reels-1080x1920-v1',
   reviewId: 'human-review-001',
+  assetContentHash: 'c'.repeat(64),
   passed: true,
   recordedAt: '2026-11-26T09:30:00.000Z',
   recordedBy: 'producer-reviewer-1',
@@ -232,6 +233,11 @@ const humanReviewEvidence = {
     { id: 'private-upload-playback', passed: true, finding: 'Private staging upload played back successfully.' },
   ],
 };
+
+let wrongHashHumanReviewRejected = false;
+try { recordHumanMediaReview(qaRecorded, 'export-1', { ...humanReviewEvidence, reviewId: 'human-review-wrong-hash', assetContentHash: 'd'.repeat(64) }); } catch { wrongHashHumanReviewRejected = true; }
+if (!wrongHashHumanReviewRejected) throw new Error('Human review must be bound to the exact export SHA-256');
+
 const humanReviewed = recordHumanMediaReview(qaRecorded, 'export-1', humanReviewEvidence);
 if (!buildProductionManifest(humanReviewed).summary.readyForDistribution) throw new Error('Audited passing human review should unlock distribution readiness when all approvals exist');
 const failedHumanReview = { ...humanReviewEvidence, reviewId: 'human-review-002', passed: false, checks: humanReviewEvidence.checks.map(check => check.id === 'captions-safe-areas' ? { ...check, passed: false, finding: 'Caption timing needs correction.' } : check) };
