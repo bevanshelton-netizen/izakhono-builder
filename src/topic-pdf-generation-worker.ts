@@ -387,7 +387,7 @@ export async function processOneApprovedTopicPdfJob(env: TopicPdfWorkerEnv): Pro
 
   try {
     const manuscript = JSON.parse(job.manuscript_json);
-    const endpoint = env.TOPIC_PDF_RENDER_URL.replace(/\\/+$/, '') + '/render';
+    const endpoint = env.TOPIC_PDF_RENDER_URL.replace(/\/+$/, '') + '/render';
     const rendered = await fetch(endpoint, {
       method: 'POST',
       headers: {
