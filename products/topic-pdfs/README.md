@@ -129,7 +129,9 @@ The initial 25-topic queue is not a restriction. The platform is being designed 
 ## On-demand execution and review services
 
 The Worker now has a scheduled, D1-backed generation processor and owner-only editorial review endpoints:
-- `src/topic-pdf-generation-worker.ts` — bounded job claiming, lease recovery, configured research adapter, IZAKHONO SUPER AI manuscript drafting, source-ledger validation, retry limits and human-review queue.
+- `src/topic-pdf-generation-worker.ts` — bounded job claiming, lease recovery, configured research adapter, IZAKHONO SUPER AI manuscript drafting, source-ledger validation, retry limits, human-review queue and approved-draft rendering into a private R2 bucket.
+- `render-service.py` — self-hostable, bearer-protected ReportLab rendering adapter. It accepts structured manuscripts and always returns a draft-watermarked PDF; it never publishes or sells.
+- `test_render_service.py` — checks manuscript validation and PDF output.
 - `src/topic-pdf-generation-worker.test.ts` — disabled-by-default, provider-configuration, empty-queue and owner-auth guard tests.
 - `/api/owner/topic-pdfs/review-queue` — owner-only editorial queue.
 - `/api/owner/topic-pdfs/requests/:id/review` — records reviewer identity/role, gate decisions and specialist credentials for high-stakes guides.
@@ -138,14 +140,14 @@ The Worker now has a scheduled, D1-backed generation processor and owner-only ed
 
 The processor is fail-closed. It does nothing unless `TOPIC_PDF_PIPELINE_ENABLED=true` and the research adapter plus existing IZAKHONO SUPER AI URL/internal/workflow credentials are configured. Research adapter contract: POST to `TOPIC_PDF_RESEARCH_URL` with a bearer `TOPIC_PDF_RESEARCH_KEY`; return JSON containing 2-30 current HTTPS sources with title, publisher, URL and claim support. The worker then requests a structured original manuscript from the configured IZAKHONO SUPER AI `/api/v1/generate` endpoint. The generated result is always an unapproved editorial draft.
 
-Database migrations `0032`, `0033` and `0034` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up/session issuance, customer-facing request/status UI, a production PDF rendering endpoint, private object storage, secure download fulfilment, payment checkout and end-to-end production verification remain outstanding. Do not represent the product as live or saleable.
+Database migrations `0032`, `0033` and `0034` are prepared but have not been applied. No provider credentials have been configured here, no research service has been verified, no paid service has been activated, and the cron pipeline remains disabled by default. Customer sign-up/session issuance, customer sign-up/session issuance, customer-facing request/status UI, deployment of the private renderer, creation/configuration of the private R2 bucket binding, secure download fulfilment, payment checkout and end-to-end production verification remain outstanding. Do not represent the product as live or saleable.
 
 ## Current build artefacts
 
 - On-demand generation pipeline: `ON-DEMAND-GENERATION-ENGINE.md`
 - Generation request/risk/release-gate core: `src/generation-core.ts` and `src/generation-core.test.ts`
 - Authenticated customer request API adapter: `../../src/topic-pdf-request-api.ts` and guard tests: `../../src/topic-pdf-request-api.test.ts` (disabled by default; requires migration and explicit feature activation)
-- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`
+- D1 generation job/event/publication schema: `../../migrations/0032_topic_pdf_generation_jobs.sql`, execution/review fields: `../../migrations/0033_topic_pdf_job_execution_and_reviews.sql`, idempotency/specialist evidence: `../../migrations/0034_topic_pdf_idempotency_and_specialist_evidence.sql`, private PDF metadata: `../../migrations/0035_topic_pdf_render_storage.sql`
 - Candidate discovery queue: `INITIAL-TOPIC-QUEUE.md` and `topics.candidates.json`
 - Product metadata contract: `product-record.schema.json`
 - Catalogue validator: `validate-catalog.mjs`
