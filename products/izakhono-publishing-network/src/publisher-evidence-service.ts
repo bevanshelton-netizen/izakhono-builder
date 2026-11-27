@@ -6,7 +6,7 @@
 export type EvidenceKind = 'legal_identity' | 'authorized_representative' | 'domain_control' | 'editorial_policy' | 'sample_content' | 'traffic_metrics' | 'audience_metrics' | 'other';
 export type EvidenceStatus = 'awaiting_submission' | 'submitted' | 'accepted' | 'rejected';
 export interface EvidenceTenant { platformId: string; entityId: string; }
-export interface EvidenceActor { principalRef: string; tenant: EvidenceTenant; role: 'owner' | 'administrator' | 'technician' | 'auditor' | 'viewer' | 'publisher'; }
+export interface EvidenceActor { principalRef: string; tenant: EvidenceTenant; publisherId: string | null; role: 'owner' | 'administrator' | 'technician' | 'auditor' | 'viewer' | 'publisher'; }
 export interface EvidenceSessionPort { verify(credential: string): Promise<EvidenceActor | null>; }
 export interface EvidenceAuthorizationPort {
   authorize(input: { tenant: EvidenceTenant; principalRef: string; role: EvidenceActor['role']; resourceRef: string; permission: 'publishing.evidence.submit' | 'publishing.evidence.review' }): Promise<{ allowed: boolean; decisionRef: string; principalRef: string; tenant: EvidenceTenant; resourceRef: string; permission: string; policyVersion: string; decidedAt: string }>;
@@ -72,7 +72,7 @@ export class PublisherEvidenceService {
     const resourceRef = `publisher-evidence:${command.evidenceId}`;
     const auth = await this.ports.authorization.authorize({tenant:actor.tenant,principalRef:actor.principalRef,role:actor.role,resourceRef,permission});
     this.authorized(auth, actor, resourceRef, permission);
-    if (actor.role !== 'publisher') throw new EvidenceServiceError('EVIDENCE_AUTHORIZATION_DENIED');
+    if (actor.role !== 'publisher' || actor.publisherId !== command.publisherId) throw new EvidenceServiceError('EVIDENCE_AUTHORIZATION_DENIED');
     if (!await this.ports.storage.verifyReference({opaqueRef:command.opaqueRef,tenant:actor.tenant,requestId:command.requestId,publisherId:command.publisherId})) throw new EvidenceServiceError('EVIDENCE_REFERENCE_INVALID');
     const fp = await digest({tenant:actor.tenant,principal:actor.principalRef,...command,credential:undefined});
     const prior = await this.ports.store.lookupIdempotency(actor.tenant,command.idempotencyKey,fp);
@@ -118,7 +118,7 @@ export class PublisherEvidenceService {
   private async actor(credential: string): Promise<EvidenceActor> {
     if (!nonBlank(credential) || credential.length > 8192) throw new EvidenceServiceError('EVIDENCE_SESSION_INVALID');
     const actor = await this.ports.sessions.verify(credential);
-    if (!actor || !nonBlank(actor.principalRef) || !nonBlank(actor.tenant.platformId) || !nonBlank(actor.tenant.entityId)) throw new EvidenceServiceError('EVIDENCE_SESSION_INVALID');
+    if (!actor || !nonBlank(actor.principalRef) || !nonBlank(actor.tenant.platformId) || !nonBlank(actor.tenant.entityId) || (actor.role === 'publisher' && !nonBlank(actor.publisherId ?? ''))) throw new EvidenceServiceError('EVIDENCE_SESSION_INVALID');
     return actor;
   }
   private authorized(auth: Awaited<ReturnType<EvidenceAuthorizationPort['authorize']>>,actor: EvidenceActor,resourceRef: string,permission: string): void {
