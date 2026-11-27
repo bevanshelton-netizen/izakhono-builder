@@ -6,13 +6,19 @@
   "identities": [
     {
       "platform": "IZAKHONO",
-      "domain": "izakhono.africa",
+      "domain": "izakhonoafrica.co.za",
       "mailboxes": [
-        "ceo",
-        "sales",
+        "bevans",
         "info",
+        "admin",
+        "accounts",
+        "sales",
         "support",
-        "finance"
+        "ceo",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "pending_dns_verification"
     },
