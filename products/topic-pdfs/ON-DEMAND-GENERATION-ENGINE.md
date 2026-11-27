@@ -69,7 +69,8 @@ A generation job is not itself a saleable product. Only an approved publication 
 - A configured research adapter returns an evidence ledger; the existing IZAKHONO SUPER AI gateway drafts the original manuscript from that ledger. The Worker validates source URLs and manuscript depth, but does not claim the source facts are independently verified.
 - Owner-only review queue and decision endpoints record editorial gate outcomes. High-stakes approvals additionally require a named specialist reviewer and relevant credentials. No AI-generated approval flags are accepted.
 - Research and model calls must go through the configured IZAKHONO-owned AI gateway/provider adapter. No provider key is hard-coded and no direct third-party subscription is assumed.
-- PDF rendering reuses the existing ReportLab renderer after the manuscript passes review.
+- PDF rendering uses the private, bearer-protected `products/topic-pdfs/render-service.py` adapter and the existing ReportLab renderer after the manuscript passes review. The service always stamps the PDF as an editorial draft / not for sale.
+- After human approval, the Worker can call the configured render adapter and store the draft PDF in a private R2 bucket binding. This stage remains inert until renderer URL/key and the private bucket binding are configured.
 - Generated PDFs should be stored in private object storage; delivery uses short-lived, authorized links.
 - Customer requests now have a Worker route using the existing customer-session resolver, per-customer hourly quota, request-size limits, ownership-scoped status lookup, D1 audit events and duplicate-request fingerprinting. The route is fail-closed unless `TOPIC_PDF_REQUESTS_ENABLED=true` is configured server-side. The route does not itself create accounts or issue sessions.
 - Bot protection, IP-level abuse controls, payment and fulfilment remain separate capabilities with explicit security review.
