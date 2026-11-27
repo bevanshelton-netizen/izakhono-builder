@@ -298,6 +298,32 @@ export async function topicPdfOwnerReviewRoute(
     return new Response(JSON.stringify({ ok: true, job, events: events.results || [], reviewDecisions: decisions.results || [] }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   }
 
+  const salePreviewMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/publications\/([a-zA-Z0-9_-]{8,100})\/preview$/);
+  if (salePreviewMatch && req.method === 'GET') {
+    if (!(await authorize(req))) return new Response('Unauthorized', { status: 401, headers: { 'cache-control': 'no-store' } });
+    if (!env.TOPIC_PDF_BUCKET) return new Response('Private publication storage is not configured.', { status: 503, headers: { 'cache-control': 'no-store' } });
+    const publication = await env.DB.prepare(
+      "SELECT id,sale_storage_key,sale_sha256,sale_bytes,status FROM topic_pdf_publications WHERE id=? LIMIT 1",
+    ).bind(salePreviewMatch[1]).first<any>();
+    if (!publication || publication.status !== 'approved' || !publication.sale_storage_key) {
+      return new Response('Approved sale-edition preview is not ready.', { status: 404, headers: { 'cache-control': 'no-store' } });
+    }
+    const object = await env.TOPIC_PDF_BUCKET.get(publication.sale_storage_key);
+    if (!object || object.customMetadata?.status !== 'sale-edition-candidate-not-published' ||
+        object.customMetadata?.sha256 !== publication.sale_sha256 || Number(object.size || 0) !== Number(publication.sale_bytes)) {
+      return new Response('Sale-edition preview integrity check failed.', { status: 409, headers: { 'cache-control': 'no-store' } });
+    }
+    return new Response(object.body, {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'inline; filename="topic-guide-sale-edition-preview.pdf"',
+        'cache-control': 'private, no-store',
+        'x-content-type-options': 'nosniff',
+        'content-security-policy': "default-src 'none'; sandbox",
+      },
+    });
+  }
+
   const publishMatch = url.pathname.match(/^\/api\/owner\/topic-pdfs\/publications\/([a-zA-Z0-9_-]{8,100})\/publish$/);
   if (publishMatch && req.method === 'POST') {
     if (!(await authorize(req))) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
