@@ -453,7 +453,7 @@ export function recordSourceRightsReview(
     || typeof evidence.basis !== 'string' || !evidence.basis.trim()
     || !Array.isArray(evidence.evidenceReferences) || !evidence.evidenceReferences.length
     || evidence.evidenceReferences.some(value => typeof value !== 'string' || !value.trim())
-    || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
+    || evidence.reviewId.length > 160 || evidence.recordedBy.length > 160 || evidence.basis.length > 4000\n    || evidence.evidenceReferences.length > 20 || evidence.evidenceReferences.some(value => value.length > 300)\n    || new Set(evidence.evidenceReferences).size !== evidence.evidenceReferences.length) {
     throw new Error('Rights review requires a unique ID, reviewer, timestamp, decision basis and distinct evidence references.');
   }
   if (asset.rightsReviews?.some(item => item.reviewId === evidence.reviewId)) throw new Error('Source rights-review ID already exists.');
@@ -472,16 +472,17 @@ export function hasVerifiedSourceRights(asset: ProductionAsset): boolean {
   if (asset.role !== 'source' || !asset.sourceEvidence || !asset.contentHash
     || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) return false;
   const latest = asset.rightsReviews?.at(-1);
-  return Boolean(latest && typeof latest.reviewId === 'string' && typeof latest.recordedBy === 'string'
-    && typeof latest.assetContentHash === 'string' && typeof latest.basis === 'string'
-    && latest.schema === 'izakhono.creator/source-rights-review-v1'
+  if (!latest || typeof latest.reviewId !== 'string' || typeof latest.recordedBy !== 'string'
+    || typeof latest.assetContentHash !== 'string' || typeof latest.recordedAt !== 'string'
+    || typeof latest.basis !== 'string' || !Array.isArray(latest.evidenceReferences)) return false;
+  return latest.schema === 'izakhono.creator/source-rights-review-v1'
     && latest.decision === 'verified'
+    && /^[a-f0-9]{64}$/i.test(latest.assetContentHash)
     && latest.assetContentHash.toLowerCase() === asset.contentHash.toLowerCase()
-    && latest.reviewId.trim() && latest.recordedBy.trim()
+    && Boolean(latest.reviewId.trim() && latest.recordedBy.trim() && latest.basis.trim())
     && Number.isFinite(Date.parse(latest.recordedAt))
-    && latest.basis.trim() && Array.isArray(latest.evidenceReferences)
     && latest.evidenceReferences.length > 0
-    && latest.evidenceReferences.every(value => typeof value === 'string' && value.trim()));
+    && latest.evidenceReferences.every(value => typeof value === 'string' && Boolean(value.trim()));
 }
 
 export function recordHumanMediaReview(
