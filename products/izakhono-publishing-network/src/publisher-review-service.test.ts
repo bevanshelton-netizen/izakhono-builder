@@ -27,7 +27,8 @@ class FakeAuthorization implements ReviewAuthorizationPort {
     this.requests.push(request);
     return { allowed: this.allowed, decisionRef: 'fortress:decision:1',
       principalRef: this.wrongPrincipal ? 'principal:other' : request.principalRef,
-      permission: request.permission, policyVersion: 'fortress-policy:v1', decidedAt: now };
+      permission: request.permission, tenant: request.tenant, resourceRef: request.resourceRef,
+      policyVersion: 'fortress-policy:v1', decidedAt: now };
   }
 }
 class FakeStore implements ReviewStore {
