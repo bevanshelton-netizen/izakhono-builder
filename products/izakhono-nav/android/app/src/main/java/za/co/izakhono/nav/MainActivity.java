@@ -76,7 +76,11 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setGeolocationEnabled(true);
         s.setAllowFileAccess(true);
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
         s.setAllowContentAccess(false);
+        s.setJavaScriptCanOpenWindowsAutomatically(false);
+        s.setSafeBrowsingEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
@@ -90,8 +94,11 @@ public class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 String host = request.getUrl().getHost();
-                if (url.startsWith("file:///android_asset/") ||
-                        "nav.izakhono.africa".equalsIgnoreCase(host)) return false;
+                String scheme = request.getUrl().getScheme();
+                boolean bundledAsset = url.startsWith("file:///android_asset/");
+                boolean trustedNavHttps = "https".equalsIgnoreCase(scheme)
+                        && "nav.izakhono.africa".equalsIgnoreCase(host);
+                if (bundledAsset || trustedNavHttps) return false;
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()));
                 } catch (Exception ignored) {}
@@ -123,6 +130,10 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onGeolocationPermissionsShowPrompt(
                     String origin, GeolocationPermissions.Callback callback) {
+                if (!isTrustedNavOrigin(origin)) {
+                    callback.invoke(origin, false, false);
+                    return;
+                }
                 if (hasLocationPermission()) {
                     callback.invoke(origin, true, false);
                 } else {
@@ -172,6 +183,17 @@ public class MainActivity extends Activity {
             while ((line = reader.readLine()) != null) js.append(line).append('\n');
             webView.evaluateJavascript(js.toString(), null);
         } catch (Exception ignored) {}
+    }
+
+    private boolean isTrustedNavOrigin(String origin) {
+        try {
+            android.net.Uri uri = android.net.Uri.parse(origin);
+            return "https".equalsIgnoreCase(uri.getScheme())
+                    && "nav.izakhono.africa".equalsIgnoreCase(uri.getHost())
+                    && (uri.getPort() == -1 || uri.getPort() == 443);
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private boolean hasLocationPermission() {
