@@ -15,8 +15,18 @@ const fetchImpl = async (url, options) => {
   assert.equal(options.headers.apikey, "service-role-test-key");
   assert.equal(options.headers.Authorization, "Bearer service-role-test-key");
   assert.equal(options.method, "POST");
-  assert.match(url, /\\/rest\\/v1\\/rpc\\/accept_and_enqueue$/);
-  const row = rpcResponses.shift();
+  assert.ok(url.endsWith("/rest/v1/rpc/accept_and_enqueue"));
+  const payload = JSON.parse(options.body);
+  originalFingerprint ||= payload.p_fingerprint;
+  const inserted = calls.length === 1;
+  const row = {
+    inserted,
+    message_id: "atomic-1",
+    event_id: "event-1",
+    fingerprint: originalFingerprint,
+    response,
+    queue_msg_id: inserted ? 101 : null,
+  };
   return new Response(JSON.stringify([row]), { status: 200, headers: { "content-type": "application/json" } });
 };
 
