@@ -219,3 +219,9 @@ jobs:
           if 'run: bash scripts/izakhono/alpha-preflight.sh' in text: raise SystemExit('Central Alpha workflow must not execute caller-provided preflight shell.')
           print('[PASS] Central IZAKHONO Build to Alpha trust boundary is present.')
           PY
+
+      - name: Test IZAKHONO Conversation Hub contracts
+        run: npx --yes tsx@4.20.3 products/izakhono-communications/src/conversation-hub-contracts.test.ts
+
+      - name: Typecheck IZAKHONO Conversation Hub contracts
+        run: npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext products/izakhono-communications/src/conversation-hub-contracts.ts products/izakhono-communications/src/conversation-hub-contracts.test.ts
