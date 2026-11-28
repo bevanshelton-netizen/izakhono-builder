@@ -1,0 +1,16 @@
+{
+  "name": "IZAKHONO Zero-Cost Linux Development",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "files.eol": "\n",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "node --version && npm --version && git --version"
+}
