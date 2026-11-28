@@ -31,7 +31,7 @@ export default function Home() {
       const r = await fetch('/api/forge', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({prompt:intent}) });
       const data = await r.json();
       setResult(data);
-      setHistory(h => [{ intent, type: data.job?.intent || 'BUILD', status: data.job?.status || 'QUEUED', persisted: data.persisted, time: new Date().toLocaleTimeString() }, ...h].slice(0,8));
+      setHistory(h => [{ intent, type: data.job?.intent || 'BUILD', status: data.job?.status || (data.persisted ? 'QUEUED' : 'PLAN_READY'), persisted: data.persisted, time: new Date().toLocaleTimeString() }, ...h].slice(0,8));
     } catch (error) {
       setResult({ error: 'forge_unavailable', detail: error instanceof Error ? error.message : 'unknown_error' });
     } finally { setBusy(false); }
@@ -57,7 +57,7 @@ export default function Home() {
       </div>
       <div className="panel resultpanel">
         <div className="panelhead"><div><span className="kicker">JOB CONTROL</span><h2>{result?.job?.intent || 'Waiting for a command'}</h2></div></div>
-        {!result ? <div className="empty"><div className="orb">✦</div><p>Forge will classify the request, queue a job, create specialist execution steps and hand the work to the control plane.</p></div> : result.error ? <div className="empty"><div className="orb">!</div><p>{result.detail || result.error}</p></div> : <div className="plan"><div className="source">SOURCE: {result.source} · {result.persisted ? 'PERSISTED' : 'LOCAL FALLBACK'}</div>{(result.job?.steps || []).map((step)=><div className="step" key={step.stepKey}><span>{String(step.order).padStart(2,'0')}</span><div><b>{step.label}</b><p>Worker: {step.workerType} · Status: {result.job.status}</p></div></div>)}<div className="guard"><b>CONTROL PLANE</b><div>✓ Queue state is explicit</div><div>✓ Specialist worker is assigned per step</div><div>✓ Execution remains auditable and reversible</div><div>✓ High-impact actions remain authorization-gated</div></div></div>}
+        {!result ? <div className="empty"><div className="orb">✦</div><p>Forge will classify your request, prepare an execution plan and show whether the durable control plane actually accepted it.</p></div> : result.error ? <div className="empty"><div className="orb">!</div><p>{result.detail || result.error}</p></div> : <div className="plan"><div className="source">SOURCE: {result.source} · {result.persisted ? 'PERSISTED' : 'PLAN ONLY · NOT QUEUED'}</div>{(result.job?.steps || []).map((step)=><div className="step" key={step.stepKey}><span>{String(step.order).padStart(2,'0')}</span><div><b>{step.label}</b><p>Worker: {step.workerType} · Status: {result.persisted ? result.job.status : 'NOT QUEUED'}</p></div></div>)}{result.persisted ? <div className="guard"><b>CONTROL PLANE</b><div>✓ Job record persisted</div><div>✓ Specialist steps recorded</div><div>✓ Execution remains subject to worker and evidence verification</div><div>✓ High-impact actions remain authorization-gated</div></div> : <div className="guard"><b>PLAN PREVIEW ONLY</b><div>• No durable job record was created.</div><div>• No worker was dispatched.</div><div>• This plan is not saved as project history.</div><div>• Configure and verify the IZAKHONO-owned control plane to execute it.</div></div>}</div>}
       </div>
     </section>
 

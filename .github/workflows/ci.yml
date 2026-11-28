@@ -219,3 +219,7 @@ jobs:
           if 'run: bash scripts/izakhono/alpha-preflight.sh' in text: raise SystemExit('Central Alpha workflow must not execute caller-provided preflight shell.')
           print('[PASS] Central IZAKHONO Build to Alpha trust boundary is present.')
           PY
+      - name: Build IZAKHONO Forge conversational application
+        run: |
+          npm install --prefix apps/izakhono-forge --no-audit --no-fund
+          npm run build --prefix apps/izakhono-forge

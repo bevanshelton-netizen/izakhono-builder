@@ -62,11 +62,11 @@ export async function POST(req) {
 
   const intent = classify(prompt);
   const steps = stepsFor(prompt);
-  const localPlan = { intent, status: 'QUEUED', steps: steps.map(([stepKey, workerType, label], i) => ({ stepKey, workerType, label, order: i + 1 })) };
+  const localPlan = { intent, status: 'PLAN_READY', steps: steps.map(([stepKey, workerType, label], i) => ({ stepKey, workerType, label, order: i + 1 })) };
 
   try {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      return NextResponse.json({ source: 'owned-local-queue', persisted: false, job: { prompt, intent, ...localPlan } });
+      return NextResponse.json({ source: 'owned-local-planner', persisted: false, execution: 'not_started', warning: 'durable_control_plane_not_configured', job: { prompt, intent, ...localPlan } });
     }
 
     const workspace = (await sb('forge_workspaces?slug=eq.izakhono-forge&limit=1'))?.[0] || (await sb('forge_workspaces', { method: 'POST', body: JSON.stringify({ name: 'IZAKHONO FORGE', slug: 'izakhono-forge' }) }))?.[0];
@@ -76,6 +76,6 @@ export async function POST(req) {
     await sb('forge_events', { method: 'POST', body: JSON.stringify({ job_id: job.id, project_id: project.id, event_type: 'JOB_QUEUED', actor: 'forge-command', payload: { intent, stepCount: steps.length } }) });
     return NextResponse.json({ source: 'owned-control-plane', persisted: true, job: { id: job.id, prompt, intent, status: 'QUEUED', steps: localPlan.steps } });
   } catch (error) {
-    return NextResponse.json({ source: 'owned-local-queue', persisted: false, warning: 'control_plane_unavailable', job: { prompt, intent, ...localPlan }, error: error instanceof Error ? error.message : 'unknown_error' }, { status: 202 });
+    return NextResponse.json({ source: 'owned-local-planner', persisted: false, execution: 'not_started', warning: 'control_plane_unavailable', job: { prompt, intent, ...localPlan }, error: error instanceof Error ? error.message : 'unknown_error' }, { status: 202 });
   }
 }
