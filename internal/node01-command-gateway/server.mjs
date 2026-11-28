@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { evaluateApprovedRelease } from './release-approval.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
@@ -244,8 +245,12 @@ async function runCommand(req,res) {
     }
     try {
       const profile=await loadProfile(profileName);
-      if (profile.approved_ref && profile.approved_ref !== ref) {
-        return json(res,409,{ok:false,error:'The requested commit is not the approved Runtime Fabric release for this profile.',data:{approved_ref:profile.approved_ref,requested_ref:ref}});
+      const approval=evaluateApprovedRelease(profile,ref);
+      if (!approval.ok) {
+        const error=approval.reason==='ref_mismatch'
+          ? 'The requested commit does not match this profile’s approved immutable release.'
+          : 'This deployment profile has no valid approved immutable release SHA. Deployment is blocked until an authorized owner records approved_ref.';
+        return json(res,409,{ok:false,error,data:{approval:approval.reason,profile:profileName}});
       }
       const {approved_ref: _approvedRef, ...deployProfile}=profile;
       const job={...deployProfile,ref};

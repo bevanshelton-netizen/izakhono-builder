@@ -1,0 +1,31 @@
+name: NODE01 Command Gateway Release Approval
+
+on:
+  pull_request:
+    paths:
+      - "internal/node01-command-gateway/**"
+      - ".github/workflows/node01-command-gateway-release-approval.yml"
+  push:
+    paths:
+      - "internal/node01-command-gateway/**"
+      - ".github/workflows/node01-command-gateway-release-approval.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  release-approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax-check gateway
+        run: node --check internal/node01-command-gateway/server.mjs
+      - name: Test immutable release approval rules
+        run: node internal/node01-command-gateway/release-approval.test.mjs
+      - name: Test gateway authorization and fail-closed deployment forwarding
+        run: node internal/node01-command-gateway/test.mjs
