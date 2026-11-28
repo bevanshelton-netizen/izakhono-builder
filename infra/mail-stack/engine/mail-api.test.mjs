@@ -49,7 +49,7 @@ assert.equal(health.status, 200);
 assert.equal(health.body.service, "izakhono-mail");
 
 const durableQueue = { jobs: [], enqueue(message) { this.jobs.push(message); } };
-const durableRuntime = { queue: durableQueue, health() { return { queue: { queued: this.jobs.length }, transports: [] }; } };
+const durableRuntime = { queue: durableQueue, health() { return { queue: { queued: this.queue.jobs.length }, transports: [] }; } };
 const durableStore = new MailStore({ adapter: new MemoryMailStoreAdapter(), clock: () => "2026-10-23T00:00:00.000Z" });
 const durableApi = new MailApi({
   runtime: durableRuntime,
