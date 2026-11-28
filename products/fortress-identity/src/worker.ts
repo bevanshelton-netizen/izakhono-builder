@@ -1,6 +1,7 @@
+import { issueDeployAccessToken, introspectDeployAccessToken, revokeDeployAccessToken } from "./deploy-access";
 export interface D1Statement { bind(...values: unknown[]): D1Statement; first<T = Record<string, unknown>>(): Promise<T | null>; run<T = Record<string, unknown>>(): Promise<{ success: boolean; meta?: { changes?: number }; results?: T[] }> }
 export interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ success: boolean; meta?: { changes?: number } }>> }
-export interface Env { DB: D1Database; FORTRESS_SESSION_HMAC_SECRET: string; FORTRESS_BOOTSTRAP_SECRET?: string; FORTRESS_SESSION_ISSUER?: string; FORTRESS_SESSION_AUDIENCE?: string; FORTRESS_ALLOWED_ORIGINS?: string }
+export interface Env { DB: D1Database; FORTRESS_SESSION_HMAC_SECRET: string; FORTRESS_BOOTSTRAP_SECRET?: string; FORTRESS_SESSION_ISSUER?: string; FORTRESS_SESSION_AUDIENCE?: string; FORTRESS_ALLOWED_ORIGINS?: string; FORTRESS_DEPLOY_AUDIENCE?: string; FORTRESS_DEPLOY_INTROSPECTION_SECRET?: string; FORTRESS_DEPLOY_ACCESS_TTL_SECONDS?: string }
 type Role = 'OWNER'|'SECURITY_ADMIN'|'ANALYST'|'VIEWER';
 type Principal = { id:string; tenant_id:string; email:string; display_name:string; role:Role; active:number };
 const enc=new TextEncoder(), ITERATIONS=310000, ACCESS=600, REFRESH=1209600;
@@ -39,5 +40,5 @@ async function introspect(r:Request,e:Env){
   return json({valid:true,principal:{id:p.id,tenantId:p.tenant_id,email:p.email,displayName:p.display_name,role:p.role},expiresAt:claims.exp});
  }catch{return json({valid:false},401)}
 }
-export async function handleFortressIdentity(r:Request,e:Env){const p=new URL(r.url).pathname;try{if(p==='/api/fortress/session'&&r.method==='GET')return await introspect(r,e);if(p==='/api/fortress/bootstrap')return await bootstrap(r,e);if(p==='/api/fortress/login')return await login(r,e);if(p==='/api/fortress/refresh')return await refresh(r,e);if(p==='/api/fortress/logout')return await logout(r,e);if(p==='/api/fortress/health')return json({service:'FORTRESS Identity',status:'ready'});return json({error:'Not found'},404)}catch{return json({error:'FORTRESS identity service unavailable'},503)}}
+export async function handleFortressIdentity(r:Request,e:Env){const p=new URL(r.url).pathname;try{if(p==='/api/fortress/session'&&r.method==='GET')return await introspect(r,e);if(p==='/api/fortress/deploy-token')return await issueDeployAccessToken(r,e);if(p==='/api/fortress/deploy-token/introspect')return await introspectDeployAccessToken(r,e);if(p==='/api/fortress/deploy-token/revoke')return await revokeDeployAccessToken(r,e);if(p==='/api/fortress/bootstrap')return await bootstrap(r,e);if(p==='/api/fortress/login')return await login(r,e);if(p==='/api/fortress/refresh')return await refresh(r,e);if(p==='/api/fortress/logout')return await logout(r,e);if(p==='/api/fortress/health')return json({service:'FORTRESS Identity',status:'ready'});return json({error:'Not found'},404)}catch{return json({error:'FORTRESS identity service unavailable'},503)}}
 export default {fetch(r:Request,e:Env){return handleFortressIdentity(r,e)}};

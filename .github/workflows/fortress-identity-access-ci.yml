@@ -6,12 +6,14 @@ on:
       - 'products/fortress-security/src/access-control.ts'
       - 'products/fortress-security/src/access-control.test.ts'
       - 'products/fortress-security/src/audit-log.ts'
+      - 'products/fortress-identity/**'
       - '.github/workflows/fortress-identity-access-ci.yml'
   pull_request:
     paths:
       - 'products/fortress-security/src/access-control.ts'
       - 'products/fortress-security/src/access-control.test.ts'
       - 'products/fortress-security/src/audit-log.ts'
+      - 'products/fortress-identity/**'
       - '.github/workflows/fortress-identity-access-ci.yml'
 
 jobs:
@@ -23,3 +25,9 @@ jobs:
         with:
           node-version: 22
       - run: npx --yes tsx@4.20.3 products/fortress-security/src/access-control.test.ts
+      - name: Test FORTRESS DEPLOY capability routes and D1 audit rollback
+        run: npx --yes tsx@4.20.3 products/fortress-identity/test/deploy-access.test.mjs
+      - name: Bundle FORTRESS Worker and capability routes
+        run: npx --yes esbuild@0.25.9 products/fortress-identity/src/worker.ts --bundle --format=esm --platform=browser --outfile=/tmp/fortress-identity-worker.js
+      - name: Validate FORTRESS DEPLOY capability D1 migration
+        run: python3 -m unittest discover -s products/fortress-identity/test -p 'test_migration.py' -v
