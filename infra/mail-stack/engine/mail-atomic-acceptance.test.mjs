@@ -8,11 +8,7 @@ const request = (key, payload = body) => ({ method: "POST", url: "https://mail.l
 
 const calls = [];
 const response = { message_id: "atomic-1", event_id: "event-1", status: "queued", accepted_at: "2026-10-23T00:00:00.000Z" };
-const rpcResponses = [
-  { inserted: true, message_id: "atomic-1", event_id: "event-1", fingerprint: "fingerprint-1", response, queue_msg_id: 101 },
-  { inserted: false, message_id: "atomic-1", event_id: "event-1", fingerprint: "fingerprint-1", response, queue_msg_id: null },
-  { inserted: false, message_id: "atomic-1", event_id: "event-1", fingerprint: "fingerprint-1", response, queue_msg_id: null },
-];
+let originalFingerprint = null;
 
 const fetchImpl = async (url, options) => {
   calls.push({ url, options });
