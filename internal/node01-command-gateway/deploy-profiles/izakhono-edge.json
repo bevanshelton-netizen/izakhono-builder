@@ -1,0 +1,14 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-edge",
+  "environment": "production",
+  "mode": "runtime-fabric",
+  "deployment_gate": "runtime-fabric-registration-required",
+  "runtime_fabric_workload": "infra/runtime-fabric/workloads/izakhono-edge.json",
+  "approved_ref": "runtime-fabric-registration-required",
+  "health_path": "/v1/health",
+  "logical_node_id": "NODE01",
+  "identity_type": "software-runtime",
+  "runtime_host_is_separate": true
+}

@@ -1,0 +1,138 @@
+{
+  "schema": "izakhono.runtime-fabric.workload.v1",
+  "workload": "izakhono-edge",
+  "product": "izakhono-edge",
+  "description": "IZAKHONO-owned authoritative DNS and HTTP application edge workloads.",
+  "identity": {
+    "logical_node_id": "NODE01",
+    "identity_type": "software-runtime",
+    "runtime_host_is_separate": true
+  },
+  "runtime": {
+    "mode": "node-agnostic",
+    "preferred_nodes": [
+      "node01",
+      "node02",
+      "node03",
+      "node04"
+    ],
+    "failover_order": [
+      "node02",
+      "node03",
+      "node04"
+    ],
+    "binding_required": true,
+    "binding_source": "verified-runtime-registration",
+    "persistent_state": true
+  },
+  "execution": {
+    "gateway": "NODE01 command gateway",
+    "adapter": "node01-command-gateway",
+    "registration_required": true,
+    "required_capabilities": [
+      "runtime.deploy",
+      "edge.activate",
+      "runtime.health"
+    ],
+    "authorization": "FORTRESS",
+    "audit_required": true,
+    "arbitrary_shell_over_http": false
+  },
+  "services": {
+    "authoritative_dns": {
+      "provider": "PowerDNS",
+      "roles": [
+        "primary",
+        "secondary"
+      ],
+      "primary_secondary_separation_required": true,
+      "required_placement_evidence": [
+        "execution_environment_id",
+        "network_failure_domain_id"
+      ],
+      "public_protocols": [
+        "udp/53",
+        "tcp/53"
+      ],
+      "recursion": false,
+      "zone_transfer": "authenticated-secondary-only"
+    },
+    "http_edge": {
+      "ingress": "Caddy",
+      "tls": "ACME-managed-with-hostname-admission",
+      "waf": {
+        "engine": "ModSecurity",
+        "ruleset": "OWASP-CRS",
+        "initial_mode": "detect"
+      },
+      "rate_limiting": "per-host-and-route",
+      "cache": {
+        "mode": "regional",
+        "default": "bypass-unless-explicitly-public-cacheable"
+      },
+      "origin_access": "edge-only-when-private-routing-is-verified"
+    },
+    "control_plane": {
+      "owner": "izakhono-edge",
+      "tenant_scoped": true,
+      "persistent_jobs": true,
+      "append_only_audit_required": true
+    },
+    "origins": {
+      "owner": "izakhono-host",
+      "mail_protocols_excluded_from_http_proxy": true
+    }
+  },
+  "secrets": {
+    "source": "FORTRESS-protected-runtime-secret-store",
+    "never_commit": true,
+    "never_return_to_client": true
+  },
+  "acceptance": {
+    "runtime": [
+      "registered-node",
+      "registered-gateway-adapter",
+      "fortress-authorization",
+      "audit-acknowledgement",
+      "healthy-execution-environment",
+      "persistent-storage"
+    ],
+    "dns": [
+      "primary-secondary-independent-failure-domains",
+      "udp-53",
+      "tcp-53",
+      "authoritative-aa",
+      "recursion-disabled",
+      "soa-serial-parity",
+      "authenticated-zone-transfer",
+      "dnssec-validation-before-enabled"
+    ],
+    "edge": [
+      "https",
+      "tls-renewal",
+      "hostname-admission",
+      "waf-detection-baseline",
+      "rate-limit-tests",
+      "cache-isolation",
+      "cache-purge",
+      "origin-isolation"
+    ],
+    "security": [
+      "tenant-isolation",
+      "private-management-api",
+      "secret-isolation",
+      "append-only-audit",
+      "backup-restore",
+      "rollback"
+    ],
+    "promotion": "LIVE_VERIFIED only after NODE01, Runtime Fabric, HOST execution, DNS, TLS, WAF/cache, origin and external acceptance evidence passes"
+  },
+  "deployment": {
+    "strategy": "idempotent",
+    "backup_before_promotion": true,
+    "rollback_required": true,
+    "public_dns_cutover_requires_verified_runtime": true,
+    "current_state": "contract-prepared-execution-unverified"
+  },
+  "environment": "production"
+}
