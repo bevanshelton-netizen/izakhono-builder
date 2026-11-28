@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.izakhono.africa/hosting/execution-host-inventory/v1",
+  "title": "IZAKHONO HOST Execution Host Inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "hostId", "resourceKind", "provider", "productSku", "region", "environment", "approvalState", "executionResourceId", "hostType", "operatingSystem", "capacity", "network", "roles"],
+  "properties": {
+    "apiVersion": { "const": "hosting.izakhono.africa/v1" },
+    "kind": { "const": "ExecutionHostInventory" },
+    "hostId": { "type": "string", "pattern": "^host-[a-z0-9][a-z0-9-]{2,62}$" },
+    "resourceKind": { "const": "execution-host" },
+    "provider": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "productSku": { "type": ["string", "null"], "maxLength": 128 },
+    "region": { "type": ["string", "null"], "maxLength": 128 },
+    "environment": { "enum": ["development", "staging", "production"] },
+    "approvalState": { "enum": ["unverified", "approved", "rejected", "suspended"] },
+    "executionResourceId": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 },
+    "hostType": { "enum": ["vps", "dedicated", "cloud-instance", "other", "unknown"] },
+    "operatingSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "supportStatus"],
+      "properties": {
+        "name": { "type": ["string", "null"], "maxLength": 128 },
+        "version": { "type": ["string", "null"], "maxLength": 128 },
+        "supportStatus": { "enum": ["supported", "end-of-life", "unknown"] }
+      }
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vcpus", "memoryGiB", "storageGiB"],
+      "properties": {
+        "vcpus": { "type": ["integer", "null"], "minimum": 1 },
+        "memoryGiB": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "storageGiB": { "type": ["number", "null"], "exclusiveMinimum": 0 }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["staticIPv4", "publicAddressesVerified"],
+      "properties": {
+        "staticIPv4": { "type": ["string", "null"] },
+        "publicAddressesVerified": { "type": "boolean" }
+      }
+    },
+    "roles": { "type": "array", "uniqueItems": true, "items": { "enum": ["staging-app", "production-app", "mail", "dns-primary", "dns-secondary", "backup"] } },
+    "evidenceReferences": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 512 } },
+    "approvalReference": { "type": ["string", "null"], "maxLength": 256 }
+  }
+}

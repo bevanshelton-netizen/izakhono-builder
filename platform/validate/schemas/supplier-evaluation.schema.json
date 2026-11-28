@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.izakhono.africa/hosting/supplier-evaluation/v1",
+  "title": "IZAKHONO HOST Supplier SKU Evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "supplierId", "supplierName", "sku", "role", "evaluatedAt", "hardGates", "weightedScores", "commercial", "purchaseApproval"],
+  "properties": {
+    "apiVersion": {"const": "hosting.izakhono.africa/supplier-evaluation-v1"},
+    "kind": {"const": "SupplierSkuEvaluation"},
+    "supplierId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"},
+    "supplierName": {"type": "string", "minLength": 1},
+    "sku": {"type": "string", "minLength": 1},
+    "role": {"enum": ["staging-app", "production-app", "mail", "dns-secondary", "backup"]},
+    "evaluatedAt": {"type": "string", "format": "date-time"},
+    "hardGates": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "evidenceStatus", "evidenceReference"],
+        "properties": {
+          "status": {"enum": ["pass", "fail", "unknown", "not-applicable"]},
+          "evidenceStatus": {"enum": ["verified", "supplier-claimed", "unknown"]},
+          "evidenceReference": {"type": ["string", "null"]},
+          "rationale": {"type": "string"}
+        }
+      }
+    },
+    "weightedScores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["technicalFit", "mailSuitability", "securityControl", "resilienceRecovery", "costContractClarity", "portabilityExit", "supportLocationFit"],
+      "properties": {
+        "technicalFit": {"$ref": "#/$defs/score"},
+        "mailSuitability": {"$ref": "#/$defs/score"},
+        "securityControl": {"$ref": "#/$defs/score"},
+        "resilienceRecovery": {"$ref": "#/$defs/score"},
+        "costContractClarity": {"$ref": "#/$defs/score"},
+        "portabilityExit": {"$ref": "#/$defs/score"},
+        "supportLocationFit": {"$ref": "#/$defs/score"}
+      }
+    },
+    "commercial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "upfrontAmount", "recurringMonthly", "renewalMonthly", "vatIncluded", "termMonths"],
+      "properties": {
+        "currency": {"type": ["string", "null"]},
+        "upfrontAmount": {"type": ["number", "null"], "minimum": 0},
+        "recurringMonthly": {"type": ["number", "null"], "minimum": 0},
+        "renewalMonthly": {"type": ["number", "null"], "minimum": 0},
+        "vatIncluded": {"type": ["boolean", "null"]},
+        "termMonths": {"type": ["integer", "null"], "minimum": 1}
+      }
+    },
+    "purchaseApproval": {"enum": ["not-authorized", "approved"]}
+  },
+  "$defs": {
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "evidenceStatus", "evidenceReference"],
+      "properties": {
+        "value": {"type": "integer", "minimum": 0, "maximum": 5},
+        "evidenceStatus": {"enum": ["verified", "supplier-claimed", "unknown"]},
+        "evidenceReference": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

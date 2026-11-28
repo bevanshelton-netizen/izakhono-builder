@@ -1,0 +1,40 @@
+name: IZAKHONO HOST Manifest Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'platform/validate/**'
+      - 'scripts/architecture/check-node01-identity.py'
+      - 'architecture/NODE01-IDENTITY-STANDARD.md'
+      - '.github/workflows/izakhono-host-validation.yml'
+  pull_request:
+    paths:
+      - 'platform/validate/**'
+      - 'scripts/architecture/check-node01-identity.py'
+      - 'architecture/NODE01-IDENTITY-STANDARD.md'
+      - '.github/workflows/izakhono-host-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Schema, policy and architecture checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned validation dependency
+        run: python -m pip install --disable-pip-version-check 'jsonschema==4.23.0'
+      - name: Validate service manifests and host inventory fixtures
+        run: python platform/validate/validate.py
+      - name: Run policy regression tests
+        run: python -m unittest discover -s platform/validate/tests -v
+      - name: Enforce NODE01 software identity invariant
+        run: python scripts/architecture/check-node01-identity.py
