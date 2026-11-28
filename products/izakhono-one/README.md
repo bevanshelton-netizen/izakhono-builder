@@ -8,7 +8,7 @@ IZAKHONO ONE exposes seven controlled pillars:
 
 1. IZAKHONO SEARCH — discovery
 2. CONNECTA — community/social
-3. ONE AI — intelligence
+3. IZAKHONO AI — first-party intelligence
 4. ONE CLOUD — workspace
 5. ONE COMMERCE — commerce
 6. IZAKHONO NAV — mobility & safety
@@ -25,6 +25,14 @@ The platform deliberately distinguishes:
 A service is never treated as executable merely because it exists in the registry. Runtime execution requires `verified + healthy`. Sensitive actions are evaluated through the policy/action gate, payment actions can require human review, and every prepared action receives an audit correlation ID.
 
 Current service adapters are **foundation / prepare-only**. They are provider-neutral and replaceable. No adapter is allowed to create side effects until its runtime and policy gates are satisfied.
+
+## AI assistant endpoints
+
+- `GET /api/ai/health` — approved local model runtime and configured model availability.
+- `POST /api/ai/chat` — first-party IZAKHONO AI chat through the approved local model runtime.
+- Legacy `/api/chat` and `/api/chat/health` routes remain compatibility aliases during migration.
+
+The browser uses only the canonical `/api/ai/*` routes. If the owned model runtime is unavailable, requests fail closed; there is no silent external-provider fallback.
 
 ## Core endpoints
 
@@ -53,7 +61,7 @@ IZAKHONO FLOW is the SUPER APP workflow-orchestration capability. It remains ind
 
 `LEAD -> QUALIFY -> QUOTE -> PAY -> FULFIL -> INVOICE -> SUPPORT -> RETAIN -> REPORT`
 
-Venture Factory remains independently deployable and keeps its own execution gates. IZAKHONO SUPER AI is provider-neutral.
+Venture Factory remains independently deployable and keeps its own execution gates. IZAKHONO AI uses the owned local-model adapter as its preferred inference route; the separate IZAKHONO SUPER AI gateway remains a provider-neutral integration boundary.
 
 ## Owned service bridges
 

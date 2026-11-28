@@ -4,10 +4,10 @@ const MAX_MESSAGES = 20;
 const MAX_MESSAGE_LENGTH = 8000;
 const MAX_TOTAL_LENGTH = 32000;
 
-export class OneAIChatError extends Error {
+export class IZAKHONOAIChatError extends Error {
   constructor(code, message, statusCode = 503) {
     super(message);
-    this.name = 'OneAIChatError';
+    this.name = 'IZAKHONOAIChatError';
     this.code = code;
     this.statusCode = statusCode;
     this.publicMessage = message;
@@ -16,30 +16,30 @@ export class OneAIChatError extends Error {
 
 export function validateChatMessages(messages) {
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > MAX_MESSAGES) {
-    throw new OneAIChatError('invalid_messages', 'Please send a shorter conversation.', 400);
+    throw new IZAKHONOAIChatError('invalid_messages', 'Please send a shorter conversation.', 400);
   }
   let total = 0;
   const safe = messages.map((message) => {
     if (!message || !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string') {
-      throw new OneAIChatError('invalid_messages', 'The conversation contains an unsupported message.', 400);
+      throw new IZAKHONOAIChatError('invalid_messages', 'The conversation contains an unsupported message.', 400);
     }
     const content = message.content.trim();
     if (!content || content.length > MAX_MESSAGE_LENGTH) {
-      throw new OneAIChatError('invalid_messages', 'Each message must contain between 1 and 8,000 characters.', 400);
+      throw new IZAKHONOAIChatError('invalid_messages', 'Each message must contain between 1 and 8,000 characters.', 400);
     }
     total += content.length;
     return { role: message.role, content };
   });
   if (total > MAX_TOTAL_LENGTH || safe[safe.length - 1].role !== 'user') {
-    throw new OneAIChatError('invalid_messages', 'Please send a shorter conversation ending with your message.', 400);
+    throw new IZAKHONOAIChatError('invalid_messages', 'Please send a shorter conversation ending with your message.', 400);
   }
   return safe;
 }
 
 function configuredEndpoint(env) {
-  const url = new URL(env.IZAKHONO_LOCAL_MODEL_URL || DEFAULT_MODEL_URL);
+  const url = new URL(env.IZAKHONO_AI_MODEL_URL || env.IZAKHONO_LOCAL_MODEL_URL || DEFAULT_MODEL_URL);
   const loopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
-  const trustedHosts = String(env.IZAKHONO_MODEL_TRUSTED_HOSTS || '')
+  const trustedHosts = String(env.IZAKHONO_AI_MODEL_TRUSTED_HOSTS || env.IZAKHONO_MODEL_TRUSTED_HOSTS || '')
     .split(',').map((host) => host.trim().toLowerCase()).filter(Boolean);
   const hostGatewayHttp = url.protocol === 'http:'
     && url.hostname.toLowerCase() === 'host.docker.internal'
@@ -47,18 +47,18 @@ function configuredEndpoint(env) {
     && trustedHosts.includes(url.hostname.toLowerCase());
 
   if (url.username || url.password || url.search || url.hash) {
-    throw new OneAIChatError('model_endpoint_invalid', 'ONE AI model endpoint configuration is invalid.');
+    throw new IZAKHONOAIChatError('model_endpoint_invalid', 'IZAKHONO AI model endpoint configuration is invalid.');
   }
   if (url.protocol !== 'https:' && !(loopback && url.protocol === 'http:') && !hostGatewayHttp) {
-    throw new OneAIChatError('model_endpoint_untrusted', 'ONE AI is restricted to loopback, the explicitly trusted private Docker host gateway, or approved HTTPS model endpoints.');
+    throw new IZAKHONOAIChatError('model_endpoint_untrusted', 'IZAKHONO AI is restricted to loopback, the explicitly trusted private Docker host gateway, or approved HTTPS model endpoints.');
   }
   if (!loopback && !trustedHosts.includes(url.hostname.toLowerCase())) {
-    throw new OneAIChatError('model_endpoint_untrusted', 'ONE AI model endpoint is not on the approved host list.');
+    throw new IZAKHONOAIChatError('model_endpoint_untrusted', 'IZAKHONO AI model endpoint is not on the approved host list.');
   }
   if (!['/api/chat', '/api/chat/'].includes(url.pathname)) {
-    throw new OneAIChatError('model_endpoint_invalid', 'ONE AI requires an Ollama-compatible chat endpoint.');
+    throw new IZAKHONOAIChatError('model_endpoint_invalid', 'IZAKHONO AI requires an Ollama-compatible chat endpoint.');
   }
-  return { url, model: env.IZAKHONO_LOCAL_MODEL || DEFAULT_MODEL, secret: env.IZAKHONO_LOCAL_MODEL_SECRET || '' };
+  return { url, model: env.IZAKHONO_AI_MODEL || env.IZAKHONO_LOCAL_MODEL || DEFAULT_MODEL, secret: env.IZAKHONO_AI_MODEL_SECRET || env.IZAKHONO_LOCAL_MODEL_SECRET || '' };
 }
 
 function headers(secret) {
@@ -68,7 +68,7 @@ function headers(secret) {
   };
 }
 
-export function createOneAIChat({ env = process.env, fetcher = fetch } = {}) {
+export function createIZAKHONOAIChat({ env = process.env, fetcher = fetch } = {}) {
   async function health() {
     try {
       const config = configuredEndpoint(env);
@@ -101,13 +101,13 @@ export function createOneAIChat({ env = process.env, fetcher = fetch } = {}) {
     try {
       config = configuredEndpoint(env);
     } catch (error) {
-      if (error instanceof OneAIChatError) throw error;
-      throw new OneAIChatError('model_endpoint_invalid', 'ONE AI model endpoint configuration is invalid.');
+      if (error instanceof IZAKHONOAIChatError) throw error;
+      throw new IZAKHONOAIChatError('model_endpoint_invalid', 'IZAKHONO AI model endpoint configuration is invalid.');
     }
 
     const system = {
       role: 'system',
-      content: 'You are IZAKHONO ONE, a clear, capable and practical assistant for people, entrepreneurs and businesses, with an African-first and globally useful perspective. Be friendly, direct and easy to understand. Help users research, plan, write, analyse and organise work. Do not claim that you have sent messages, spent money, made purchases, changed accounts, published content, deployed software, deleted data or completed external actions. You may prepare plans and drafts. Before any consequential action, explain what would happen and request explicit approval. If a capability is unavailable, say so plainly. Never invent facts, progress, integrations or results.'
+      content: 'You are IZAKHONO AI, a clear, capable and practical assistant for people, entrepreneurs and businesses, with an African-first and globally useful perspective. Be friendly, direct and easy to understand. Help users research, plan, write, analyse and organise work. Do not claim that you have sent messages, spent money, made purchases, changed accounts, published content, deployed software, deleted data or completed external actions. You may prepare plans and drafts. Before any consequential action, explain what would happen and request explicit approval. If a capability is unavailable, say so plainly. Never invent facts, progress, integrations or results.'
     };
 
     try {
@@ -123,19 +123,23 @@ export function createOneAIChat({ env = process.env, fetcher = fetch } = {}) {
         signal: AbortSignal.timeout(60000)
       });
       if (!response.ok) {
-        throw new OneAIChatError('one_ai_unavailable', 'ONE AI could not complete that response. Please try again shortly.');
+        throw new IZAKHONOAIChatError('one_ai_unavailable', 'IZAKHONO AI could not complete that response. Please try again shortly.');
       }
       const payload = await response.json();
       const message = payload && payload.message && payload.message.content;
       if (typeof message !== 'string' || !message.trim()) {
-        throw new OneAIChatError('one_ai_empty_response', 'ONE AI returned an empty response. Please try again.');
+        throw new IZAKHONOAIChatError('one_ai_empty_response', 'IZAKHONO AI returned an empty response. Please try again.');
       }
       return { ok: true, message: message.trim(), model: config.model, mode: 'approved-local-runtime' };
     } catch (error) {
-      if (error instanceof OneAIChatError) throw error;
-      throw new OneAIChatError('one_ai_unavailable', 'ONE AI is not connected right now. Your message has not been sent to another provider.');
+      if (error instanceof IZAKHONOAIChatError) throw error;
+      throw new IZAKHONOAIChatError('one_ai_unavailable', 'IZAKHONO AI is not connected right now. Your message has not been sent to another provider.');
     }
   }
 
   return { health, chat };
 }
+
+// Backward-compatible internal alias for existing callers during the product transition.
+export const createOneAIChat = createIZAKHONOAIChat;
+export const OneAIChatError = IZAKHONOAIChatError;

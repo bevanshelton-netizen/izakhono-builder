@@ -1,4 +1,4 @@
-const CACHE='izakhono-one-v1';
+const CACHE='izakhono-ai-v2';
 const CORE=['./','./index.html','./styles.css','./app.js','./registry.json','./manifest.webmanifest'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
