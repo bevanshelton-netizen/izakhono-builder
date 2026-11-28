@@ -11,7 +11,8 @@ export class MailStore {
   async saveIdempotency(scope, key, value) { return this.adapter.saveIdempotency(scope, key, value); }
   async getIdempotency(scope, key) { return this.adapter.getIdempotency(scope, key); }
   async deleteIdempotency(scope, key) { return this.adapter.deleteIdempotency(scope, key); }
-  async acceptAndEnqueue(input) { if (typeof this.adapter.acceptAndEnqueue !== "function") throw new Error("atomic_acceptance_unavailable"); return this.adapter.acceptAndEnqueue(input); }
+  get supportsAtomicAcceptance() { return this.adapter?.supportsAtomicAcceptance === true; }
+  async acceptAndEnqueue(input) { if (!this.supportsAtomicAcceptance || typeof this.adapter.acceptAndEnqueue !== "function") throw new Error("atomic_acceptance_unavailable"); return this.adapter.acceptAndEnqueue(input); }
   async snapshot() { return this.adapter.snapshot(); }
   async get(scope, key) { return this.getIdempotency(scope, key); }
   async put(scope, key, value) { return this.saveIdempotency(scope, key, value); }
@@ -33,7 +34,7 @@ export class MemoryMailStoreAdapter {
 
 /** Server-side Supabase REST adapter. Service credentials remain server-side. */
 export class SupabaseMailStoreAdapter {
-  constructor({ projectUrl, serviceKey, fetchImpl = globalThis.fetch } = {}) { if (!projectUrl) throw new Error("projectUrl is required"); if (!serviceKey) throw new Error("serviceKey is required"); if (typeof fetchImpl !== "function") throw new Error("fetchImpl is required"); this.baseUrl=`${String(projectUrl).replace(/\/$/,"")}/rest/v1`; this.serviceKey=serviceKey; this.fetchImpl=fetchImpl; }
+  constructor({ projectUrl, serviceKey, fetchImpl = globalThis.fetch } = {}) { this.supportsAtomicAcceptance = true; if (!projectUrl) throw new Error("projectUrl is required"); if (!serviceKey) throw new Error("serviceKey is required"); if (typeof fetchImpl !== "function") throw new Error("fetchImpl is required"); this.baseUrl=`${String(projectUrl).replace(/\/$/,"")}/rest/v1`; this.serviceKey=serviceKey; this.fetchImpl=fetchImpl; }
   async putMessage(message) { const row={message_id:message.message_id,tenant_id:message.tenant_id,app_id:message.app_id,status:message.status||"queued",envelope:message.envelope||{},metadata:message.metadata||{},created_at:message.created_at,updated_at:message.updated_at}; await this.request("iz_mail_messages",{method:"POST",body:[row],prefer:"resolution=merge-duplicates,return=minimal"}); return structuredClone(message); }
   async getMessage(messageId,tenantId) { const filters=[`message_id=eq.${encodeURIComponent(messageId)}`]; if(tenantId) filters.push(`tenant_id=eq.${encodeURIComponent(tenantId)}`); const rows=await this.request(`iz_mail_messages?select=*&${filters.join("&")}`,{method:"GET"}); return rows[0]||null; }
   async appendEvent(event) { const row={id:event.id,message_id:event.message_id,tenant_id:event.tenant_id,recipient_id:event.recipient_id||null,type:event.type,data:event.data||{},occurred_at:event.occurred_at}; try { await this.request("iz_mail_events",{method:"POST",body:[row],prefer:"return=minimal"}); return structuredClone(event); } catch(error) { if(error?.status===409) return {...structuredClone(event),duplicate:true}; throw error; } }
