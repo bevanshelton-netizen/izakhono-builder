@@ -1,12 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "default": "deny",
   "principles": {
     "owner_controlled_runtime": true,
     "external_ai_optional_only": true,
     "external_ai_runtime_dependency_forbidden": true,
     "entity_scope_required": true,
-    "secrets_export_forbidden": true
+    "secrets_export_forbidden": true,
+    "product_permissions_require_exact_subject_entity_role_and_permission": true
   },
   "data_classes": {
     "allowed_external": [
@@ -44,5 +45,8 @@
       "secret_storage",
       "customer_system_of_record"
     ]
+  },
+  "product_permissions": {
+    "izakhono-experience": []
   }
 }
