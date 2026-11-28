@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "status": "starter-taxonomy",
+  "note": "Expandable classification only. Not an exhaustive representation of every qualification or institution.",
+  "families": [
+    {"code":"BUS","name":"Business, management and commerce","subjects":["accounting","finance","economics","marketing","management","entrepreneurship","human resources","operations","supply chain"]},
+    {"code":"LAW","name":"Law, governance and public administration","subjects":["constitutional law","criminal law","contract law","commercial law","international law","public policy","governance"]},
+    {"code":"ICT","name":"Computing and information technology","subjects":["computer science","software engineering","information systems","artificial intelligence","data science","cybersecurity","networks","cloud computing"]},
+    {"code":"ENG","name":"Engineering and built environment","subjects":["civil engineering","mechanical engineering","electrical engineering","chemical engineering","industrial engineering","architecture","construction","urban planning"]},
+    {"code":"MAT","name":"Mathematics and quantitative sciences","subjects":["mathematics","statistics","applied mathematics","operations research","quantitative methods"]},
+    {"code":"SCI","name":"Natural and environmental sciences","subjects":["biology","chemistry","physics","geology","environmental science","climate science"]},
+    {"code":"HLT","name":"Health and medical sciences","subjects":["medicine","nursing","pharmacy","public health","physiotherapy","occupational therapy","nutrition","anatomy","physiology"]},
+    {"code":"EDU","name":"Education and learning sciences","subjects":["teacher education","curriculum studies","educational psychology","assessment","pedagogy"]},
+    {"code":"HUM","name":"Humanities, languages and philosophy","subjects":["history","philosophy","literature","linguistics","languages","religious studies","cultural studies"]},
+    {"code":"SOC","name":"Social sciences","subjects":["psychology","sociology","political science","anthropology","social work","development studies"]},
+    {"code":"AGR","name":"Agriculture, food and veterinary sciences","subjects":["agronomy","animal science","veterinary science","food science","forestry","agricultural economics"]},
+    {"code":"ART","name":"Arts, design and creative industries","subjects":["fine arts","graphic design","industrial design","fashion","music","performing arts","film"]},
+    {"code":"MED","name":"Media and communication","subjects":["journalism","public relations","broadcasting","digital media","communication studies"]},
+    {"code":"HOS","name":"Hospitality, tourism and events","subjects":["hospitality","tourism","event management","culinary arts"]},
+    {"code":"TRD","name":"Trades and vocational education","subjects":["electrical trade","welding","plumbing","automotive","fitting and turning","construction trades","manufacturing"]}
+  ]
+}

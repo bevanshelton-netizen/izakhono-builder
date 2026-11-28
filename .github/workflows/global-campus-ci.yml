@@ -1,0 +1,27 @@
+name: Global Campus CI
+
+on:
+  pull_request:
+    paths:
+      - "products/global-campus/**"
+      - ".github/workflows/global-campus-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/global-campus/**"
+      - ".github/workflows/global-campus-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Global Campus tests
+        working-directory: products/global-campus
+        run: npm test

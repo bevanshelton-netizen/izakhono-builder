@@ -1,0 +1,75 @@
+{
+  "dataset_id": "za-curriculum-source-captures-2026-11",
+  "captured_at": "2026-11-26",
+  "status": "official-source-captured-human-verification-pending",
+  "notice": "These are real curriculum facts transcribed from official institution sources. They remain needs-review and are intentionally excluded from verified-only student discovery until a human reviewer checks the source document and record-level details.",
+  "institutions": [
+    {
+      "id": "za-uct",
+      "name": "University of Cape Town",
+      "country_id": "ZA",
+      "institution_type": "public-university",
+      "official_website": "https://www.uct.ac.za/",
+      "verification_status": "needs-review",
+      "source": {
+        "title": "UCT 2026 Commerce Undergraduate Handbook (Handbook 6a)",
+        "url": "https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf",
+        "catalogue_landing_page": "https://tutoring.uct.ac.za/students/study-uct-handbooks/handbooks",
+        "accessed_at": "2026-11-26"
+      }
+    },
+    {
+      "id": "za-unisa",
+      "name": "University of South Africa",
+      "country_id": "ZA",
+      "institution_type": "public-university",
+      "official_website": "https://www.unisa.ac.za/",
+      "verification_status": "needs-review",
+      "source": {
+        "title": "UNISA official qualification and module catalogue",
+        "url": "https://www.unisa.ac.za/",
+        "accessed_at": "2026-11-26"
+      }
+    }
+  ],
+  "qualifications": [
+    {
+      "id": "za-uct-bcom-financial-accounting-general-2026",
+      "institution_id": "za-uct",
+      "title": "Bachelor of Commerce specialising in Financial Accounting: General Accounting",
+      "programme_code": "CB001ACC08",
+      "academic_year": "2026",
+      "verification_status": "needs-review",
+      "source_url": "https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"
+    },
+    {
+      "id": "za-unisa-bed-financial-accounting-90104-fac",
+      "institution_id": "za-unisa",
+      "title": "Bachelor of Education in Senior Phase and Further Education and Training Teaching — School subject combination: Financial Accounting",
+      "qualification_code": "90104-FAC",
+      "academic_year": "2026",
+      "verification_status": "needs-review",
+      "source_url": "https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"
+    }
+  ],
+  "modules": [
+    {"id":"za-uct-acc1006f-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"ACC1006F","title":"Financial Accounting","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-acc1015f-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"ACC1015F","title":"Business Acumen for Accountants","academic_year":"2026","year_of_study":1,"credits":15,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-eco1010fs-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"ECO1010F/S","title":"Microeconomics","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-mam1010f-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"MAM1010F","title":"Mathematics 1010","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-acc1011s-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"ACC1011S","title":"Financial Reporting I","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-eco1011s-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"ECO1011S","title":"Macroeconomics","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-inf1002fs-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"INF1002F/S","title":"Information Systems I","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-sta1000s-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"STA1000S","title":"Introductory Statistics","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-uct-cml1001fs-2026","institution_id":"za-uct","qualification_id":"za-uct-bcom-financial-accounting-general-2026","code":"CML1001F/S","title":"Business Law I","academic_year":"2026","year_of_study":1,"credits":18,"nqf_level":5,"verification_status":"needs-review","source_url":"https://www.diploma.uct.ac.za/sites/default/files/media/documents/2026-commerce-handbook-6a-final-web.pdf"},
+    {"id":"za-unisa-fac1502","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"FAC1502","title":"Financial Accounting Principles, Concepts and Procedures","credits":12,"nqf_level":5,"language":"English","delivery_mode":"online","module_type":"semester","verification_status":"needs-review","purpose_summary":"Introduces fundamental financial accounting concepts, standards and principles; develops understanding of recording and processing accounting data and preparing core financial statements.","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Subjects-%26-modules/All-modules/Financial-Accounting-Principles%2C-Concepts-and-Procedures-%E2%80%93-FAC1502"},
+    {"id":"za-unisa-fac1601","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"FAC1601","title":"Financial Accounting and Reporting","prerequisites":["FAC1502"],"verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"},
+    {"id":"za-unisa-bpt1501","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"BPT1501","title":"Being a Professional Teacher","verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"},
+    {"id":"za-unisa-bte2601","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"BTE2601","title":"Becoming a Teacher","verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"},
+    {"id":"za-unisa-inf1505","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"INF1505","title":"Introduction to Business Information Systems","verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"},
+    {"id":"za-unisa-mnb1501","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"MNB1501","title":"Business Management IA","verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"},
+    {"id":"za-unisa-mnb1601","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"MNB1601","title":"Business Management IB","prerequisites":["MNB1501"],"verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"},
+    {"id":"za-unisa-tam2601","institution_id":"za-unisa","qualification_id":"za-unisa-bed-financial-accounting-90104-fac","code":"TAM2601","title":"Teacher as Manager","verification_status":"needs-review","source_url":"https://m.unisa.ac.za/sites/corporate/default/Register-to-study-through-Unisa/Undergraduate-%26-honours-qualifications/Find-your-qualification-%26-choose-your-modules/All-qualifications/Bachelor-of-Education-in-Senior-Phase-and-Further-Education-and-Training-Teaching-School-subject-combination%3A-Financial-Accounting-%2890104-%E2%80%93-FAC%29"}
+  ],
+  "next_action": "A human academic reviewer must compare each record to the cited official source and mark verified only after confirming current applicability."
+}
