@@ -1,0 +1,31 @@
+name: NODE01 Signed Release Approval Verifier
+
+on:
+  pull_request:
+    paths:
+      - "internal/node01-command-gateway/signed-release-approval.*"
+      - "docs/architecture/NODE01-SIGNED-RELEASE-APPROVAL-V1.md"
+      - ".github/workflows/node01-signed-release-approval.yml"
+  push:
+    paths:
+      - "internal/node01-command-gateway/signed-release-approval.*"
+      - "docs/architecture/NODE01-SIGNED-RELEASE-APPROVAL-V1.md"
+      - ".github/workflows/node01-signed-release-approval.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  signed-release-approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax-check verifier
+        run: node --check internal/node01-command-gateway/signed-release-approval.mjs
+      - name: Test signed release approval verification
+        run: node internal/node01-command-gateway/signed-release-approval.test.mjs
