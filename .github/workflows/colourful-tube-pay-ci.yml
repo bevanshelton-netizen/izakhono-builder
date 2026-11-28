@@ -1,0 +1,26 @@
+name: COLOURFUL TUBE PAY CI
+on:
+  push:
+    branches: [feature/colourful-tube-pay-v1]
+    paths:
+      - 'products/colourful-tube-pay/**'
+      - '.github/workflows/colourful-tube-pay-ci.yml'
+  pull_request:
+    paths:
+      - 'products/colourful-tube-pay/**'
+      - '.github/workflows/colourful-tube-pay-ci.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Run isolated module tests
+        working-directory: products/colourful-tube-pay
+        run: npm run check
