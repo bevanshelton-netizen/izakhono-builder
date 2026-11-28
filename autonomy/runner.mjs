@@ -3,6 +3,8 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { runAgentWorker } from './ai-agent-worker.mjs';
+import { retryDelayMs, waitingRetryDue } from './retry-policy.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -34,21 +36,34 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+const attemptedThisRun = new Set();
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !attemptedThisRun.has(task.id)
+      && !['completed', 'blocked'].includes(current.status)
+      && waitingRetryDue(current)
+      && !persistentWaitFor(task)
+      && ready(task);
   });
 }
-function executeInternal(task) {
+async function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return { status: 'completed' };
+    const worker = await runAgentWorker();
+    const plans = worker.plans ?? [];
+    const statuses = plans.map(plan => plan.status);
+    if (statuses.includes('blocked')) {
+      return { status: 'failed', reason: 'agent-worker-reported-blocked-plan', evidence: [{ name: 'agent-worker-execution', status: 'failed', progressed: worker.progressed ?? 0, plans }] };
+    }
+    if (statuses.length > 0 && statuses.every(status => status === 'completed') && worker.progressed > 0) {
+      return { status: 'completed', evidence: [{ name: 'agent-worker-executed', status: 'passed', progressed: worker.progressed, plans }] };
+    }
+    return { status: 'waiting', reason: statuses.length ? 'agent-worker-awaiting-approval-or-next-cycle' : 'agent-worker-queue-empty-or-no-ready-work', evidence: [{ name: 'agent-worker-execution', status: 'waiting', progressed: worker.progressed ?? 0, plans }] };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
@@ -65,10 +80,11 @@ const externalGates = [];
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
+  attemptedThisRun.add(next.id);
   const current = taskState(next.id);
-  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
+  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter, retryAfter: null });
 
-  let result = executeInternal(next);
+  let result = await executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
   const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule', 'kora-workload-execute', 'kora-routing-acceptance'];
@@ -102,7 +118,9 @@ while (progressed < manifest.queue.length) {
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? null;
+    const attempts = taskState(next.id).attempts;
     transition(next, ownerGate ? 'waiting_owner' : 'waiting', {
+      retryAfter: new Date(Date.now() + retryDelayMs(attempts)).toISOString(),
       ownerGate,
       reason: result.reason ?? 'capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
