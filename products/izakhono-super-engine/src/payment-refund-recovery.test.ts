@@ -4,8 +4,10 @@ import type { RefundOperation, RefundOperationReservation, RefundOperationStore 
 import { IzakhonoRefundRecovery } from './payment-refund-recovery.js';
 import type { RefundProvider } from './payment-refunds.js';
 
+
+async function main() {
 const payment: PaymentIntent = {
-  id: 'pay_recovery_1', externalTransactionId: 'order_recovery_1', amountMinor: 10000, currency: 'ZAR', status: 'paid',
+  id: 'pay_recovery_1', merchantId: 'merchant_1', serviceId: 'school-commerce', externalTransactionId: 'order_recovery_1', amountMinor: 10000, currency: 'ZAR', status: 'paid',
   provider: 'test-provider', providerPaymentId: 'provider-payment-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 };
 
@@ -22,7 +24,7 @@ class MemoryRecoveryStore implements RefundOperationStore {
   }
   async markSucceeded(): Promise<RefundOperation> { throw new Error('not used'); }
   async markFailed(): Promise<RefundOperation> { throw new Error('not used'); }
-  async markReconciliationRequired(): Promise<RefundOperation> {
+  async markReconciliationRequired(_refundId: string, _error: string): Promise<RefundOperation> {
     if (!this.operation) throw new Error('missing operation');
     this.operation = { ...this.operation, reconciliationRequired: true };
     return this.operation;
@@ -57,3 +59,6 @@ assert.equal(lookups, 1);
 assert.equal(refundRequests, 0);
 
 console.log('payment-refund-recovery.test.ts: ok');
+}
+
+void main();

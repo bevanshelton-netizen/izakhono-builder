@@ -3,8 +3,10 @@ import type { PaymentIntent } from './payment-core.js';
 import type { RefundProvider } from './payment-refunds.js';
 import { RefundRecoveryWorker } from './payment-refund-recovery-worker.js';
 
+
+async function main() {
 const payment: PaymentIntent = {
-  id: 'pay_concurrency_1', amountMinor: 1000, currency: 'ZAR', status: 'paid', provider: 'test', providerPaymentId: 'provider-payment-1', metadata: {}
+  id: 'pay_concurrency_1', merchantId: 'merchant_1', serviceId: 'school-commerce', externalTransactionId: 'order_concurrency_1', amountMinor: 1000, currency: 'ZAR', status: 'paid', provider: 'test', providerPaymentId: 'provider-payment-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
 };
 
 const operation: RefundOperation = {
@@ -44,3 +46,6 @@ if (queue.reconcileCalls !== 1) throw new Error('Expected exactly one provider r
 if (queue.requestCalls !== 0) throw new Error('Recovery must never submit a new refund request');
 if (finalized !== 1) throw new Error('Expected exactly one finalization');
 console.log('payment-refund-recovery-concurrency.test.ts: ok');
+}
+
+void main();

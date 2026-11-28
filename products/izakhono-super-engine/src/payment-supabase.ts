@@ -11,6 +11,8 @@ export interface SupabasePaymentStoreConfig {
 
 interface PaymentRow {
   id: string;
+  merchant_id: string;
+  service_id: string;
   external_transaction_id: string;
   amount_minor: number;
   currency: string;
@@ -59,11 +61,14 @@ export class SupabasePaymentStore implements PaymentStore {
   }
 
   async save(intent: PaymentIntent): Promise<void> {
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment merchant identity and service entitlement are required');
     await this.request(this.baseUrl, {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
         id: intent.id,
+        merchant_id: intent.merchantId,
+        service_id: intent.serviceId,
         external_transaction_id: intent.externalTransactionId,
         amount_minor: intent.amountMinor,
         currency: intent.currency,
@@ -77,6 +82,13 @@ export class SupabasePaymentStore implements PaymentStore {
     });
   }
 
+  async getById(id: string): Promise<PaymentIntent | undefined> {
+    const query = `${this.baseUrl}?id=eq.${encodeURIComponent(id)}&select=*&limit=1`;
+    const response = await this.request(query, { method: 'GET' });
+    const rows = await response.json() as PaymentRow[];
+    return rows[0] ? toPaymentIntent(rows[0]) : undefined;
+  }
+
   async getByExternalTransactionId(externalTransactionId: string): Promise<PaymentIntent | undefined> {
     const query = `${this.baseUrl}?external_transaction_id=eq.${encodeURIComponent(externalTransactionId)}&select=*`;
     const response = await this.request(query, { method: 'GET' });
@@ -85,6 +97,7 @@ export class SupabasePaymentStore implements PaymentStore {
   }
 
   async update(id: string, patch: Partial<PaymentIntent>): Promise<PaymentIntent> {
+    if (patch.merchantId !== undefined || patch.serviceId !== undefined) throw new Error('Payment merchant and service identity are immutable');
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.externalTransactionId !== undefined) payload.external_transaction_id = patch.externalTransactionId;
     if (patch.amountMinor !== undefined) payload.amount_minor = patch.amountMinor;
@@ -110,6 +123,8 @@ export class SupabasePaymentStore implements PaymentStore {
 function toPaymentIntent(row: PaymentRow): PaymentIntent {
   return {
     id: row.id,
+    merchantId: row.merchant_id,
+    serviceId: row.service_id,
     externalTransactionId: row.external_transaction_id,
     amountMinor: row.amount_minor,
     currency: row.currency,

@@ -7,6 +7,7 @@ export interface PaidPaymentEvent {
   paymentIntentId: string;
   externalTransactionId: string;
   merchantId: string;
+  serviceId: string;
   amountMinor: number;
   currency: string;
   provider?: string;
@@ -17,6 +18,7 @@ export interface ProvisioningJob {
   id: string;
   paymentIntentId: string;
   merchantId: string;
+  serviceId: string;
   status: 'queued' | 'completed' | 'failed';
   createdAt: string;
 }
@@ -35,14 +37,19 @@ export class PaymentWorkflow {
     private readonly provisioningHandler?: ProvisioningHandler,
   ) {}
 
-  async processConfirmedWebhook(rawBody: string, callbackPath: string, signature: string, merchantId: string): Promise<PaymentIntent> {
+  async processConfirmedWebhook(rawBody: string, callbackPath: string, signature: string): Promise<PaymentIntent> {
     const intent = await this.payments.processWebhook(rawBody, callbackPath, signature);
     if (intent.status !== 'paid') return intent;
-    await this.handlePaid(intent, merchantId);
+    await this.handlePaid(intent);
     return intent;
   }
 
-  async handlePaid(intent: PaymentIntent, merchantId: string): Promise<ProvisioningJob | undefined> {
+  async handlePaid(candidate: PaymentIntent): Promise<ProvisioningJob | undefined> {
+    const intent = await this.payments.getPaymentIntent(candidate.id);
+    if (!intent || intent.id !== candidate.id) throw new Error('Canonical payment intent not found');
+    if (intent.status !== 'paid') throw new Error('Only a canonically paid payment intent can be provisioned');
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment intent has no trusted merchant identity or service entitlement');
+    const merchantId = intent.merchantId;
     const key = intent.id;
     if (this.processed.has(key)) return this.jobs.get(key);
     await this.ledger.recordPayment({
@@ -55,6 +62,7 @@ export class PaymentWorkflow {
       id: `provision_${crypto.randomUUID()}`,
       paymentIntentId: intent.id,
       merchantId,
+      serviceId: intent.serviceId,
       status: 'queued',
       createdAt: new Date().toISOString(),
     };
@@ -70,6 +78,7 @@ export class PaymentWorkflow {
         paymentIntentId: intent.id,
         externalTransactionId: intent.externalTransactionId,
         merchantId,
+        serviceId: intent.serviceId,
         amountMinor: intent.amountMinor,
         currency: intent.currency,
         provider: intent.provider,

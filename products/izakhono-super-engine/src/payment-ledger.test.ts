@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 import { IzakhonoPaymentLedger, MemoryPaymentLedgerStore } from './payment-ledger.js';
 
 describe('IZAKHONO PAY ledger', () => {

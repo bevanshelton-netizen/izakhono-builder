@@ -8,7 +8,9 @@ import { MemorySettlementStore } from './payment-settlement.js';
 import { MemoryPaymentStateEventStore } from './payment-refunds.js';
 import { PaymentOrchestrator } from './payment-orchestrator.js';
 
-const payment: PaymentIntent = { id: 'pay_e2e_1', externalTransactionId: 'order_e2e_1', amountMinor: 14900, currency: 'ZAR', status: 'paid', provider: 'ikhokha', providerPaymentId: 'ik_pay_1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+
+async function main() {
+const payment: PaymentIntent = { id: 'pay_e2e_1', merchantId: 'merchant_1', serviceId: 'website', externalTransactionId: 'order_e2e_1', amountMinor: 14900, currency: 'ZAR', status: 'paid', provider: 'ikhokha', providerPaymentId: 'ik_pay_1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 const paymentStore = new MemoryPaymentStore();
 await paymentStore.save(payment);
 const ledgerStore = new MemoryPaymentLedgerStore();
@@ -22,11 +24,16 @@ let provisioned = 0;
 let refunds = 0;
 const orchestrator = new PaymentOrchestrator(paymentStore, ledger, events, fulfillmentStore, { async provision() { provisioned += 1; } }, settlementStore, reconciliationStore, stateEvents, { async requestRefund() { refunds += 1; return { providerRefundId: 'refund_provider_1' }; } });
 
-assert.equal(await orchestrator.recordPaid(payment, { merchantId: 'merchant_1', serviceId: 'website' }), true);
-assert.equal(await orchestrator.recordPaid(payment, { merchantId: 'merchant_1', serviceId: 'website' }), false);
+assert.equal(await orchestrator.recordPaid({ ...payment, merchantId: 'merchant_attacker' }), true);
+assert.ok(await ledgerStore.getMerchantAccount('merchant_1', 'ZAR'));
+assert.equal(await ledgerStore.getMerchantAccount('merchant_attacker', 'ZAR'), undefined);
+assert.equal(await orchestrator.recordPaid(payment), false);
 assert.equal((await ledgerStore.listTransactions()).length, 1);
-const job = await orchestrator.fulfillPaid(payment, { merchantId: 'merchant_1', serviceId: 'website' });
-const completed = await orchestrator.executeFulfillment(job, payment);
+const job = await orchestrator.fulfillPaid({ ...payment, merchantId: 'merchant_attacker', serviceId: 'attacker-service' });
+assert.equal(job.merchantId, 'merchant_1');
+assert.equal(job.serviceId, 'website');
+await assert.rejects(() => orchestrator.executeFulfillment({ ...job, serviceId: 'attacker-service' }, payment), /does not belong/);
+const completed = await orchestrator.executeFulfillment(job, { ...payment, merchantId: 'merchant_attacker', serviceId: 'attacker-service' });
 assert.equal(completed.status, 'completed');
 assert.equal(provisioned, 1);
 const reconciliation = await orchestrator.reconcilePayment({ payment, observedAmountMinor: 14900, observedCurrency: 'ZAR' });
@@ -34,7 +41,7 @@ assert.equal(reconciliation.matched, true);
 const settlement = await orchestrator.createSettlement({ merchantId: 'merchant_1', currency: 'ZAR', amountMinor: 14900, transactionReferences: ['payment:pay_e2e_1'] });
 await orchestrator.recordSettlement({ settlement, merchantPayableAccountId: 'merchant_payable_1' });
 assert.equal((await orchestrator.markSettlementSettled(settlement.id)).status, 'settled');
-const refunded = await orchestrator.refund(payment, { merchantId: 'merchant_1', serviceId: 'website' });
+const refunded = await orchestrator.refund(payment);
 assert.equal(refunded.payment.status, 'refunded');
 assert.equal(refunds, 1);
 assert.equal(refunded.transaction.type, 'refund');
@@ -43,3 +50,6 @@ assert.equal(await orchestrator.issueReceipt(refunded.payment), true);
 assert.equal(await orchestrator.issueReceipt(refunded.payment), false);
 assert.equal((await ledgerStore.listTransactions()).length, 3);
 console.log('payment-orchestrator.test.ts: ok');
+}
+
+void main();

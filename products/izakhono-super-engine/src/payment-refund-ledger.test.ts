@@ -10,6 +10,8 @@ describe('PaymentRefundLedger', () => {
     const refunds = new PaymentRefundLedger(ledger);
     const payment = {
       id: 'pay_123',
+      merchantId: 'merchant_1',
+      serviceId: 'school-commerce',
       externalTransactionId: 'ext_123',
       amountMinor: 14900,
       currency: 'ZAR',
@@ -31,12 +33,10 @@ describe('PaymentRefundLedger', () => {
     const first = await refunds.recordRefund({
       refundId: 'rf_123',
       payment,
-      merchantId: 'merchant_1',
     });
     const second = await refunds.recordRefund({
       refundId: 'rf_123',
       payment: { ...payment, status: 'refunded' },
-      merchantId: 'merchant_1',
     });
 
     assert.equal(first.transaction.id, second.transaction.id);
@@ -52,6 +52,8 @@ describe('PaymentRefundLedger', () => {
     const refunds = new PaymentRefundLedger(new IzakhonoPaymentLedger(new MemoryPaymentLedgerStore()));
     const payment = {
       id: 'pay_456',
+      merchantId: 'merchant_1',
+      serviceId: 'school-commerce',
       externalTransactionId: 'ext_456',
       amountMinor: 5000,
       currency: 'ZAR',
@@ -64,7 +66,7 @@ describe('PaymentRefundLedger', () => {
     };
 
     await assert.rejects(
-      () => refunds.recordRefund({ refundId: 'rf_456', payment, merchantId: 'merchant_1', amountMinor: 5001 }),
+      () => refunds.recordRefund({ refundId: 'rf_456', payment, amountMinor: 5001 }),
       /cannot exceed/,
     );
   });
