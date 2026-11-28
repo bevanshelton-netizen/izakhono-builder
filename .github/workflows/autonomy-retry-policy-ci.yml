@@ -1,0 +1,30 @@
+name: IZAKHONO Autonomy Retry Policy CI
+
+on:
+  pull_request:
+    paths:
+      - 'autonomy/runner.mjs'
+      - 'autonomy/retry-policy.mjs'
+      - 'autonomy/retry-policy.test.mjs'
+      - '.github/workflows/autonomy-retry-policy-ci.yml'
+  push:
+    paths:
+      - 'autonomy/runner.mjs'
+      - 'autonomy/retry-policy.mjs'
+      - 'autonomy/retry-policy.test.mjs'
+      - '.github/workflows/autonomy-retry-policy-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  retry-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test bounded waiting-task retries
+        run: node autonomy/retry-policy.test.mjs

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { retryDelayMs, waitingRetryDue } from './retry-policy.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -37,7 +38,7 @@ function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).ma
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !['completed', 'blocked'].includes(current.status) && waitingRetryDue(current) && !persistentWaitFor(task) && ready(task);
   });
 }
 function executeInternal(task) {
@@ -66,7 +67,7 @@ while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
   const current = taskState(next.id);
-  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
+  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter, retryAfter: null });
 
   let result = executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
@@ -102,7 +103,9 @@ while (progressed < manifest.queue.length) {
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? null;
+    const attempts = taskState(next.id).attempts;
     transition(next, ownerGate ? 'waiting_owner' : 'waiting', {
+      retryAfter: new Date(Date.now() + retryDelayMs(attempts)).toISOString(),
       ownerGate,
       reason: result.reason ?? 'capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
