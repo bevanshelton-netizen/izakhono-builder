@@ -1,0 +1,59 @@
+name: IZAKHONO Owned Worker Gateway
+on:
+  pull_request:
+    paths:
+      - 'infra/owned-runtime/worker-gateway/**'
+      - 'supabase/migrations/20261122120000_owned_worker_gateway_v1.sql'
+      - '.github/workflows/owned-worker-gateway.yml'
+  push:
+    branches: [main, 'feat/**']
+    paths:
+      - 'infra/owned-runtime/worker-gateway/**'
+      - 'supabase/migrations/20261122120000_owned_worker_gateway_v1.sql'
+      - '.github/workflows/owned-worker-gateway.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: owned_worker_gateway_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d owned_worker_gateway_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: infra/owned-runtime/worker-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - name: Apply additive migration to disposable PostgreSQL
+        env:
+          OWNED_WORKER_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/owned_worker_gateway_test
+        run: |
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN; ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;"
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -f ../../../supabase/migrations/20261122120000_owned_worker_gateway_v1.sql
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE owned_worker_gateway_ci LOGIN PASSWORD 'ci-only-password';"
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -c "GRANT owned_worker_gateway TO owned_worker_gateway_ci;"
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -c "INSERT INTO public.owned_worker_context_secret (singleton, secret) VALUES (true, decode('Y2ktb25seS1vd25lZC13b3JrZXItdGVuYW50LWNvbnRleHQtc2VjcmV0LTAx', 'base64')) ON CONFLICT (singleton) DO UPDATE SET secret = EXCLUDED.secret, updated_at = now();"
+      - run: npm run check
+      - run: npm test
+        env:
+          OWNED_WORKER_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/owned_worker_gateway_test
+          OWNED_WORKER_TEST_WORKER_URL: postgresql://owned_worker_gateway_ci:ci-only-password@localhost:5432/owned_worker_gateway_test
+          OWNED_WORKER_TEST_CONTEXT_SECRET: Y2ktb25seS1vd25lZC13b3JrZXItdGVuYW50LWNvbnRleHQtc2VjcmV0LTAx
