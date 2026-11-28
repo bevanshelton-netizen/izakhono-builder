@@ -1,0 +1,27 @@
+services:
+  compute-worker:
+    build:
+      context: ../runtime/compute-worker
+    restart: unless-stopped
+    environment:
+      COMPUTE_MANAGER_URL: ${COMPUTE_MANAGER_URL:?set private COMPUTE_MANAGER_URL}
+      WORKER_ID: ${WORKER_ID:?set unique WORKER_ID}
+      WORKER_ENROLLMENT_TOKEN: ${WORKER_ENROLLMENT_TOKEN:-}
+      WORKER_DATA_DIR: /data
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-3000}
+    volumes:
+      - compute-worker-data:/data
+    networks: [izakhono-worker]
+    healthcheck:
+      test: ["CMD", "node", "-e", "const fs=require('fs');process.exit(fs.existsSync('/data/worker-'+process.env.WORKER_ID+'.token')?0:1)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  izakhono-worker:
+    driver: bridge
+
+volumes:
+  compute-worker-data:

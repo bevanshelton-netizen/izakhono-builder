@@ -1,0 +1,76 @@
+name: IZAKHONO HOST Build Boundary Contract
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-host/BUILD-EXECUTION-BOUNDARY-V1.md"
+      - "products/izakhono-host/contracts/**"
+      - "products/izakhono-host/runtime/compute-worker/**"
+      - ".github/workflows/izakhono-host-build-boundary.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-boundary-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate documented isolation invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc=products/izakhono-host/BUILD-EXECUTION-BOUNDARY-V1.md
+          test -s "$doc"
+          for required in \
+            "No Docker socket" \
+            "No privileged container" \
+            "Rootless execution" \
+            "Ephemeral workspace" \
+            "Controlled egress" \
+            "Artifact-only handoff" \
+            "Fail closed" \
+            "Required automated test matrix" \
+            "B0 audit" \
+            "Definition of done"; do
+            grep -Fq "$required" "$doc" || { echo "Missing build boundary invariant: $required" >&2; exit 1; }
+          done
+
+      - name: Validate strict build request and result schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          request=json.loads(Path('products/izakhono-host/contracts/build-request.v1.schema.json').read_text())
+          result=json.loads(Path('products/izakhono-host/contracts/build-result.v1.schema.json').read_text())
+          assert request['additionalProperties'] is False
+          assert result['additionalProperties'] is False
+          assert request['properties']['schema_version']['const']=='izakhono.host.build-request.v1'
+          assert result['properties']['schema_version']['const']=='izakhono.host.build-result.v1'
+          assert 'source_commit_sha' in request['required'] and 'manifest_digest' in request['required']
+          assert 'artifact' in result['allOf'][0]['then']['required'] and 'evidence' in result['allOf'][0]['then']['required']
+          assert 'failure' in result['allOf'][0]['else']['required']
+          assert 'signature' in result['required']
+          for schema in (request,result):
+              assert 'command' not in schema.get('properties',{})
+              assert 'shell' not in schema.get('properties',{})
+          artifact=result['properties']['artifact']
+          assert artifact['additionalProperties'] is False
+          assert artifact['properties']['digest']['pattern'].startswith('^sha256:')
+          print('[PASS] Strict typed build request/result schemas validated.')
+          PY
+
+      - name: Confirm general compute worker remains non-shell and allowlisted
+        shell: bash
+        run: |
+          set -euo pipefail
+          worker=products/izakhono-host/runtime/compute-worker/worker.mjs
+          grep -Fq "const CAPABILITIES=['health-check','sha256','echo'];" "$worker"
+          grep -Fq "if(job.type==='health-check')" "$worker"
+          ! grep -Eiq "child_process|execSync|spawn\(" "$worker"
+          echo "[PASS] General compute worker retains its fixed task allow-list and no shell execution APIs."
