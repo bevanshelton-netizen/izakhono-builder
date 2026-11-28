@@ -16,7 +16,7 @@ IZAKHONO HOST is the production architecture target. The customer web runtime is
 6. **Provisioner** — typed jobs: domain → DNS → site → SSL → mail → payment reconciliation → acceptance.
 7. **FORTRESS** — secrets, identity, audit, rate limits, backups and recovery controls.
 
-## Software baseline completed
+## Software baseline
 
 - Native Node control-plane runtime at `runtime/control-plane`.
 - Persistent site state and per-domain public document roots.
@@ -29,7 +29,13 @@ IZAKHONO HOST is the production architecture target. The customer web runtime is
 - Node preflight verification script.
 - Runtime smoke test in CI.
 - Runtime backup and controlled restore scripts.
-- Existing HOST application control plane and provider adapters remain replaceable orchestration components.
+- Optional KORA Next.js application workload at `docker-compose.kora.yml`, routed by Caddy to the native KORA container. It is opt-in and separate from the HOST control-plane service.
+
+## KORA workload
+
+See [KORA-OWNED-RUNTIME.md](./KORA-OWNED-RUNTIME.md) for the pinned source revision, build-time public configuration, FORTRESS-sourced runtime secrets, Caddy routing, health checks and owner-authorized activation sequence.
+
+KORA's web process is hosted on the owned runtime. Supabase, Cloudflare Stream and PayFast remain external application dependencies until their respective IZAKHONO-native replacements are separately implemented and accepted; hosting the web process on owned nodes does not silently replace those services.
 
 ## Cluster model
 
@@ -37,10 +43,10 @@ The platform is not constrained to one machine. Multiple owned nodes can carry C
 
 ## Promotion rule
 
-A site is not called `live` until HTTPS, DNS and intended-content acceptance evidence all exist. A mail service is not called `live` until the full mail acceptance gate passes.
+A site is not called `live` until HTTPS, DNS and intended-content acceptance evidence all exist. A mail service is not called `live` until the full mail acceptance gate passes. A KORA container health check proves process liveness only; KORA's strict `/api/readiness` and full production acceptance remain separate gates.
 
 ## Physical activation gate
 
-IZAKHONO has confirmed that the required nodes are available. The remaining work is execution and evidence on those nodes: Docker/runtime activation, public IPv4/IPv6 reachability, TCP/UDP 53 where delegated, ports 80/443, public DNS delegation, trusted HTTPS, backup/restore, mail acceptance, FORTRESS controls and end-to-end customer QA.
+The remaining work is execution and evidence on the owned nodes: Docker/runtime activation, public IPv4/IPv6 reachability, TCP/UDP 53 where delegated, ports 80/443, public DNS delegation, trusted HTTPS, backup/restore, FORTRESS controls and end-to-end customer QA.
 
 No repository commit is treated as proof that a physical node or public Internet path is live.

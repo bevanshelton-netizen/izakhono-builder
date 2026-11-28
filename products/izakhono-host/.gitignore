@@ -1,0 +1,9 @@
+# Local HOST and KORA secrets/state
+.env
+kora.env
+
+# KORA source checkout is provisioned from the pinned source commit.
+kora-source/
+
+# Local runtime artifacts
+.runtime/
