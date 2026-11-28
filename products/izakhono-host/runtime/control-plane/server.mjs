@@ -2,17 +2,85 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createWorkloadStore } from '../provisioner/workload-store.mjs';
+import { createNavDataJobStore } from '../provisioner/nav-data-job-store.mjs';
+import { createRuntimeAdapterRegistry } from '../provisioner/runtime-adapter-contract.mjs';
+import { createWorkloadWorker } from '../provisioner/workload-worker.mjs';
+import { createNavDataWorker } from '../provisioner/nav-data-worker.mjs';
+import { createHttpRuntimeAdapter } from '../provisioner/http-runtime-adapter.mjs';
+import { createHttpNavDataAdapter } from '../provisioner/nav-data-http-adapter.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
+const workloadStore = createWorkloadStore({ filePath: path.join(DATA_DIR, 'workloads.json') });
+const navDataJobStore = createNavDataJobStore({ filePath: path.join(DATA_DIR, 'nav-data-jobs.json') });
+const navWorkerStatus = { runtimeEnabled: false, dataEnabled: false };
 if (!ADMIN_TOKEN) throw new Error('HOST_RUNTIME_TOKEN_REQUIRED');
 const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+
+let shuttingDown = false;
+function startWorkerLoop(name, worker) {
+  const run = async () => {
+    if (shuttingDown) return;
+    try {
+      const result = await worker.runOnce();
+      if (result.processed) console.info(`[${name}] pass complete; terminal=${Boolean(result.terminal)} waiting=${Boolean(result.waiting)}`);
+    } catch {
+      console.error(`[${name}] pass failed; see provider audit record`);
+    }
+    if (!shuttingDown) {
+      const timer = setTimeout(run, 5000);
+      timer.unref();
+    }
+  };
+  const timer = setTimeout(run, 1000);
+  timer.unref();
+}
+
+function startNavWorkers() {
+  const runtimeUrl = process.env.HOST_NAV_RUNTIME_ADAPTER_URL || '';
+  const runtimeToken = process.env.HOST_NAV_RUNTIME_ADAPTER_TOKEN || '';
+  const runtimeTargetId = process.env.HOST_NAV_RUNTIME_TARGET_ID || '';
+  const dataUrl = process.env.HOST_NAV_DATA_ADAPTER_URL || '';
+  const dataToken = process.env.HOST_NAV_DATA_ADAPTER_TOKEN || '';
+
+  if (runtimeUrl && runtimeToken && runtimeTargetId) {
+    const adapterId = process.env.HOST_NAV_RUNTIME_ADAPTER_ID || 'host-runtime-http';
+    const registry = createRuntimeAdapterRegistry();
+    registry.register(adapterId, createHttpRuntimeAdapter({ baseUrl: runtimeUrl, token: runtimeToken, timeoutMs: 110000 }));
+    const worker = createWorkloadWorker({
+      store: workloadStore,
+      adapterRegistry: registry,
+      navDataJobStore,
+      workerId: 'host-nav-runtime-worker-01',
+      resolveBinding: async record => record.runtime_target_id === runtimeTargetId
+        ? { adapterId, runtimeTargetId }
+        : null
+    });
+    startWorkerLoop('nav-runtime-worker', worker);
+    navWorkerStatus.runtimeEnabled = true;
+    console.info('[nav-runtime-worker] enabled for the approved logical HOST target');
+  }
+
+  if (dataUrl && dataToken) {
+    const worker = createNavDataWorker({
+      store: navDataJobStore,
+      workloadStore,
+      adapter: createHttpNavDataAdapter({ baseUrl: dataUrl, token: dataToken }),
+      workerId: 'host-nav-data-worker-01'
+    });
+    startWorkerLoop('nav-data-worker', worker);
+    navWorkerStatus.dataEnabled = true;
+    console.info('[nav-data-worker] enabled for the approved NAV data adapter');
+  }
+}
+
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -100,13 +168,69 @@ async function serveSite(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0'});
+  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0', navWorkers:{...navWorkerStatus}});
   if (req.method === 'GET' && url.pathname === '/api/tls/ask') {
     const site = await findSite(url.searchParams.get('domain') || '');
     return site ? json(res, 200, {ok:true,domain:site.domain}) : json(res, 403, {ok:false,error:'Domain is not provisioned'});
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
+
+  if (req.method === 'GET' && url.pathname === '/api/nav-data-jobs') {
+    const jobs = await navDataJobStore.list();
+    return json(res, 200, { ok: true, jobs });
+  }
+
+  if (req.method === 'POST' && url.pathname.startsWith('/api/workloads/') && url.pathname.endsWith('/data-imports')) {
+    try {
+      const recordId = url.pathname.split('/')[3];
+      const workload = await workloadStore.get(recordId);
+      if (!workload) return json(res, 404, { ok: false, error: 'Workload not found' });
+      if (!['PROVISIONING','IMPORTING_DATA'].includes(workload.state) || workload.execution_stage !== 'runtime-deployed-awaiting-data-pipeline' || !workload.runtime_target_id) {
+        return json(res, 409, { ok: false, error: 'NAV data import requires a verified runtime deployment and approved HOST target binding' });
+      }
+      const result = await navDataJobStore.create({ workloadId: workload.workload_id, workloadRecordId: recordId, releaseDigest: workload.release_digest });
+      if (workload.state === 'PROVISIONING') await workloadStore.transition(recordId, 'IMPORTING_DATA', { dataJobId: result.job.id });
+      return json(res, result.created ? 202 : 200, { ok: true, created: result.created, execution: 'queued-awaiting-nav-data-worker', job: result.job });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error?.message || 'Invalid NAV data import request' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/nav-data-jobs/')) {
+    const jobId = url.pathname.split('/')[3];
+    const job = await navDataJobStore.get(jobId);
+    return job ? json(res, 200, { ok: true, job }) : json(res, 404, { ok: false, error: 'NAV data job not found' });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/workloads') {
+    const workloads = await workloadStore.list();
+    return json(res, 200, { ok: true, workloads });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/workloads') {
+    try {
+      const input = await body(req);
+      const result = await workloadStore.create(input);
+      return json(res, result.created ? 202 : 200, {
+        ok: true,
+        created: result.created,
+        execution: 'queued-awaiting-runtime-adapter',
+        workload: result.workload
+      });
+    } catch (error) {
+      const status = error?.code === 'IDEMPOTENCY_CONFLICT' ? 409 : 400;
+      return json(res, status, { ok: false, error: error?.message || 'Invalid workload request' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/workloads/')) {
+    const workloadId = url.pathname.split('/')[3];
+    const workload = await workloadStore.get(workloadId);
+    return workload
+      ? json(res, 200, { ok: true, workload })
+      : json(res, 404, { ok: false, error: 'Workload not found' });
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/sites') {
     const state=await loadState();
@@ -208,4 +332,9 @@ const server = http.createServer(async (req, res) => {
   return json(res,404,{ok:false,error:'Not found'});
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(`IZAKHONO HOST Runtime listening on ${PORT}`));
+server.on('close', () => { shuttingDown = true; });
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO HOST Runtime listening on ${PORT}`);
+  try { startNavWorkers(); }
+  catch { console.error('[nav-workers] disabled; provider configuration is invalid'); }
+});

@@ -21,6 +21,18 @@ The customer web runtime is owned by IZAKHONO. External services are bounded ada
 
 `docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
 
+## Managed NAV workload runtime
+
+HOST exposes an authenticated workload lifecycle API and runs its lease-fenced NAV runtime/data workers inside the same control-plane process as the file-backed single-writer stores. The generic HTTP adapters are disabled by default. They start only when an owner-approved HTTPS adapter URL, server-side token and logical HOST target binding are injected through FORTRESS-controlled runtime configuration.
+
+Runtime worker configuration: HOST_NAV_RUNTIME_ADAPTER_URL, HOST_NAV_RUNTIME_ADAPTER_TOKEN, HOST_NAV_RUNTIME_TARGET_ID and optional HOST_NAV_RUNTIME_ADAPTER_ID.
+
+Data worker configuration: HOST_NAV_DATA_ADAPTER_URL and HOST_NAV_DATA_ADAPTER_TOKEN. These may use the runtime adapter URL/token when the same trusted service implements both contracts.
+
+The runtime worker deploys an immutable digest, verifies the deployed release and automatically queues the South Africa data job. The data worker verifies the South Africa Geofabrik source, Valhalla graph, Nominatim index, PMTiles archive, all five NAV service health checks and persistent-data health before HOST advances the workload to internal READY. Long-running imports use durable provider operation IDs and resumable polling.
+
+The JSON workload/data-job stores are single-process/single-writer. Keep both worker loops in this same HOST process; do not scale multiple replicas against the same files. Move state to a transactional shared database before multi-replica operation. Public-live still requires independent backup/restore, HTTPS and DNS evidence.
+
 ## Logical node roles and execution hosts
 
 `CLUSTER-NODE-ROLES.md` defines logical workload roles and the resilience model. Role names such as NODE01, NODE02 and NODE03 are software/orchestration identities; they are not physical servers or cloud instances.

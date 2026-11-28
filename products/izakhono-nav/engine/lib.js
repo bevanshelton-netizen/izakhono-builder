@@ -19,10 +19,22 @@ export function clientId(req) {
 }
 
 const buckets = new Map();
+const MAX_RATE_LIMIT_BUCKETS = 10_000;
 export function rateAllowed(id, now = Date.now()) {
   const key = String(id || 'unknown');
   let bucket = buckets.get(key);
-  if (!bucket || now - bucket.start >= config.rateLimit.windowMs) bucket = { start: now, count: 0 };
+  if (!bucket) {
+    // Bound memory under high-cardinality client-ID traffic. Evict the least
+    // recently used bucket rather than allowing attacker-controlled growth.
+    if (buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+      buckets.delete(buckets.keys().next().value);
+    }
+    bucket = { start: now, count: 0 };
+  } else {
+    // Map insertion order provides a small, dependency-free LRU queue.
+    buckets.delete(key);
+    if (now - bucket.start >= config.rateLimit.windowMs) bucket = { start: now, count: 0 };
+  }
   bucket.count += 1;
   buckets.set(key, bucket);
   return bucket.count <= config.rateLimit.max;
