@@ -201,3 +201,14 @@ IZAKHONO can create a new application from a reusable template, build and test i
 Separately, IZAKHONO can onboard a mail domain, create and manage mailboxes, send and receive authenticated email, provide webmail and IMAP access, filter abuse, maintain DNS authentication, and recover mailbox data.
 
 **Build the capability once. Reuse it across products. Own the code and the customer relationship. Keep every deployment portable. Let revenue finance production infrastructure.**
+
+
+## Canonical implementation decision — IZAKHONO MAIL
+
+The portfolio audit found that the canonical mail runtime is already selected and documented in `products/izakhono-mail/runtime-v1`: **Stalwart + Roundcube**, with MariaDB for Roundcube state and the shared IZAKHONO HOST Caddy edge. Stalwart provides the mail protocols, directory, DKIM and ACME lifecycle; Roundcube provides browser webmail. IZAKHONO Provisioner uses a restricted JMAP service account after owner-controlled domain creation and DNS verification.
+
+The generic Postfix/Dovecot/Rspamd components listed above are alternatives for evaluation, not a parallel production implementation. The former Docker Mailserver definition is superseded. Do not operate multiple mail engines for the same production domain.
+
+The repository records the runtime as BUILD READY but NOT PROVISIONED, public DNS NOT VERIFIED and external send/receive NOT VERIFIED. Initial mailbox names (CEO, Sales, Info, Support and Finance) are defined in source but are not yet provisioned. Public email hosting remains blocked until a suitable mail-capable host, static IP, PTR, TCP 25/465/587/993, DNS authentication, TLS, external delivery and encrypted backup/restore acceptance are independently evidenced.
+
+The full repository audit and current blockers are recorded in `docs/IZAKHONO-PLATFORM-CAPABILITY-INVENTORY.md`.
