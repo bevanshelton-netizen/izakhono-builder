@@ -1,6 +1,7 @@
 const app=document.querySelector("#root");
-let mode="drive", safety=true, emergency=false, panel="", monitoring=false, incident=null, routeStatus="DEMO ROUTE", destination="Johannesburg CBD", gpsActive=false, motionActive=false, roadHazards=[];
-let lastSpeed=0,lastSpeedAt=0,safetyEvents=[],trustedContacts=[],journey={startedAt:new Date().toISOString(),distance:18.4,eta:23};
+let mode="drive", safety=true, emergency=false, panel="", monitoring=false, incident=null, routeStatus="ROUTE NOT CALCULATED", destination="Johannesburg CBD", gpsActive=false, motionActive=false, roadHazards=[];
+let engineStatus="CHECKING ENGINE", activeRoute=null, currentPosition=null;
+let lastSpeed=0,lastSpeedAt=0,safetyEvents=[],trustedContacts=[],journey={startedAt:new Date().toISOString(),distance:0,eta:0};
 try{safetyEvents=JSON.parse(localStorage.getItem("izakhono_nav_events")||"[]")}catch(e){}
 try{trustedContacts=JSON.parse(localStorage.getItem("izakhono_nav_contacts")||"[]")}catch(e){}
 try{roadHazards=JSON.parse(localStorage.getItem("izakhono_nav_hazards")||"[]")}catch(e){}
@@ -25,7 +26,58 @@ function roadSheet(){
  '<button id="reportHazard" class="confirm">REPORT HAZARD</button>'+
  '<div class="events"><b>Recent road intelligence</b>'+hazardRows()+'</div></div>';
 }
-function setDestination(){const input=document.querySelector("#destinationInput");const value=input&&input.value.trim();if(!value){recordEvent("Navigation input","INFO","Enter a destination first.");return}destination=value;routeStatus="ROUTE REQUESTED";render();recordEvent("Route request","INFO","Destination set to "+destination+". Live routing provider is not connected; demo route remains active.");}
+function routeOverlay(){
+ const coordinates=activeRoute?.geometry?.coordinates;
+ if(!Array.isArray(coordinates)||coordinates.length<2)return "";
+ const points=coordinates.map(pair=>[Number(pair?.[0]),Number(pair?.[1])]).filter(pair=>pair.every(Number.isFinite));
+ if(points.length<2)return "";
+ const lngs=points.map(p=>p[0]),lats=points.map(p=>p[1]);
+ const minLng=Math.min(...lngs),maxLng=Math.max(...lngs),minLat=Math.min(...lats),maxLat=Math.max(...lats);
+ const dx=Math.max(maxLng-minLng,0.00001),dy=Math.max(maxLat-minLat,0.00001);
+ const coords=points.map(([lng,lat])=>[(((lng-minLng)/dx)*84+8),(92-((lat-minLat)/dy)*84)]);
+ const path=coords.map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" ");
+ const first=coords[0],last=coords[coords.length-1];
+ return '<svg class="routeOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Calculated road route"><polyline points="'+path+'" fill="none" stroke="#19c6a3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="'+first[0].toFixed(2)+'" cy="'+first[1].toFixed(2)+'" r="2.4" fill="#ffffff" stroke="#19c6a3" stroke-width="1" vector-effect="non-scaling-stroke"/><circle cx="'+last[0].toFixed(2)+'" cy="'+last[1].toFixed(2)+'" r="2.8" fill="#ffcc66" stroke="#ffffff" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>';
+}
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+async function setDestination(){
+ const input=document.querySelector("#destinationInput"),value=input&&input.value.trim();
+ if(!value){recordEvent("Navigation input","INFO","Enter a destination first.");return}
+ routeStatus="SEARCHING DESTINATION";activeRoute=null;render();
+ try{
+  const start=await getLocation();
+  if(!start)throw new Error("GPS location is unavailable. Allow location access and try again.");
+  currentPosition=start;
+  const searchUrl=new URL("/api/search",location.origin);
+  searchUrl.searchParams.set("q",value);searchUrl.searchParams.set("limit","5");
+  searchUrl.searchParams.set("lat",String(start.lat));searchUrl.searchParams.set("lng",String(start.lon));
+  const searchResponse=await fetch(searchUrl,{headers:{accept:"application/json"},cache:"no-store"});
+  if(!searchResponse.ok)throw new Error("Place search is unavailable ("+searchResponse.status+").");
+  const places=await searchResponse.json();
+  if(!Array.isArray(places)||!places.length)throw new Error("No matching destination was found.");
+  const place=places[0];
+  const routeUrl="/api/route/driving/"+start.lon+","+start.lat+";"+place.lng+","+place.lat;
+  const routeResponse=await fetch(routeUrl,{headers:{accept:"application/json"},cache:"no-store"});
+  const route=await routeResponse.json().catch(()=>({}));
+  if(!routeResponse.ok||!route.geometry?.coordinates?.length)throw new Error(route.detail||route.error||"Live routing is not ready.");
+  activeRoute=route;destination=place.display_name||place.name||value;
+  journey.distance=Number(route.distance||0)/1000;journey.eta=Math.max(1,Math.round(Number(route.duration||0)/60));
+  routeStatus=route.source==="owned"?"OWNED LIVE ROUTE":"APPROVED RESILIENCE ROUTE";
+  render();
+  recordEvent("Live route calculated","INFO",route.engine+" route to "+destination+" • "+journey.distance.toFixed(1)+" km");
+ }catch(error){
+  routeStatus="ROUTE UNAVAILABLE";activeRoute=null;render();
+  recordEvent("Route unavailable","INFO",String(error.message||error));
+ }
+}
+async function refreshEngineStatus(){
+ try{
+  const response=await fetch("/api/health",{headers:{accept:"application/json"},cache:"no-store"});
+  const health=await response.json();
+  engineStatus=health.routing==="ready"&&health.search==="ready"?"ROUTING + SEARCH READY":"ENGINE NOT READY";
+ }catch{engineStatus="ENGINE NOT CONNECTED"}
+ render();
+}
 function getLocation(){
  return new Promise(resolve=>{
   if(!navigator.geolocation)return resolve(null);
@@ -103,8 +155,11 @@ function render(){
  if(panel==="vehicle")sheet=genericSheet("Vehicle Intelligence",'<div class="sheetCard"><span>🚗</span><div><b>Vehicle Status</b><small>Phone sensors available; OBD/telematics adapter not paired</small></div><button id="pairVehicle">PAIR</button></div><div class="sheetCard"><span>🔋</span><div><b>Diagnostics</b><small>Adapter interface ready</small></div></div>');
  if(panel==="fleet")sheet=genericSheet("Fleet Command",'<div class="sheetCard"><span>🏢</span><div><b>Fleet Mode</b><small>Driver and vehicle safety workspace</small></div><button id="fleetOpen">OPEN</button></div><div class="sheetCard"><span>📡</span><div><b>Secure Fleet / CIT</b><small>Enterprise security adapter not connected</small></div></div>');
  if(panel==="contacts")sheet=genericSheet("Trusted Contacts",'<div class="sheetCard"><span>👥</span><div><b>Local contact list</b><small>Contacts are stored on this device until a verified notification adapter is connected.</small></div></div><input id="contactName" class="textInput" placeholder="Contact name"><input id="contactPhone" class="textInput" placeholder="Phone number"><button id="addContact" class="confirm">ADD CONTACT</button><div class="events">'+(trustedContacts.map((c,i)=>'<div class="eventRow"><span>👤</span><div><b>'+c.name+'</b><small>'+c.phone+'</small></div><button data-contact="'+i+'" class="cancel">REMOVE</button></div>').join("")||'<div class="sheetNote">No trusted contacts configured.</div>')+'</div>');
- if(panel==="more")sheet=genericSheet("NAV Control Centre",'<div class="sheetCard"><span>⚙️</span><div><b>Settings</b><small>Navigation, safety and device preferences</small></div></div><div class="sheetCard"><span>🗺️</span><div><b>Maps / Routing</b><small>'+routeStatus+' • Provider-neutral adapter</small></div></div><input id="destinationInput" class="textInput" value="'+destination+'" placeholder="Enter destination"><button id="routeBtn" class="confirm">CALCULATE ROUTE</button><button id="roadBtn" class="confirm">ROAD INTELLIGENCE</button><div class="sheetNote">Live routing is not connected yet. This V1 does not transmit the destination to an external provider.</div><div class="sheetCard"><span>🛡️</span><div><b>FORTRESS</b><small>Security adapter interface ready; not connected</small></div></div><div class="sheetCard"><span>🚑</span><div><b>Emergency Services</b><small>Dispatch adapter required before any live alert can be sent</small></div></div>');
- app.innerHTML='<div class="shell"><header><div class="brand"><span class="mark">I</span><div><b>IZAKHONO NAV</b><small>SAFETY INFRASTRUCTURE</small></div></div><div class="status"><i></i> '+(safety?"SAFE MODE ON":"SAFE MODE OFF")+'</div></header><main><section class="map"><div class="mapgrid"></div><div class="road r1"></div><div class="road r2"></div><div class="road r3"></div><div class="route"></div><div class="vehicle">▲</div><div class="destination"><span>●</span><div><b>Destination</b><small>Johannesburg CBD</small></div></div><div class="turn"><strong>350 m</strong><span>Keep left</span></div></section><section class="control"><div class="quickbar"><button id="quickSafety" class="quick safe">🛡️ <span>Safety Guardian</span></button><button id="quickEmergency" class="quick emergency">🚨 <span>EMERGENCY</span></button></div><div class="trip"><div><small>ARRIVAL</small><b>14:18</b></div><div><small>ETA</small><b>23 min</b></div><div><small>ROUTE</small><b>18.4 km</b></div></div><div class="guardian '+(safety?"active":"")+'"><span>🛡️</span><div><b>Driver Safety Guardian</b><small>'+guardian+'</small></div><button id="guardian">'+(safety?"ON":"OFF")+'</button></div><div class="actions"><button id="safe" class="action">🛡️<span>Safety</span></button><button id="voice" class="action">🎙️<span>Companion</span></button><button id="fleet" class="action">🚗<span>Vehicle</span></button><button id="help" class="action danger">🚨<span>Emergency</span></button></div><div class="panel"><div><small>JOURNEY INTELLIGENCE</small><b>Risk engine: '+(monitoring?"ACTIVE":"STANDBY")+'</b></div><div><small>CONNECTIVITY</small><b>Offline queue ready</b></div><div><small>FORTRESS</small><b>Adapter ready</b></div></div></section></main><footer><button class="'+(mode==="drive"?"selected":"")+'" data-mode="drive">🗺️<span>Navigate</span></button><button class="'+(mode==="safety"?"selected":"")+'" data-mode="safety">🛡️<span>Safety</span></button><button class="'+(mode==="fleet"?"selected":"")+'" data-mode="fleet">🏢<span>Fleet</span></button><button id="moreBtn">⚙️<span>More</span></button></footer>'+sheet+(emergency?'<div class="overlay"><div class="modal"><div class="alert">🚨</div><h2>Emergency Response</h2><p>Select the incident type. Nothing is sent to emergency services until a verified provider is connected.</p><button id="confirmEmergency" class="confirm">🚨 EMERGENCY</button><button id="confirmHijack" class="confirm">🕵️ HIJACK / COERCION</button><button id="cancel" class="cancel">CANCEL</button></div></div>':"")+'</div>';
+ if(panel==="more")sheet=genericSheet("NAV Control Centre",'<div class="sheetCard"><span>⚙️</span><div><b>Settings</b><small>Navigation, safety and device preferences</small></div></div><div class="sheetCard"><span>🗺️</span><div><b>Maps / Routing</b><small>'+routeStatus+' • Provider-neutral adapter</small></div></div><input id="destinationInput" class="textInput" value="'+escapeHtml(destination)+'" placeholder="Enter destination"><button id="routeBtn" class="confirm">CALCULATE ROUTE</button><button id="roadBtn" class="confirm">ROAD INTELLIGENCE</button><div class="sheetNote">Live search and routing use the same-origin NAV engine. Unavailable services fail closed; no route is fabricated and no unapproved provider is used.</div><div class="sheetCard"><span>🛡️</span><div><b>FORTRESS</b><small>Security adapter interface ready; not connected</small></div></div><div class="sheetCard"><span>🚑</span><div><b>Emergency Services</b><small>Dispatch adapter required before any live alert can be sent</small></div></div>');
+ const arrival=activeRoute?new Date(Date.now()+journey.eta*60000).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"--:--";
+ const distance=activeRoute?journey.distance.toFixed(1)+" km":"—";
+ const eta=activeRoute?journey.eta+" min":"—";
+ app.innerHTML='<div class="shell"><header><div class="brand"><span class="mark">I</span><div><b>IZAKHONO NAV</b><small>SAFETY INFRASTRUCTURE</small></div></div><div class="status"><i></i> '+(safety?"SAFE MODE ON":"SAFE MODE OFF")+'</div></header><main><section class="map"><div class="mapgrid"></div>'+routeOverlay()+'<div class="destination"><span>●</span><div><b>Destination</b><small>'+escapeHtml(destination)+'</small></div></div><div class="turn"><strong>'+(activeRoute?"LIVE ROUTE":"NO ROUTE") +'</strong><span>'+(activeRoute?escapeHtml(routeStatus):escapeHtml(engineStatus)) +'</span></div><div style="position:absolute;left:16px;right:16px;bottom:16px;background:#0b1a27dd;border:1px solid #315267;border-radius:12px;padding:10px;font-size:11px;color:#b6cbd9">Map tiles: '+(engineStatus==="ROUTING + SEARCH READY"?"not yet verified":"not connected")+'. Route geometry is calculated only by the live routing engine.</div></section><section class="control"><div class="quickbar"><button id="quickSafety" class="quick safe">🛡️ <span>Safety Guardian</span></button><button id="quickEmergency" class="quick emergency">🚨 <span>EMERGENCY</span></button></div><div class="trip"><div><small>ARRIVAL</small><b>'+arrival+'</b></div><div><small>ETA</small><b>'+eta+'</b></div><div><small>ROUTE</small><b>'+distance+'</b></div></div><div class="guardian '+(safety?"active":"")+'"><span>🛡️</span><div><b>Driver Safety Guardian</b><small>'+guardian+'</small></div><button id="guardian">'+(safety?"ON":"OFF")+'</button></div><div class="actions"><button id="safe" class="action">🛡️<span>Safety</span></button><button id="voice" class="action">🎙️<span>Companion</span></button><button id="fleet" class="action">🚗<span>Vehicle</span></button><button id="help" class="action danger">🚨<span>Emergency</span></button></div><div class="panel"><div><small>JOURNEY INTELLIGENCE</small><b>Risk engine: '+(monitoring?"ACTIVE":"STANDBY")+'</b></div><div><small>CONNECTIVITY</small><b>Offline queue ready</b></div><div><small>FORTRESS</small><b>Adapter ready</b></div></div></section></main><footer><button class="'+(mode==="drive"?"selected":"")+'" data-mode="drive">🗺️<span>Navigate</span></button><button class="'+(mode==="safety"?"selected":"")+'" data-mode="safety">🛡️<span>Safety</span></button><button class="'+(mode==="fleet"?"selected":"")+'" data-mode="fleet">🏢<span>Fleet</span></button><button id="moreBtn">⚙️<span>More</span></button></footer>'+sheet+(emergency?'<div class="overlay"><div class="modal"><div class="alert">🚨</div><h2>Emergency Response</h2><p>Select the incident type. Nothing is sent to emergency services until a verified provider is connected.</p><button id="confirmEmergency" class="confirm">🚨 EMERGENCY</button><button id="confirmHijack" class="confirm">🕵️ HIJACK / COERCION</button><button id="cancel" class="cancel">CANCEL</button></div></div>':"")+'</div>';
  document.querySelector("#guardian")?.addEventListener("click",()=>{safety=!safety;render()});
  document.querySelector("#quickSafety")?.addEventListener("click",()=>{panel="safety";render()});
  document.querySelector("#quickEmergency")?.addEventListener("click",()=>{emergency=true;render()});
@@ -133,3 +188,4 @@ function render(){
  document.querySelectorAll("[data-mode]").forEach(x=>x.addEventListener("click",()=>{mode=x.dataset.mode;panel=mode==="safety"?"safety":mode==="fleet"?"fleet":"";render()}));
 }
 render();
+refreshEngineStatus();

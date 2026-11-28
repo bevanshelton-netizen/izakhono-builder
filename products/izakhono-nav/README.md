@@ -70,3 +70,9 @@ The web client and engine compatibility contracts are aligned. The stack is node
 The NODE01 promotion pipeline now targets this owned stack rather than the earlier lightweight app container. It waits for Valhalla, Nominatim and Martin to become ready, then verifies search, routing, tiles, PWA assets and public HTTPS. Backup and isolated restore procedures cover the owned database, map and routing data.
 
 Public-live status remains evidence-based: a real IZAKHONO-controlled runtime must complete the South Africa imports/builds and pass `stack/scripts/verify.sh` plus `infra/contabo/production-verify-nav.js`. The deployment workflow requires an online self-hosted runner labelled `node01`; no production activation or public DNS cutover is claimed from this chat.
+
+## Live navigation client integration
+
+The current client implementation now probes the same-origin `/api/health` endpoint, resolves destinations through `/api/search` using the device GPS position, and requests route geometry through `/api/route/driving/{start};{end}`. It displays distance and ETA only after a valid engine route response. GPS, search or routing failures leave the journey without a route; the client does not fabricate a route or silently select an unapproved provider.
+
+The web client requires the owned NAV edge to proxy these same-origin API paths to the NAV engine. A static website deployment without that edge/backend is a UI preview, not a functioning navigation service. The client contract and JavaScript syntax are checked by `.github/workflows/nav-client-ci.yml`.
