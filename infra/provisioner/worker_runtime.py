@@ -6,7 +6,7 @@ from typing import Any, Callable, Mapping
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
-from execution_contract import ExecutionResult, validate_result
+from execution_contract import validate_result
 from job_queue import JobQueue
 from job_store import AuditEvent, StoredJob, utc_now
 from state_machine import State
@@ -19,7 +19,6 @@ STATE_CAPABILITY = {
     State.SITE_READY.value: "tls",
     State.TLS_READY.value: "mail",
     State.MAIL_READY.value: "crm_whatsapp",
-    State.INTEGRATIONS_READY.value: "acceptance",
 }
 
 
@@ -39,13 +38,12 @@ class ProvisionerWorker:
         self.queue = queue
         self.implementations = implementations
         self.registry = registry
-        # Always provide a real acceptance probe for the default path. Custom engines
-        # remain supported for production/provider-specific acceptance implementations.
+        # Only the independent AcceptanceEngine may certify production acceptance.
         self.acceptance = acceptance or AcceptanceEngine(EvidenceAcceptanceProbe())
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
-            self.recovery = RecoveryOrchestrator(recovery_store, recovery_executors or {})
+            self.recovery = RecoveryOrchestrator(self.store, recovery_store, recovery_executors or {})
 
     def _executor(self) -> AdapterExecutor:
         return AdapterExecutor(self.registry, self.implementations)
@@ -98,17 +96,25 @@ class ProvisionerWorker:
         if job.state in {State.HANDOVER_READY.value, State.BLOCKED.value}:
             return WorkerResult(job.job_id, job.state, "terminal")
         if job.state == State.ACCEPTANCE_PASSED.value:
+            # Legacy/inconsistent state is re-evaluated by the independent engine;
+            # adapter evidence alone is never accepted as certification.
+            job.state = State.INTEGRATIONS_READY.value
+            job.evidence.pop(State.ACCEPTANCE_PASSED.value, None)
+        if job.state == State.INTEGRATIONS_READY.value:
             return self._accept(job)
+
         capability = STATE_CAPABILITY.get(job.state)
         if capability is None:
             return self._block(job, "STATE_UNSUPPORTED", job.state)
         operation = self.registry.get("bindings", {}).get(capability, {}).get("operation", capability)
         operation_id = f"op_{job.job_id}_{job.attempts + 1}_{capability}"
         try:
-            result = self._executor().execute(self._request(job, capability, operation, operation_id))
-            validate_result(result)
+            request = self._request(job, capability, operation, operation_id)
+            result = self._executor().execute(request)
+            validate_result(result, request)
         except Exception as exc:
             return self._failure(job, "ADAPTER_EXECUTION_FAILED", str(exc), operation_id)
+
         next_state = {
             "tenant": State.TENANT_CREATED.value,
             "domain": State.DOMAIN_READY.value,
@@ -117,7 +123,6 @@ class ProvisionerWorker:
             "tls": State.TLS_READY.value,
             "mail": State.MAIL_READY.value,
             "crm_whatsapp": State.INTEGRATIONS_READY.value,
-            "acceptance": State.ACCEPTANCE_PASSED.value,
         }[capability]
         job.state = next_state
         job.evidence[next_state] = dict(result.evidence)
@@ -132,28 +137,54 @@ class ProvisionerWorker:
         item = self.queue.claim_next()
         if item is None:
             return None
-        job = self.store.get(item.job_id)
+
+        # The in-memory JobQueue returns a StoredJob directly; the durable queue
+        # returns a lease carrying job_id/lease_id. Support both queue contracts.
+        durable_lease = hasattr(item, "lease_id") and hasattr(item, "job_id")
+        job = self.store.get(item.job_id) if durable_lease else item
         if job is None:
             return None
+
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if durable_lease:
+            if result.status in {"verified", "accepted", "blocked", "terminal"}:
+                self.queue.complete(item.lease_id)
+            else:
+                self.queue.release(item.lease_id, retry_at=utc_now())
+        elif result.status == "retry":
+            self.queue.retry(job, retryable=True, error_code="ADAPTER_EXECUTION_FAILED")
+        elif result.status == "verified" and job.state not in {State.HANDOVER_READY.value, State.BLOCKED.value}:
+            self.queue.enqueue(job)
         return result
+
 
 if __name__ == "__main__":
     from job_store import MemoryJobStore
-    store = MemoryJobStore(); queue = JobQueue(store)
-    registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
-                "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    registry = {
+        "adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
+        "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()},
+    }
     implementations = build_catalog()
     job, _ = store.create_or_get("tenant-demo", "idem-demo", "prov-demo")
-    job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
-    store.save(job); queue.enqueue(job)
+    job.evidence["PAYMENT_VERIFIED"] = {
+        "evidence_id": "pay-demo",
+        "observed_at": utc_now(),
+        "verified": True,
+        "checks": ["payment.verified"],
+    }
+    store.save(job)
+    queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry)
     results = [worker.run_once() for _ in range(10)]
-    assert any(r is not None and r.status == "accepted" for r in results) and job.state == State.HANDOVER_READY.value
-    assert all(r is not None for r in results[:8])
-    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED"}
-    print("PROVISIONER_WORKER_RUNTIME: PASS")
+    # Simulated adapter evidence must block independent acceptance and must never
+    # create an ACCEPTANCE_PASSED record or a handover-ready job.
+    assert any(r is not None and r.status == "blocked" for r in results)
+    assert job.state == State.BLOCKED.value
+    assert all(job.evidence[s].get("simulation") is True for s in (
+        "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY",
+        "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY",
+    ))
+    assert "ACCEPTANCE_PASSED" not in job.evidence
+    print("PROVISIONER_WORKER_RUNTIME_FAIL_CLOSED: PASS")
