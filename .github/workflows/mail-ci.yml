@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-mail/**'
+      - 'scripts/validate-mail-platform.mjs'
+      - 'docs/COMPLETE-SOFTWARE-FOUNDRY-AND-OWNED-EMAIL-ROADMAP.md'
       - 'products/izakhono-sign/**'
       - 'fixtures/izakhono-smtp-stub.mjs'
       - 'internal/node01-command-gateway/deploy-profiles/izakhono-mail.json'

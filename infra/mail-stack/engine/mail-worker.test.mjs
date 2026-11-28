@@ -22,7 +22,7 @@ test("worker accepts, records, and acknowledges successful delivery", async () =
   assert.equal(sent.length, 1);
   assert.equal((await outbox.claim()).length, 0);
   const timeline = await store.listEvents("m-1", { tenantId: "t-1" });
-  assert.deepEqual(timeline.map((event) => event.type), ["mail.queued", "mail.sending", "mail.accepted"]);
+  assert.deepEqual(timeline.map((event) => event.type), ["mail.queued", "mail.sending", "mail.accepted", "mail.delivered"]);
 });
 
 test("worker defers retryable failures and keeps the job", async () => {

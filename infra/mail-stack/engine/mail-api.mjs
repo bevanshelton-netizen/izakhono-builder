@@ -14,10 +14,14 @@ export class MailApi {
     const auth=await this.authorize(request); if(!auth?.allowed) return json(401,{error:"unauthorized"});
     const key=getHeader(request.headers,"idempotency-key"); if(!key||key.length>MAX_IDEMPOTENCY_KEY||!/^[\x20-\x7E]+$/.test(key)) return json(400,{error:"invalid_idempotency_key"});
     let body; try{body=await readJson(request);}catch{return json(400,{error:"invalid_json"});}
-    const scope=`${auth.tenantId||"default"}:${auth.appId||"unknown"}`; const fingerprint=fingerprintRequest(body); const existing=await this.idempotency.get(scope,key);
-    if(existing){if(existing.fingerprint!==fingerprint)return json(409,{error:"idempotency_mismatch"}); return json(existing.statusCode||202,{...existing.response,idempotent_replay:true});}
     const permission=body?.kind==="marketing"?"mail:marketing":"mail:transactional"; if(!hasScope(auth.scopes,permission)) return json(403,{error:"forbidden",required_scope:permission});
     const validation=validateEnvelope(body); if(!validation.ok)return json(422,{error:"invalid_request",details:validation.errors});
+    const scope=`${auth.tenantId||"default"}:${auth.appId||"unknown"}`; const fingerprint=fingerprintRequest(body);
+    const atomicAcceptance=this.store?.supportsAtomicAcceptance===true;
+    if(!atomicAcceptance){
+      const existing=await this.idempotency.get(scope,key);
+      if(existing){if(existing.fingerprint!==fingerprint)return json(409,{error:"idempotency_mismatch"}); return json(existing.statusCode||202,{...existing.response,idempotent_replay:true});}
+    }
     let envelope={...body}; if(body.template){if(!this.renderer)return json(503,{error:"renderer_unavailable"}); try{envelope={...envelope,...(await this.renderer.render(body.template,body.data||{},{auth}))};}catch(error){return json(422,{error:"render_failed",message:String(error?.message||error)});}}
     const messageId=this.idFactory(); const eventId=this.idFactory(); const acceptedAt=this.clock(); const tenantId=auth.tenantId||"default"; const appId=auth.appId||"unknown";
     const response={message_id:messageId,event_id:eventId,status:"queued",accepted_at:acceptedAt};
@@ -25,11 +29,12 @@ export class MailApi {
     const event={id:eventId,message_id:messageId,tenant_id:tenantId,type:"mail.queued",data:{app_id:appId},occurred_at:acceptedAt};
     const job={message_id:messageId,event_id:eventId,tenant_id:tenantId,app_id:appId,kind:body.kind||"transactional",envelope,accepted_at:acceptedAt};
     const idempotencyRecord={fingerprint,statusCode:202,response,tenant_id:tenantId,created_at:acceptedAt};
-    const atomicAcceptance=typeof this.store?.acceptAndEnqueue==="function";
+    let acceptedResponse=response;
     try{
       if(atomicAcceptance){
         const accepted=await this.store.acceptAndEnqueue({scope,key,message,event,job,idempotency:idempotencyRecord});
         if(!accepted.inserted){if(accepted.fingerprint!==fingerprint)return json(409,{error:"idempotency_mismatch"}); return json(202,{...accepted.response,idempotent_replay:true});}
+        if(accepted.response) acceptedResponse=accepted.response;
       } else {
         if(this.store){await this.store.putMessage(message); await this.store.appendEvent(event);}
         await this.idempotency.put(scope,key,idempotencyRecord);
@@ -43,7 +48,7 @@ export class MailApi {
       if(this.store&&!atomicAcceptance){try{await this.store.putMessage({...message,status:"failed",metadata:{error:String(error?.message||error)},updated_at:this.clock()}); await this.store.appendEvent({id:this.idFactory(),message_id:messageId,tenant_id:tenantId,type:"mail.failed",data:{stage:"accept",error:String(error?.message||error)},occurred_at:this.clock()});}catch{}}
       return json(503,{error:"queue_unavailable",message:String(error?.message||error)});
     }
-    return json(202,response);
+    return json(202,acceptedResponse);
   }
 }
 export class MemoryIdempotencyStore{constructor(){this.store=new Map();} async get(scope,key){return this.store.get(`${scope}:${key}`)||null;} async put(scope,key,value){this.store.set(`${scope}:${key}`,value);} async delete(scope,key){this.store.delete(`${scope}:${key}`);}}
