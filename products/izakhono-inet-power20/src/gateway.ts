@@ -17,6 +17,27 @@ export interface GatewayDecision extends AccessDecision {
   externalBridgeAllowed: boolean;
 }
 
+/**
+ * Enforce a path boundary, not a string-prefix boundary. Decode before
+ * checking so encoded dot segments cannot escape the service namespace.
+ */
+function isWithinServiceRoute(path: string, route: string): boolean {
+  if (!path.startsWith('/') || path.includes('\\')) return false;
+
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(path.split(/[?#]/, 1)[0]);
+  } catch {
+    return false;
+  }
+
+  if (pathname.includes('\\')) return false;
+  const segments = pathname.split('/');
+  if (segments.some((segment) => segment === '.' || segment === '..')) return false;
+
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
 export function authorizeGateway(request: GatewayRequest, now = new Date()): GatewayDecision {
   const service = getService(request.serviceId);
   if (!service) {
@@ -28,9 +49,25 @@ export function authorizeGateway(request: GatewayRequest, now = new Date()): Gat
   if (!service.dataDomains.includes(request.dataDomain)) {
     return { allowed: false, reason: 'Service does not declare the requested data domain', requiresConsent: false, service, externalBridgeAllowed: false };
   }
-  if (!request.path.startsWith(service.route)) {
+  if (!isWithinServiceRoute(request.path, service.route)) {
     return { allowed: false, reason: 'Route is outside the service boundary', requiresConsent: false, service, externalBridgeAllowed: false };
   }
+
+  // A valid consent grant must belong to this exact subject and service.
+  // Matching permission/domain scopes alone must never authorise cross-user
+  // or cross-service reuse of another grant.
+  if (!request.consent ||
+      request.consent.subjectId !== request.subjectId ||
+      request.consent.serviceId !== request.serviceId) {
+    return {
+      allowed: false,
+      reason: 'Consent grant does not match the requesting subject and service',
+      requiresConsent: true,
+      service,
+      externalBridgeAllowed: false,
+    };
+  }
+
   const decision = decideAccess(request.consent, request.permission, request.dataDomain, now);
   return {
     ...decision,

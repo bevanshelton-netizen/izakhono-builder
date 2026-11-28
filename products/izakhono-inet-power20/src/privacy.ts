@@ -14,8 +14,17 @@ export function decideAccess(
   if (grant.revokedAt) {
     return { allowed: false, reason: 'User consent has been revoked', requiresConsent: true };
   }
-  if (grant.expiresAt && new Date(grant.expiresAt) <= now) {
-    return { allowed: false, reason: 'User consent has expired', requiresConsent: true };
+
+  const grantedAt = Date.parse(grant.grantedAt);
+  if (!Number.isFinite(grantedAt) || grantedAt > now.getTime()) {
+    return { allowed: false, reason: 'Consent grant timestamp is invalid or in the future', requiresConsent: true };
+  }
+
+  if (grant.expiresAt !== undefined) {
+    const expiresAt = Date.parse(grant.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) {
+      return { allowed: false, reason: 'User consent has expired or has an invalid expiry', requiresConsent: true };
+    }
   }
   if (!grant.permissions.includes(requestedPermission)) {
     return { allowed: false, reason: 'Requested permission is outside the granted scope', requiresConsent: true };
