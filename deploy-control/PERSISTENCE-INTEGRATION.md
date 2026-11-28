@@ -1,0 +1,183 @@
+# IZAKHONO DEPLOY persistence integration decision
+
+## Decision
+
+DEPLOY must extend the existing Runtime Fabric PostgreSQL deployment store and append-only event store. It must not introduce a second deployment database, registry, audit ledger, or parallel idempotency subsystem.
+
+The existing implementation points are:
+
+- `infra/runtime-fabric/controller/postgres_deployment_store.py`: durable deployment rows and atomic per-deployment recovery leases.
+- `infra/runtime-fabric/controller/postgres_event_store.py`: append-only runtime events.
+- `infra/runtime-fabric/controller/runtime_store_factory.py`: lazy PostgreSQL connection factory using `IZAKHONO_RUNTIME_DATABASE_URL`, failing closed when unavailable.
+- `infra/provisioner/fortress_audit_store.py`: tenant-attributed append-only audit pattern, secret-field rejection, and duplicate-event handling.
+- `infra/provisioner/idempotency_tenant_scope_test.py`: tenant-scoped idempotency invariant.
+- `migrations/0010_idempotency_claims.sql`: existing idempotency-claim contract. Its actual database/runtime ownership must be verified before reuse; do not assume it is the PostgreSQL Runtime Fabric store.
+
+## Reconciliation addendum (2026-11-22)
+
+The original decision above remains the intended product architecture: DEPLOY should integrate with Runtime Fabric's existing durable deployment store rather than create a parallel deployment database. It is an architectural direction, **not evidence that the configured Runtime Fabric database is provisioned, owner-identified, or shared with IZAKHONO WebStart**.
+
+The detailed schema and transaction reconciliation is recorded in [WEBSTART-RUNTIME-FABRIC-RECONCILIATION.md](./WEBSTART-RUNTIME-FABRIC-RECONCILIATION.md). That document qualifies implementation readiness: no new schema, authenticated write path, idempotency table, audit integration, or migration may be implemented until the Runtime Fabric database owner, provisioning/migration authority, environment binding, and actual database relationship to WebStart are verified.
+
+The transaction requirement is stricter than simply calling the current deployment and event stores in sequence. State, scoped idempotency claim/result, and attributable immutable DEPLOY audit must share one database transaction and one connection. The current Runtime Fabric event store is operational telemetry and does not yet satisfy the DEPLOY audit contract. The current FORTRESS audit append method commits independently and must not be called as-is from the transaction.
+
+If the existing Runtime Fabric database is the approved authoritative store, implement the transaction there and publish any WebStart projection through a transactional outbox in that same database. If the owner establishes that WebStart is the authoritative store instead, record that explicit architecture decision before changing the persistence adapter. Do not dual-write two databases and call it atomic.
+
+## Implemented authorization boundary (2026-11-22)
+
+- `deploy-control/authorization.mjs` requires a bearer token and delegates cryptographic token verification to an injected trusted IZAKHONO ID/JWT verifier.
+- It independently checks issuer, audience, expiry, subject, tenant, application, environment and scope claims before minting a request-scoped principal.
+- A private `WeakSet` prevents callers from fabricating a principal object by copying its fields.
+- `authorizeDeploymentAccess` enforces exact tenant, application and environment scope and distinct `deploy:read`, `deploy:write` and `deploy:approve` permissions. Unknown actions fail closed.
+- `authorization.test.mjs` covers forged principals, token failures, expiry, issuer/audience mismatch, missing claims, cross-tenant/application/environment access and action-scope separation.
+- DEPLOY lifecycle CI now runs these authorization tests.
+
+**Boundary:** this is a tested authorization policy module, not a completed authenticated API integration. No production identity verifier is wired by this module itself. The server must inject the approved IZAKHONO ID verifier; browser-supplied claims or tenant IDs must never be treated as authority. No persistence operation is yet wired through this guard.
+
+## Schema ownership investigation (2026-11-22)
+
+The repository inspection does **not** establish an authoritative, versioned PostgreSQL migration owner for Runtime Fabric:
+
+- Runtime Fabric deployment and event tables are currently declared as inline `CREATE TABLE IF NOT EXISTS` statements in the Python stores and created by their `initialize()` methods.
+- The shared root `migrations/` sequence is not evidence of Runtime Fabric PostgreSQL ownership. For example, `migrations/0001_init.sql` defines Builder project tables, while `migrations/0022_builder_customer_tenancy.sql` uses SQLite-specific `PRAGMA` and SQLite schema conventions.
+- `migrations/0010_idempotency_claims.sql` has a global primary key and text timestamps, but no tenant/deployment scope. It is not a safe drop-in for the Runtime Fabric transaction.
+- `runtime_store_factory.py` reads `IZAKHONO_RUNTIME_DATABASE_URL` and constructs a psycopg connection factory, but repository code inspected here does not prove which provisioned database that variable points to, who owns its migrations, or whether its schema is shared with Provisioner/FORTRESS.
+
+**Result:** do not add a DEPLOY migration to the root migration sequence or modify the live PostgreSQL schema until the Runtime Fabric database owner, provisioning path, migration runner, and environment-to-database binding are explicitly established. The current runtime-created tables remain the only verified Runtime Fabric schema path in code.
+
+## Important compatibility gaps
+
+The Runtime Fabric deployment record currently has `deployment_id`, `workload`, `state`, `node`, `checkpoint`, `attempts`, and JSON metadata. It does not expose first-class tenant, application, environment, source SHA, immutable artifact digest, approval identity, or idempotency request hash fields.
+
+Its state machine (`CREATED`, `PLANNED`, `ACTIVATING`, `DEPLOYED`, `HEALTH_CHECKING`, `ACCEPTANCE_PENDING`, `READY_FOR_PROMOTION`, `LIVE_VERIFIED`, rollback states) is not identical to DEPLOY's policy lifecycle. Do not silently map one state machine onto the other or treat `LIVE_VERIFIED` as equivalent to DEPLOY `VERIFIED`.
+
+The deployment store and event store currently commit independently. That is insufficient for DEPLOY's requirement that state, idempotency claim, and immutable audit event commit atomically. A new adapter must use one PostgreSQL transaction/connection for all three operations, with tenant-scoped uniqueness and request-hash conflict detection.
+
+The existing Provisioner PostgreSQL store is not a drop-in substitute: `provisioner_jobs` has `UNIQUE (tenant_id, idempotency_key)` but no canonical request hash, and its job save, local audit append, and FORTRESS mirror each commit separately. `migrations/0010_idempotency_claims.sql` defines a globally unique `key` and text timestamps/response, with no tenant/deployment scope; it cannot be assumed safe for DEPLOY without proving its owning database and migration runtime. The FORTRESS audit table includes tenant attribution, but its append method commits its supplied connection and therefore cannot currently participate atomically in a separate Runtime Fabric transaction. The existing tenant-scope unit test proves an in-memory Provisioner invariant only, not PostgreSQL isolation or authorization.
+
+The Runtime Fabric event store is also not yet a DEPLOY audit ledger: its event rows have no tenant/application/environment or authenticated actor columns, and its public append method opens and commits its own connection. DEPLOY must not treat a normal runtime event as an attributable, transactionally coupled security audit event.
+
+## Required next implementation gate
+
+1. Verify the authoritative PostgreSQL schema/migration owner, provisioning path, migration runner, and connection contract for Runtime Fabric.
+2. Extend the existing Runtime Fabric store contract, not create another deployment database, to persist DEPLOY's full immutable record and event evidence.
+3. Add a transaction method that uses one connection and transaction to lock the deployment row, claim `(tenant_id, deployment_id, idempotency_key)`, compare the canonical request hash, apply the lifecycle policy, and append the attributable audit event.
+4. Reject key reuse with a different request body; return the prior result for an exact replay.
+5. Wire the verified IZAKHONO ID token verifier into the server API and call the authorization guard before any record read or mutation. The existing business-engine `dbFetch` service-role helper is not end-user authorization and must not be exposed as a browser-facing control-plane API.
+6. Reject secret-bearing audit/evidence fields and store secret references only.
+7. Add PostgreSQL integration tests for transaction rollback, exact replay, conflicting replay, cross-tenant isolation, authorization failure, immutable audit, and concurrent claims. Mock-only cursor tests are not sufficient for these guarantees.
+8. Keep the management API read-only until the transaction, authorization, isolation, and audit tests pass.
+
+## Connected control-plane database discovery (2026-11-22)
+
+A read-only inspection of the connected Supabase organization found an active project named **IZAKHONO WebStart** (`yfawrenhudjomhnglfhq`, region `eu-west-1`, PostgreSQL 17.6.1). Its migration history includes the IZ DATA Cloud v3 deployment control-plane, host bootstrap enrollment, runtime verification, agent runtime package manifest, and agent-registry hardening migrations dated 2026-11-22. Its schema contains:
+
+- `public.izakhono_runtime_nodes` and `public.izakhono_deployment_targets`
+- `public.izakhono_hosting_nodes` and `public.izakhono_infra_nodes`
+- `one.node_registry`, `one.node_agent_credentials`, and `one.node_control_credentials`
+- `iz_data.data_plane_nodes`, `iz_data.node_agents`, `iz_data.node_heartbeats`, and `iz_data.host_runtime_attestations`
+- `iz_data.deployment_intents`, `iz_data.deployment_manifests`, `iz_data.deployment_steps`, `iz_data.deployment_health_checks`, and `iz_data.deployment_verification_evidence`
+
+Read-only row inspection found:
+- The managed Supabase runtime is recorded as online, while `owned-node-primary` and `owned-node-dr` are only planned.
+- Owned container API, worker and hosting targets are marked planned. Vercel is recorded as a degraded fallback.
+- The only `public.izakhono_hosting_nodes` record is a disabled test placeholder (`test-node-placeholder`) in blocked state.
+- `one.node_registry`, `iz_data.data_plane_nodes`, `iz_data.node_agents`, `iz_data.node_heartbeats`, `iz_data.host_runtime_attestations`, and `iz_data.deployment_intents` currently return no records.
+
+**Interpretation:** IZAKHONO WebStart is a strong candidate for the shared management/control-plane database because it has the matching IZ DATA Cloud v3 schema and migration history. It is still a managed Supabase PostgreSQL service, not proof of an owner-hosted NODE01 execution environment. The empty registry/attestation/deployment tables and planned/blocked targets mean it does not provide a verified runtime binding or production deployment evidence. Do not treat the database project ID, a planned target, or NODE01 software identity as a host locator.
+
+The connected project also reports a critical Supabase security-advisor finding: 45 tables across `private`, `fortress`, `iz_data`, `engineering`, and `allegro_clean` have RLS disabled. The advisor warns these tables may be exposed to `anon` and `authenticated` API roles. Do not bulk-enable RLS without a table-by-table policy plan; doing so without policies may break legitimate access. Review this separately as a security remediation gate.
+
+The I-CONNECT project separately reports RLS disabled for `ic_private.agent_endpoints`; this is another security remediation item, not evidence of Runtime Fabric database ownership.
+
+## Follow-up RLS and privilege verification (2026-11-22)
+
+A catalog-level, read-only check confirmed the 45 RLS-disabled tables are distributed as follows: `private` 20, `allegro_clean` 10, `fortress` 8, `engineering` 3, and `iz_data` 4. The inspected `public` schema has 798 tables and all 798 have RLS enabled; `one` has 13 tables and all 13 have RLS enabled.
+
+The same read-only check evaluated effective table privileges for the `anon` and `authenticated` roles on all 45 RLS-disabled tables. It returned **false for SELECT, INSERT, UPDATE and DELETE across every inspected table** for both roles. Therefore the advisor's RLS-disabled warning is a hardening/configuration gap, but these catalog checks did not establish direct table-grant exposure to those API roles. This does not prove absence of exposure through every possible function, view, owner role, service role, or future schema/API configuration; those paths need separate review.
+
+A schema-privilege check further found `anon` and `authenticated` have no USAGE on `allegro_clean`, `engineering`, `fortress`, or `one`; neither has USAGE on `private` for anon, and authenticated does have USAGE on `private`. Both roles have USAGE on `public` and `iz_data`. The four RLS-disabled `iz_data` tables also returned no effective table privileges for either API role in the inspected privilege check. The database did not return a value for `pgrst.db_schemas` through SQL, so the configured PostgREST exposed-schema list remains unverified. This is a more precise posture assessment than treating all 45 disabled-RLS tables as confirmed API-exposed.
+
+The advisor's 536 RLS-enabled/no-policy finding is distinct: RLS with no applicable policies normally denies role access rather than exposing rows, and may break intended application workflows. The 45 disabled tables and 536 no-policy tables must not be conflated. No grants, policies, RLS flags, functions, or data were changed.
+
+A follow-up security-advisor read on IZAKHONO WebStart also reported 536 tables with RLS enabled but no policies (an access-denial/availability risk that requires policy inventory), 38 functions with mutable search paths, 9 SECURITY DEFINER functions executable by `anon`, and 46 SECURITY DEFINER functions executable by `authenticated`. These findings require function-by-function privilege and search-path review; do not mass-revoke grants or change function security modes without tracing intended callers and tests. The 45 RLS-disabled table finding remains the immediate exposure concern. No security changes were applied during this inspection.
+
+## Further database ownership investigation (2026-11-22)
+
+The following repository evidence was inspected at PR head `3d180f780b087ff69f1021b4649f6d605be39bef`:
+
+- `infra/runtime-fabric/controller/runtime_store_factory.py` reads only `IZAKHONO_RUNTIME_DATABASE_URL`, creates a psycopg connection factory, and initializes the deployment store. It does not identify a database instance, provisioning owner, migration authority, or environment binding.
+- `infra/runtime-fabric/controller/RECOVERY-RUNNER.md` documents the same protected DSN as an operator-supplied runtime input; it does not identify who provisions or migrates that database.
+- `infra/runtime-fabric/controller/postgres_deployment_store.py` and `postgres_event_store.py` each create their tables through inline SQL in separate `initialize()` methods. The deployment store and event store each open and commit their own connections.
+- `infra/runtime-fabric/releases/kora-owned.compose.yaml` does not define or bind the Runtime Fabric control-plane database. Its adjacent KORA environment example contains application service placeholders, not proof of the Runtime Fabric database.
+- `migrations/0001_init.sql` defines Builder project/event tables. `migrations/0022_builder_customer_tenancy.sql` uses SQLite-specific `PRAGMA` and schema conventions. Neither establishes Runtime Fabric PostgreSQL ownership.
+- `migrations/0010_idempotency_claims.sql` remains globally keyed and lacks tenant/deployment scope.
+
+This confirms the ownership gap is not merely an unknown database URL: the repository currently lacks evidence of the authoritative Runtime Fabric database provisioning owner, migration runner, and environment-to-database binding. No schema change or database mutation is authorized on this evidence.
+
+## Validation observed on 2026-11-22
+
+At PR head `3d180f780b087ff69f1021b4649f6d605be39bef`, GitHub reported all 9 check runs completed successfully, including Builder CI, DEPLOY lifecycle CI, owned-infrastructure validation, NAV runtime validation, application-manifest validation, NODE01 identity-invariant checks, and the Cloudflare Workers build.
+
+The separate commit status remained failed on 25 Vercel deployment contexts due to deployment rate limits. Those statuses are not failed owned-infrastructure test runs and do not establish an owned-host deployment.
+
+These are repository CI results only. They do not establish that a PostgreSQL service, owner runtime, HOST execution access, or production deployment is available.
+
+## NODE01 and execution boundary
+
+Preserve `logical_node_id: NODE01` and `identity_type: software-runtime`. A verified `runtime_host` is a separate, replaceable execution-environment binding. Do not infer or invent that locator. No activation/bootstrap, deployment command, or HOST execution is authorized by this persistence work.
+
+
+## Identity verifier compatibility investigation (2026-11-22)
+
+The current repository contains a FORTRESS Identity issuer at `products/fortress-identity/src/worker.ts` and its deployment configuration at `products/fortress-identity/wrangler.toml`. Its documented access-token contract is HS256 with a 10-minute lifetime, issuer `https://fortress.izakhono.internal`, and audience `izakhono-creator`. The token claims include subject, tenant, role, active state, issue/expiry times, and JTI. The issuer's `GET /api/fortress/session` endpoint performs signature and live D1-session checks for the Creator service-binding integration.
+
+This is not yet a compatible DEPLOY verifier contract. The issuer's documented JWT does not provide DEPLOY's required `application_ids`, `environment_ids`, or action `scopes` claims, and its configured audience is Creator rather than a DEPLOY API audience. The separate `products/izakhono-identity/src/identity.mjs` module is an in-memory identity directory, not a JWT verifier or production authorization authority. No DEPLOY API route or server-side adapter wiring the FORTRESS session authority to `deploy-control/authorization.mjs` was identified in the inspected repository tree.
+
+**Decision:** do not pass Creator-audience tokens directly into DEPLOY, infer application/environment permissions from the FORTRESS role, or treat the in-memory IZAKHONO Identity directory as authentication. A compatible integration requires an explicit FORTRESS/IZAKHONO ID contract for a DEPLOY audience and resource/action entitlements, including the authoritative source and revocation semantics for those entitlements. Until then, the authorization module remains a policy boundary with an injected verifier, not a production-authenticated API.
+
+
+## Provisioner RPC privilege migration scope (2026-11-23)
+
+The branch includes `supabase/migrations/20261122180000_harden_provisioner_worker_rpc_privileges.sql`. Its intended effect is narrowly limited to the existing `public.provisioner_run_once(integer)` function when that exact signature exists: revoke EXECUTE from `PUBLIC`, `anon`, and `authenticated`; grant EXECUTE to `service_role`; and pin that function's `search_path` to `pg_catalog, public`.
+
+The accompanying `infra/provisioner/provisioner_rpc_privileges_test.py` applies the SQL only to the disposable PostgreSQL service created by GitHub Actions and verifies the three role grants and function search path. A passing CI run is not evidence that the migration has been applied to any connected Supabase project.
+
+**Execution gate:** this migration is separate from the DEPLOY/Runtime Fabric deployment-state schema and does not resolve Runtime Fabric database ownership. Before applying it to any shared or production Supabase project, the Provisioner database owner must confirm the exact target project, function definition and signature, service-role invocation path, migration runner, and rollback procedure. No connected project or production database has been changed by this PR workflow.
+
+**Privilege-review limitation:** the migration changes privileges only on `provisioner_run_once(integer)`. It does not enumerate or alter any underlying claim/complete/release helper functions, and the test does not prove their privileges. Do not infer that helper-function grants are restricted based on this migration; inspect their exact deployed definitions and grants under the database owner's approved read-only review before production application.
+
+
+## Transaction and PostgreSQL adapter implementation (2026-11-24)
+
+The transaction path now has both a coordinator and a concrete PostgreSQL adapter:
+
+- `deploy-control/transaction.mjs` authorizes the verified principal against tenant/application/environment scope before database access, hashes the canonical request, separates exact replay from conflicting idempotency-key reuse, and coordinates the deployment write, FORTRESS audit append and idempotency result through one transaction handle.
+- `deploy-control/postgres-adapter.mjs` acquires one node-postgres client and uses that same connection for `BEGIN`, the scoped `izakhono_runtime_deployments` row lock, idempotency lookup/update, deployment metadata update, `fortress_audit_events` insert, and `COMMIT`/rollback.
+- Idempotency is stored under a SHA-256 digest in the existing deployment row's `metadata.deploy_control.idempotency` object. The row lock serializes concurrent requests for that deployment; no separate idempotency table is introduced.
+- The adapter reuses the existing Runtime Fabric deployment table and FORTRESS audit table. It creates no tables, runs no DDL, and does not select or read a production DSN.
+- `PostgresDeploymentStore.put()` now preserves the reserved DEPLOY record, idempotency map and tenant/application/environment metadata when Runtime Fabric updates its deployment row.
+- `deploy-control/postgres.integration.test.mjs` exercises real PostgreSQL commit, replay, request-hash conflict, audit-failure rollback, concurrent identical/conflicting requests and resource-scope enforcement. `test_postgres_deployment_store.py` verifies Runtime Fabric updates preserve DEPLOY metadata. Both run only against disposable GitHub Actions PostgreSQL services.
+
+**Production boundary remains closed.** The adapter assumes `izakhono_runtime_deployments` and `fortress_audit_events` resolve to the same approved PostgreSQL database. If the audit table is absent or in another database, the transaction fails and rolls back; there is no dual-write fallback. That same-database identity is not yet independently verified. The current test proves PostgreSQL behavior against the disposable schema, not the production database identity, owner, grants/RLS or migration authority.
+
+The FORTRESS audit append is performed as an INSERT inside the transaction; database-level prevention of UPDATE/DELETE remains a separate owner-approved hardening item. The adapter does not claim that a test schema establishes production audit immutability.
+
+Before production wiring, the accountable database owner must confirm the authoritative database, environment binding, metadata/schema mapping, migration runner, rollback, privilege/RLS model, audit-table co-location and approval to use this transaction boundary. If WebStart and Runtime Fabric are separate databases, select one authoritative store and design a transactional outbox in that store; do not dual-write and claim atomicity.
+
+No production DSN was read, no production schema or data was changed, and no HOST execution, runtime registration, deployment, DNS change or production activation occurred.
+
+
+## Read-only database binding preflight (2026-11-24)
+
+Added `infra/runtime-fabric/controller/database_preflight.py`. It reads the operator-supplied `IZAKHONO_RUNTIME_DATABASE_URL`, opens one `BEGIN READ ONLY` transaction, and checks that the existing Runtime Fabric deployment table and FORTRESS audit table resolve through that same database connection with the required columns and JSONB fields. It emits a database fingerprint and the declared database/environment/owner/migration-runner labels without printing the DSN or credentials.
+
+The tool always returns `production_authorized: false`. Even when all technical checks pass, the status is `TECHNICAL_CHECKS_PASSED_OWNER_ATTESTATION_REQUIRED`; environment and owner labels are declarations, not proof of authority. Missing tables/columns or connection errors fail closed. Disposable PostgreSQL CI tests verify the read-only result and that missing owner declarations remain unverified.
+
+Run it only from an approved operator environment after the owner has supplied the DSN through the host's secret manager:
+
+```sh
+python3 infra/runtime-fabric/controller/database_preflight.py
+```
+
+No DSN was available to this repository workflow, so no production database was inspected. The preflight is ready to collect evidence; it does not establish ownership, migration authority, production binding, RLS/grants, backup/restore, or audit immutability.

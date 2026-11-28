@@ -26,12 +26,18 @@ def test_bounded_cycles():
 
 
 def test_environment_validation():
-    try:
-        SupervisorConfig(interval_seconds=0)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("zero interval must be rejected")
+    for config in (
+        {"interval_seconds": 0},
+        {"interval_seconds": -1},
+        {"max_cycles": 0},
+        {"max_cycles": -1},
+    ):
+        try:
+            SupervisorConfig(**config)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"invalid supervisor config must be rejected: {config}")
 
 
 if __name__ == "__main__":
