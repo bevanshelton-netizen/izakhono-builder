@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "1.0.0",
+  "updatedAt": "2026-11-28",
+  "operatingPrinciple": "OWNED_FIRST_BUILD_ENGINEER_AUTOMATE",
+  "guardrails": {
+    "noSpendWithoutApproval": true,
+    "noCrossProductDataAccessByDefault": true,
+    "productionRequiresEvidence": true,
+    "preserveIndependentBrands": true
+  },
+  "sharedCapabilities": [
+    "identity-tenant-context",
+    "rbac-mfa",
+    "audit-evidence",
+    "document-versioning",
+    "notifications-email-adapter",
+    "billing-payment-adapters",
+    "jobs-idempotency-webhooks",
+    "observability-release-evidence",
+    "localisation-accessibility-design-system"
+  ],
+  "products": [
+    {
+      "id": "fortress",
+      "name": "FORTRESS",
+      "repository": "bevanshelton-netizen/SHELTON-FORTRESS",
+      "vercelProjects": [
+        "shelton-fortress",
+        "fortress-core-engine",
+        "fortress-bank-onboarding",
+        "fortress-african-economic-unity",
+        "shelton-fortress-ai",
+        "izakhono-fortress-intelligence",
+        "fortress-compliance-intelligence"
+      ],
+      "status": "alpha-with-ready-preview-and-incomplete-subsystems",
+      "modules": [
+        "bank",
+        "csd",
+        "clear",
+        "settle",
+        "compliance-intelligence",
+        "global-asset-management",
+        "digital-assets",
+        "wealth",
+        "connect"
+      ],
+      "integrateShared": [
+        "identity-tenant-context",
+        "rbac-mfa",
+        "audit-evidence",
+        "document-versioning",
+        "jobs-idempotency-webhooks",
+        "observability-release-evidence"
+      ]
+    },
+    {
+      "id": "faisready",
+      "name": "FAISReady",
+      "supabaseProject": "bsbmychzqipurpqxheuv",
+      "vercelProjects": [
+        "faisready-site",
+        "faisready-revenue",
+        "faisready-image-check"
+      ],
+      "status": "site-ready-deployment-record; database-inactive",
+      "purpose": "RE examination preparation and education",
+      "mustRemainSeparateFrom": [
+        "fortress-compliance-intelligence"
+      ]
+    },
+    {
+      "id": "nextradefinx",
+      "name": "NexTradeFinX",
+      "repository": "bevanshelton-netizen/nextradefinx",
+      "vercelProjects": [
+        "nextradefinx"
+      ],
+      "status": "ready-preview; repository-security-hold-public-visibility",
+      "purpose": "multilingual market education, intelligence and paper trading",
+      "liveTrading": "disabled-until-separately-authorised"
+    },
+    {
+      "id": "edubuild-ecd360",
+      "name": "Edu-Build ECD360",
+      "repository": "bevanshelton-netizen/edubuild-ecd360",
+      "supabaseProject": "tzjnhmrvqbisiegpgxcg",
+      "vercelProjects": [
+        "edu-build-360",
+        "edubuild-online-classroom",
+        "edubuild-online-university",
+        "edubuild-institute-360-admin"
+      ],
+      "status": "phase-10.4-source; external-staging-gates-open; database-inactive",
+      "privacyBoundary": "child-guardian-tenant-scope; aggregate-only-integrations"
+    },
+    {
+      "id": "sheltonair",
+      "name": "SHELTONAIR",
+      "vercelProjects": [
+        "sheltonair",
+        "sheltonair-referral-hub"
+      ],
+      "status": "ready-deployment-records; acceptance-unverified",
+      "mustRemainSeparateFrom": [
+        "pdf-topic-publishing"
+      ]
+    },
+    {
+      "id": "izakhono-builder",
+      "name": "IZAKHONO Builder",
+      "repository": "bevanshelton-netizen/izakhono-builder",
+      "status": "substantial-owned-first-platform; production-pipeline-and-runtime-gates-open"
+    },
+    {
+      "id": "izakhono-host",
+      "name": "IZAKHONO HOST",
+      "vercelProjects": [
+        "izakhono-host"
+      ],
+      "status": "ready-ui-deployment; owned-runtime-activation-unverified"
+    },
+    {
+      "id": "izakhono-mail",
+      "name": "IZAKHONO MAIL",
+      "vercelProjects": [
+        "izakhono-mail",
+        "izakhono-mail-engine",
+        "izakhono-mail-provisioner",
+        "izakhono-mail-control-plane"
+      ],
+      "status": "ready-ui-deployment; mail-deliverability-and-owned-runtime-gates-open"
+    },
+    {
+      "id": "the-chancellor",
+      "name": "The Chancellor",
+      "repository": "bevanshelton-netizen/the-chancellor",
+      "vercelProjects": [
+        "the-chancellor",
+        "the-chancellor-1eiq"
+      ],
+      "status": "source-and-deployment-candidate; payment-security-and-acceptance-required"
+    },
+    {
+      "id": "topic-pdf",
+      "name": "$7 Topic PDF Publishing Programme",
+      "vercelProjects": [
+        "bevan-shelton-storefront"
+      ],
+      "status": "candidate-source-mapping-required",
+      "mustRemainSeparateFrom": [
+        "sheltonair",
+        "bevan-shelton-books"
+      ]
+    },
+    {
+      "id": "books",
+      "name": "Author book collection",
+      "vercelProjects": [
+        "bevan-shelton-books",
+        "arts-culture-business-manual-ebook"
+      ],
+      "status": "separate-book-product-source-mapping-required"
+    },
+    {
+      "id": "izakhono-data",
+      "name": "IZAKHONO data services",
+      "supabaseProjects": [
+        "qczsgkuqfehrrqebnrbi",
+        "yfawrenhudjomhnglfhq"
+      ],
+      "status": "active-healthy; app-specific-rls-review-required"
+    },
+    {
+      "id": "other-ventures",
+      "name": "Other portfolio ventures",
+      "vercelProjects": [
+        "allegro-vibez",
+        "the-business-of-music",
+        "the-business-of-music-buy",
+        "the-business-of-music-market",
+        "the-business-of-music-store",
+        "the-business-of-music-delivery",
+        "soundlab-ai",
+        "yhvh-gospel-tv",
+        "kora-network",
+        "kora-expansion-network",
+        "worknow-sa",
+        "yenzanow",
+        "auto-ai",
+        "videonomy",
+        "videonomy-beta",
+        "proofforge-ai",
+        "revenueforge-ai"
+      ],
+      "status": "separate-apps; repository-mapping-and-recovery-audit-required"
+    }
+  ]
+}
