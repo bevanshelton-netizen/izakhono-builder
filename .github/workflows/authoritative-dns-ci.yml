@@ -1,0 +1,63 @@
+name: IZAKHONO Authoritative DNS CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/authoritative-dns/**'
+      - '.github/workflows/authoritative-dns-ci.yml'
+  pull_request:
+    paths:
+      - 'infra/authoritative-dns/**'
+      - '.github/workflows/authoritative-dns-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell scripts
+        run: |
+          set -eu
+          for script in infra/authoritative-dns/*.sh; do
+            sh -n "$script"
+          done
+
+      - name: Validate primary and secondary Compose configuration
+        env:
+          PDNS_API_KEY: ci-only-placeholder-not-a-secret
+          PRIMARY_NS_FQDN: ns1.allegrovibez.com
+          SECONDARY_NS_FQDN: ns2.allegrovibez.com
+          PRIMARY_PUBLIC_IPV4: 192.0.2.10
+          SECONDARY_PUBLIC_IPV4: 198.51.100.20
+        run: |
+          docker compose -f infra/authoritative-dns/primary.compose.yaml config --quiet
+          docker compose -f infra/authoritative-dns/secondary.compose.yaml config --quiet
+
+      - name: Build authoritative DNS image
+        run: docker build --pull -t izakhono/authoritative-dns:ci infra/authoritative-dns
+
+      - name: Enforce fail-closed zone provisioning
+        run: |
+          grep -Fq 'curl -fsS -X POST' infra/authoritative-dns/provision-zone.sh
+          if grep -Fq '|| true' infra/authoritative-dns/provision-zone.sh; then
+            echo 'Zone provisioning must not suppress API errors.' >&2
+            exit 1
+          fi
+          grep -Fq 'jq -n' infra/authoritative-dns/provision-zone.sh
+
+      - name: Enforce DNS image and autoprimary invariants
+        run: |
+          grep -Fq 'authoritative-dns:5.1.5' infra/authoritative-dns/primary.compose.yaml
+          grep -Fq 'authoritative-dns:5.1.5' infra/authoritative-dns/secondary.compose.yaml
+          grep -Fq "VALUES('\$PRIMARY_PUBLIC_IPV4','\$PRIMARY_NS_FQDN','izakhono');" infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'PRIMARY_NS_FQDN must be a valid DNS hostname' infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'SECONDARY_NS_FQDN must be a valid DNS hostname' infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'SECONDARY_PUBLIC_IPV4 must be a valid IPv4 address' infra/authoritative-dns/entrypoint.sh
+          grep -Fq 'PRIMARY_PUBLIC_IPV4 must be a valid IPv4 address' infra/authoritative-dns/entrypoint.sh

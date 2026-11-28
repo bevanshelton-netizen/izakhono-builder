@@ -7,11 +7,18 @@ set -eu
 : "${PRIMARY_NS_FQDN:?set PRIMARY_NS_FQDN}"
 : "${SECONDARY_NS_FQDN:?set SECONDARY_NS_FQDN}"
 
+# Fail closed: never report a zone as provisioned when the API rejected the request.
+# jq safely encodes values instead of interpolating them into JSON.
+payload="$(jq -n \
+  --arg zone "$ZONE" \
+  --arg primary "${PRIMARY_NS_FQDN%.}." \
+  --arg secondary "${SECONDARY_NS_FQDN%.}." \
+  '{name:$zone,kind:"Master",nameservers:[$primary,$secondary]}')"
+
 curl -fsS -X POST "$PDNS_API_URL/zones" \
   -H "X-API-Key: $PDNS_API_KEY" \
   -H 'Content-Type: application/json' \
-  --data "{\"name\":\"$ZONE\",\"kind\":\"Master\",\"nameservers\":[\"$PRIMARY_NS_FQDN.\",\"$SECONDARY_NS_FQDN.\"]}" \
-  || true
+  --data "$payload"
 
-printf '%s\n' "Zone created or already exists: $ZONE"
-printf '%s\n' "Next: import the preserved zone records, then rectify and verify SOA/NS/MX/TXT before delegation."
+printf '%s\\n' "Zone provisioning request accepted: $ZONE"
+printf '%s\\n' "Next: import the preserved zone records, then rectify and verify SOA/NS/MX/TXT before delegation."
