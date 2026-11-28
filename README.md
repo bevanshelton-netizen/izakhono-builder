@@ -80,3 +80,8 @@ Production activation requires an eligible Software NODE, public network reachab
 The system-wide rule is **NODE01 IS SOFTWARE**. NODE01 is a stable logical software/runtime identity, never a server, computer, VM, host, container host or other physical/virtual infrastructure resource. Execution environments are separately managed, explicitly bound and replaceable. This standard applies to every product, repository, workflow, agent, API, installer and deployment:
 
 - [NODE01 Identity Standard](architecture/NODE01-IDENTITY-STANDARD.md)
+
+
+## Commerce platform architecture
+
+- [IZAKHONO COMMERCE Platform Architecture V1](docs/architecture/IZAKHONO-COMMERCE-PLATFORM-ARCHITECTURE-V1.md) — first-party B2B, B2C, wholesale, marketplace, order, pricing, payment and fulfilment architecture, aligned with existing IZAKHONO product boundaries.
