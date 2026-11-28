@@ -45,7 +45,6 @@ if (!fs.existsSync(path.join(engineDir, "verify.mjs"))) {
   console.error("Missing infra/mail-stack/verify.mjs");
   process.exit(1);
 }
-collect(path.join(engineDir, "engine"));
 collect(engineDir);
 tests.sort();
 
