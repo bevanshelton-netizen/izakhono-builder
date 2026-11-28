@@ -53,3 +53,8 @@ Until required registrations, legal review and operating controls are cleared:
 ## Legal and release gates
 
 This code does not establish registration, legal compliance, a licensed service, a legal employer, live integrations, or production readiness. Before launch, verify current South African requirements with qualified counsel and relevant authorities, including private employment agency requirements where applicable, employment legislation, POPIA/PAIA, tax/payroll and data-security obligations. Record the approved operating model and scope.
+
+
+## Persistence foundation
+
+Migration `migrations/0032_worknow_connector_core.sql` creates tenant-scoped employer, membership, vacancy, direct-application and append-only audit tables. The first migration intentionally stores no CV/profile payload and pins country code to `ZA`. Employer membership and composite tenant foreign keys are included, but SQLite/D1 does not enforce row-level security: server adapters must authenticate each request and scope every read/write by the verified user, tenant and employer membership. Do not expose direct database access to clients. Application endpoints must validate published vacancy state and consent, and write an audit event transactionally. The migration is not applied to any remote database in this work.
