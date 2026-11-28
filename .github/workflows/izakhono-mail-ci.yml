@@ -168,6 +168,9 @@ jobs:
       - name: Run owned IZAKHONO CI
         run: node infra/izakhono-ci/run-ci.mjs
 
+      - name: Run unified mail validation contract
+        run: npm run validate:mail
+
       - name: Report independent mail gate
         run: |
           echo '[PASS] IZAKHONO MAIL has an independent CI validation gate.'
