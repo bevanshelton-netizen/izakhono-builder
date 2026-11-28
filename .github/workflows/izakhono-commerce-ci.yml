@@ -1,0 +1,24 @@
+name: izakhono-commerce-ci
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-commerce/**"
+      - ".github/workflows/izakhono-commerce-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-commerce/**"
+      - ".github/workflows/izakhono-commerce-ci.yml"
+
+jobs:
+  commerce-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check source syntax and tests
+        working-directory: products/izakhono-commerce
+        run: npm run check
