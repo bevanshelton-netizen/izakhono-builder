@@ -4,7 +4,7 @@ import { MailStore, MemoryMailStoreAdapter } from "./mail-store.mjs";
 import { MailOutbox, MemoryMailOutboxAdapter } from "./mail-outbox.mjs";
 
 const queue = { jobs: [], enqueue(message) { this.jobs.push(message); } };
-const runtime = { queue, health() { return { queue: { queued: this.jobs.length }, transports: [] }; } };
+const runtime = { queue, health() { return { queue: { queued: this.queue.jobs.length }, transports: [] }; } };
 const auth = async () => ({ allowed: true, tenantId: "tenant-1", appId: "app-1", scopes: ["mail:transactional"] });
 const api = new MailApi({ runtime, authorize: auth, idFactory: (() => { let n = 0; return () => `id-${++n}`; })(), clock: () => "2026-10-23T00:00:00.000Z" });
 
