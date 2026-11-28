@@ -98,6 +98,7 @@ export async function runAgentWorker() {
   const state = readJson(statePath, { schema: 'izakhono.agent-state/v1', plans: {} });
   const queue = readJson(queuePath, { schema: 'izakhono.agent-queue/v1', items: [] });
   let progressed = 0;
+  const processedPlans = [];
 
   for (const item of queue.items.filter((entry) => entry.status === 'queued' || entry.status === 'running')) {
     const plan = state.plans[item.planId];
@@ -105,6 +106,7 @@ export async function runAgentWorker() {
     if (plan.approvalRequired && !plan.approved) {
       item.status = 'awaiting_approval';
       plan.status = 'awaiting_approval';
+      processedPlans.push({ planId: plan.planId, status: plan.status });
       continue;
     }
 
@@ -148,6 +150,7 @@ export async function runAgentWorker() {
         item.status = 'queued';
       }
     }
+    processedPlans.push({ planId: plan.planId, status: plan.status });
   }
 
   writeJson(statePath, state);
@@ -156,7 +159,7 @@ export async function runAgentWorker() {
     schema: 'izakhono.agent-worker/v1',
     status: progressed ? 'progressed' : 'idle',
     progressed,
-    plans: Object.values(state.plans).map((plan) => ({ planId: plan.planId, status: plan.status })),
+    plans: processedPlans,
   };
 }
 

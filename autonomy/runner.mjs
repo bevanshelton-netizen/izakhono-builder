@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { runAgentWorker } from './ai-agent-worker.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -34,21 +35,53 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+// A task that returns waiting must not be re-invoked repeatedly in the same
+// controller process. It remains persisted as waiting and can be reconsidered
+// by the next scheduled/controller invocation after its external condition changes.
+const attemptedThisRun = new Set();
+
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !attemptedThisRun.has(task.id)
+      && !['completed', 'blocked'].includes(current.status)
+      && !persistentWaitFor(task)
+      && ready(task);
   });
 }
-function executeInternal(task) {
+async function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return { status: 'completed' };
+    const result = await runAgentWorker();
+    const planStatuses = (result.plans ?? []).map((plan) => plan.status);
+    if (planStatuses.includes('blocked')) {
+      return {
+        status: 'failed',
+        reason: 'agent-plan-blocked',
+        workerResult: result,
+        evidence: [{ name: 'agent-worker-blocked', status: 'failed', progressed: result.progressed ?? 0, plans: result.plans }],
+      };
+    }
+    if (planStatuses.some((status) => ['waiting', 'awaiting_approval', 'queued', 'running'].includes(status))) {
+      return {
+        status: 'waiting',
+        reason: 'agent-plan-awaiting-capability-approval-or-next-worker-cycle',
+        workerResult: result,
+        evidence: [{ name: 'agent-worker-waiting', status: 'waiting', progressed: result.progressed ?? 0, plans: result.plans }],
+      };
+    }
+    if (result.progressed > 0 && planStatuses.length > 0 && planStatuses.every((status) => status === 'completed')) {
+      return {
+        status: 'completed',
+        evidence: [{ name: 'agent-worker-executed', status: 'passed', progressed: result.progressed, plans: result.plans }],
+        workerResult: result,
+      };
+    }
+    return { status: 'waiting', reason: 'agent-queue-empty-or-no-ready-work', workerResult: result, evidence: [{ name: 'agent-worker-idle', status: 'waiting', progressed: 0 }] };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
@@ -65,10 +98,11 @@ const externalGates = [];
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
+  attemptedThisRun.add(next.id);
   const current = taskState(next.id);
   transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
-  let result = executeInternal(next);
+  let result = await executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
   const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule', 'kora-workload-execute', 'kora-routing-acceptance'];
