@@ -1,0 +1,14 @@
+{
+  "name": "@izakhono/node-engine-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-device, loopback-first static-site hosting prototype",
+  "scripts": {
+    "start": "node src/cli.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
