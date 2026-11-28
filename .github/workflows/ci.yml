@@ -219,3 +219,12 @@ jobs:
           if 'run: bash scripts/izakhono/alpha-preflight.sh' in text: raise SystemExit('Central Alpha workflow must not execute caller-provided preflight shell.')
           print('[PASS] Central IZAKHONO Build to Alpha trust boundary is present.')
           PY
+
+      - name: Validate publisher marketplace domain contracts
+        run: npm run publishing:marketplace:test
+
+      - name: Typecheck publisher marketplace domain contracts
+        run: npm run publishing:marketplace:typecheck
+
+      - name: Parse publisher marketplace profile schema
+        run: node -e "JSON.parse(require('node:fs').readFileSync('schemas/publishing/publisher-profile-v1.schema.json', 'utf8')); console.log('Publisher profile schema: valid JSON')"

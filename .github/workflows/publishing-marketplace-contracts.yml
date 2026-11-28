@@ -1,0 +1,44 @@
+name: IZAKHONO Publisher Marketplace Contracts
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-publishing-network/**'
+      - 'schemas/publishing/**'
+      - 'docs/publishing/**'
+      - 'package.json'
+      - '.github/workflows/publishing-marketplace-contracts.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-publishing-network/**'
+      - 'schemas/publishing/**'
+      - 'docs/publishing/**'
+      - 'package.json'
+      - '.github/workflows/publishing-marketplace-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate marketplace contracts
+        run: npm run publishing:marketplace:test
+
+      - name: Typecheck marketplace contracts
+        run: npm run publishing:marketplace:typecheck
+
+      - name: Parse publisher profile schema
+        run: node -e "JSON.parse(require('node:fs').readFileSync('schemas/publishing/publisher-profile-v1.schema.json', 'utf8')); console.log('Publisher profile schema: valid JSON')"

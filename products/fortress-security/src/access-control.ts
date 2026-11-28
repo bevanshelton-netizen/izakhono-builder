@@ -7,11 +7,23 @@ export interface FortressPrincipal {
   active: boolean;
 }
 
+const publishingRead = ['publishing:review:read'];
+const publishingReviewer = [...publishingRead, 'publishing:review:request_evidence'];
+const publishingAdmin = [
+  ...publishingReviewer,
+  'publishing:review:assign',
+  'publishing:review:approve',
+  'publishing:review:reject',
+  'publishing:review:close',
+  'publishing:publisher:list',
+  'publishing:publisher:suspend',
+];
+
 const permissions: Record<FortressRole, ReadonlySet<string>> = {
-  OWNER: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','admin:access','creator:read','creator:write','creator:approve','creator:generate','creator:publish']),
-  SECURITY_ADMIN: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate','creator:publish']),
-  ANALYST: new Set(['asset:read','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate']),
-  VIEWER: new Set(['asset:read','finding:read','evidence:read','creator:read'])
+  OWNER: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','admin:access','creator:read','creator:write','creator:approve','creator:generate','creator:publish', ...publishingAdmin]),
+  SECURITY_ADMIN: new Set(['asset:read','asset:write','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate','creator:publish', ...publishingAdmin]),
+  ANALYST: new Set(['asset:read','scan:run','finding:read','finding:write','remediation:write','evidence:read','creator:read','creator:write','creator:approve','creator:generate', ...publishingReviewer]),
+  VIEWER: new Set(['asset:read','finding:read','evidence:read','creator:read', ...publishingRead])
 };
 
 export function assertActive(principal: FortressPrincipal): void {
