@@ -129,8 +129,20 @@ Document authenticity and biometric verification are being added as a separate c
 - Regula is the preferred provider candidate, subject to technical, commercial, POPIA and legal due diligence.
 - Entity-scoped sessions, idempotency, evidence references and fail-closed result handling are included.
 - Raw document images, selfie images, liveness video and biometric templates are not stored by this module.
-- The Regula transport remains an injected integration boundary until a licensed sandbox, exact API contract and credentials are approved.
+- A server-side Regula HTTP client and conservative provider adapter are implemented for the documented hosted hand-off and session retrieval calls. Configure only through server environment variables; no credentials are accepted from client requests.\n- Vendor session status/check fields remain deliberately unmapped, so fetched results are indeterminate and cannot auto-verify. Cancellation is explicitly unsupported until the licensed tenant contract is confirmed.\n- The one-time hosted hand-off URL is returned as the service's one-time client token; protect it as a bearer secret and do not log it.
 
 See IDENTITY-VERIFICATION-REGULA.md for the architecture, due-diligence questionnaire, POPIA/FICA controls and production acceptance gates.
 
 This capability does not replace IZAKHONO ID login/MFA or FORTRESS INTELLIGENCE PEP/sanctions screening. It is not production-enabled by this source change.
+
+
+### Identity verification API (sandbox integration gate)
+
+The following authenticated routes are wired to the entity-scoped verification service:
+
+- `POST /api/v1/identity-verification/start` — requires the existing IZAKHONO ID bearer session and an `Idempotency-Key` header. Body: `purpose`, `notice_version`, and optional `jurisdiction` (currently ZA only). Returns a one-time `handoff_url`; treat it as a bearer secret and never log it.
+- `GET /api/v1/identity-verification/{verification_id}` — requires the bearer session and scopes lookup to the authenticated entity.
+
+The API returns generic provider-unavailable errors and does not expose vendor response payloads. A repeated start with the same idempotency key returns the existing session without re-issuing the one-time hand-off URL. A client that loses that URL must start a new attempt with a new idempotency key after the prior session is reconciled.
+
+The current adapter intentionally maps retrieved vendor results to indeterminate checks until the licensed tenant workflow schema is confirmed. Consequently these routes cannot automatically mark an identity verified. Cancellation, callbacks, evidence retrieval/deletion and production activation remain disabled pending the relevant vendor contract and approvals.

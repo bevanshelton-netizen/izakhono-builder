@@ -25,10 +25,10 @@ jobs:
           python-version: "3.12"
       - name: Compile identity verification modules
         working-directory: products/izakhono-id
-        run: python -m py_compile identity_verification.py test_identity_verification.py
+        run: python -m py_compile app.py identity_verification.py regula_idv_http.py regula_idv_provider.py test_identity_verification.py test_regula_idv_http.py test_regula_idv_provider.py
       - name: Run provider adapter and tenant isolation tests
         working-directory: products/izakhono-id
-        run: python -m unittest -v test_identity_verification.py
+        run: python -m unittest -v test_identity_verification.py test_regula_idv_http.py test_regula_idv_provider.py
       - name: Regression test existing IZAKHONO ID authentication
         working-directory: products/izakhono-id
         run: python test_id.py
