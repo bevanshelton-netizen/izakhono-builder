@@ -10,6 +10,8 @@ on:
       - 'infra/izakhono-ci/**'
       - 'products/izakhono-mail/runtime-v1/**'
       - 'package.json'
+      - 'scripts/validate-mail-platform.mjs'
+      - 'docs/COMPLETE-SOFTWARE-FOUNDRY-AND-OWNED-EMAIL-ROADMAP.md'
       - 'package-lock.json'
       - '.github/workflows/izakhono-mail-ci.yml'
   pull_request:
