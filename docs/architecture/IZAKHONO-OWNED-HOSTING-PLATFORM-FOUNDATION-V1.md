@@ -9,7 +9,7 @@
 
 IZAKHONO will build and operate its own hosting platform. The platform is the system of record for customer domains, websites, certificates, DNS zones, mail domains and mailboxes, storage, databases, backups, usage and service health.
 
-IZAKHONO owns the control plane, service definitions, automation, data model, security policy, operational evidence and customer experience. Physical compute, network transit, power and upstream connectivity may initially be purchased from infrastructure suppliers. Those suppliers provide raw capacity; they do not become the hosting platform or the system of record.
+IZAKHONO owns the control plane, software-defined Node identities and roles, service definitions, automation, data model, security policy, operational evidence and customer experience. A Node is a logical software entity, not a physical machine or virtual server. Workloads execute in separately identified and authorised execution environments through provider-neutral adapters. Current execution policy is zero spend: do not purchase or provision compute, storage, domains, network services or subscriptions without a separate explicit owner approval after a written estimate.
 
 The platform must not depend on Vercel as its production web or mail runtime. Cloudflare may remain a transitional registrar/DNS/security adapter for domains where it is already configured, but it is not the long-term authoritative DNS runtime for the sovereign DNS service.
 
@@ -47,13 +47,15 @@ secondary  runtimes   SMTP/IMAP   Valkey       offsite copy
   |          |           |           |           |
   +----------+-----------+-----------+-----------+
              |
-       owned node cluster
+   software-defined Node layer
              |
-  compute / network / storage suppliers
-       (replaceable capacity only)
+   authorised execution adapters
+             |
+  compute / network / storage environments
+       (replaceable execution capacity)
 ```
 
-FORTRESS remains the policy and identity authority. NODE01/Runtime Fabric remains the orchestration and workload-state layer where already defined by the repository architecture. HOST owns the customer hosting domain and its typed provisioning workflows. The physical execution host is a separately identified and approved machine; logical NODE identities are not physical servers.
+FORTRESS remains the policy and identity authority. NODE01/Runtime Fabric remains the orchestration and workload-state layer where already defined by the repository architecture. HOST owns the customer hosting domain and its typed provisioning workflows. NODE01 and other Nodes are software-defined identities; each workload's execution environment is a separately identified, authorised and auditable binding. Neither a Node ID nor a Node agent is itself compute capacity.
 
 ## 4. Platform service planes
 
@@ -127,9 +129,9 @@ Separate logical roles:
 - BACKUP;
 - SECURITY/FORTRESS.
 
-Roles may initially share a physical machine only where resource, isolation and failure-domain analysis permits. DNS primary/secondary must ultimately occupy distinct network/failure domains. Mail and web workloads must not expose their administrative control surfaces publicly.
+Roles may initially share an execution environment only where resource, isolation and failure-domain analysis permits. DNS primary/secondary must ultimately occupy distinct independently reachable network/failure domains. Mail and web workloads must not expose their administrative control surfaces publicly.
 
-Every physical host requires a verified hostname, owner, location/failure domain, OS, capacity, public/private addressing, firewall policy, storage layout, monitoring, backup coverage and authorized execution identity before activation.
+Every execution environment requires a verified provider/ownership boundary, environment identifier, failure domain, OS/runtime, capacity, network and storage capabilities, firewall policy, monitoring, backup coverage and authorized execution identity before activation. A logical Node requires its own stable identity, declared role, policy bindings, desired state and audit history.
 
 ## 6. Delivery sequence
 
@@ -141,13 +143,15 @@ Every physical host requires a verified hostname, owner, location/failure domain
 
 ### Phase 1 — owned foundation
 - Finalize HOST control-plane service contracts and tenant/domain/site/mail inventory.
-- Establish host enrollment, secure operator access, monitoring and audit.
-- Validate the existing physical host and available capacity.
-- Produce an infrastructure bill of materials and cost estimate before any purchase.
+- Establish execution-environment enrollment, secure operator access, monitoring and audit.
+- Define software Node identity, role, capability and lifecycle contracts independently of compute resources.
+- Identify and validate an already available, authorised execution environment; do not assume one exists.
+- If capacity or network feasibility fails, stop and document the gap; no purchase or provider substitution is implied or authorized.
 
-### Phase 2 — staging cluster
-- Provision only after owner approval.
-- Deploy control, edge, DNS, data, storage and backup services in staging.
+### Phase 2 — staging through an authorised execution adapter
+- Use only an execution environment that has been explicitly identified, authorised and verified against the host and network acceptance gates.
+- Deploy control, edge, DNS, data, storage and backup services in staging, subject to an approved environment-specific change plan.
+- If no suitable execution environment is available, pause; do not create cloud compute or incur costs.
 - Establish encrypted offsite backup and perform restore drills.
 - Validate isolation, firewall policy, service recovery and observability.
 
@@ -157,7 +161,7 @@ Every physical host requires a verified hostname, owner, location/failure domain
 - Complete rollback rehearsal before customer traffic.
 
 ### Phase 4 — owned mail service
-- Deploy Stalwart and Roundcube on the approved owned host.
+- Deploy Stalwart and Roundcube on the approved execution environment.
 - Verify public mail DNS, PTR, port reachability, TLS and reputation.
 - Provision the five IZAKHONO mailboxes only after DNS gates pass.
 - Complete inbound, outbound, reply, IMAP, webmail and restore tests.
@@ -178,7 +182,7 @@ Every physical host requires a verified hostname, owner, location/failure domain
 No service is production-live until its service-specific tests pass and evidence is recorded with timestamp, target identity, software revision and test result.
 
 Common gates:
-- verified host ownership and authorized access;
+- verified execution-environment ownership/authority and authorized access;
 - patched OS, firewall and least-privilege service identities;
 - current monitoring and alert delivery;
 - encrypted backup and successful restore;
@@ -188,7 +192,7 @@ Common gates:
 - externally verified DNS and TLS;
 - resource headroom and capacity plan.
 
-Mail-specific gates are defined in `products/izakhono-host/mail/README.md` and `products/izakhono-mail/runtime-v1/DEPLOYMENT-STATUS.md`.
+Mail-specific gates are defined in `products/izakhono-host/mail/README.md`, `products/izakhono-mail/runtime-v1/DEPLOYMENT-STATUS.md` and `products/izakhono-mail/runtime-v1/ops/PROVISION-CONTABO.md` (now the authorised execution-environment runbook; the legacy filename is retained to avoid breaking references).
 
 DNS-specific gates are defined in `infra/authoritative-dns/README.md`.
 
@@ -211,22 +215,22 @@ Not verified operationally:
 - end-to-end mail delivery;
 - encrypted offsite backup and successful restore.
 
-The SentinelX account currently reports zero enrolled hosts and zero connected integrations. Therefore no server-side inspection, provisioning or deployment can be truthfully claimed from this session.
+The SentinelX account currently reports zero enrolled hosts and zero connected integrations. Therefore no execution environment has been inspected, provisioned or deployed from this session. This host-enrollment status is separate from the existence or identity of software-defined Nodes.
 
 ## 9. Immediate execution queue
 
 1. Verify the merged PR #695 mail implementation against current `main`; keep its Stalwart engine, Roundcube webmail and shared HOST edge as the single canonical mail runtime.
-2. Identify and enroll the existing IZAKHONO-controlled Linux host; inspect it read-only first.
+2. Define the logical Node model and identify an already available, explicitly authorised execution environment; only then perform read-only environment discovery.
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
-5. Produce a host-specific deployment plan and cost estimate; obtain explicit approval before any paid compute or storage.
-6. Deploy staging first, then run independent acceptance tests before any production traffic or MX cutover.
+5. Produce an execution-environment-specific deployment and rollback plan using only already available and explicitly authorised resources.
+6. Deploy staging only on an explicitly authorised and verified execution environment, then run independent acceptance tests before any production traffic or MX cutover.
 
 ## 10. Non-goals and prohibited shortcuts
 
 - Do not treat Cloudflare Email Routing as a full mailbox server.
 - Do not treat Gmail SMTP relay or a transactional email API as owned mail hosting.
 - Do not deploy production web or mail runtime to Vercel.
-- Do not purchase compute or incur recurring charges without explicit approval.
+- Current policy is zero spend: do not purchase or provision compute or incur recurring charges. Any proposed exception requires a separate explicit owner decision after a written estimate.
 - Do not change registrar delegation, public DNS, MX, production data or firewall exposure without a reviewed change plan and authorization.
 - Do not mark a service LIVE based on source code, CI success, a running process or a successful control-plane response alone.
