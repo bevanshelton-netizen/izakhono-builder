@@ -1,0 +1,84 @@
+name: ISBN Registry Checks
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-isbn/**"
+      - "autonomy/software-node.mjs"
+      - "autonomy/software-node.test.mjs"
+      - "package.json"
+      - ".github/workflows/isbn-registry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isbn-registry-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: izakhono_isbn
+          POSTGRES_USER: izakhono
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U izakhono -d izakhono_isbn"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check dashboard JavaScript syntax
+        run: |
+          node -e 'const fs=require("node:fs"); const html=fs.readFileSync("products/izakhono-isbn/public/index.html","utf8"); const start=html.indexOf("<script>"); const end=html.indexOf("</script>",start); if (start < 0 || end < 0) throw new Error("Dashboard script missing"); new Function(html.slice(start+8,end)); console.log("Dashboard JavaScript syntax passed");'
+      - name: Run NODE01 software-node lifecycle tests
+        run: node autonomy/software-node.test.mjs
+      - name: Run ISBN-13 validation tests
+        run: npx --yes tsx@4.20.3 products/izakhono-isbn/src/index.test.ts
+      - name: Run D1 SQLite migration integrity tests
+        run: node --experimental-sqlite products/izakhono-isbn/src/migrations.test.mjs
+      - name: Test PostgreSQL compatibility adapter
+        run: npx --yes tsx@4.20.3 products/izakhono-isbn/src/postgresql-adapter.test.ts
+      - name: Verify PostgreSQL target schema and provider-neutral contract
+        run: node products/izakhono-isbn/src/postgresql-contract.test.mjs
+      - name: Install the PostgreSQL runtime driver for CI integration tests
+        run: npm install --prefix products/izakhono-isbn/runtime --ignore-scripts --no-audit --no-fund
+      - name: Test D1-to-PostgreSQL migration validation and transaction modes
+        run: node --test products/izakhono-isbn/migration/d1-export-to-postgres.test.mjs
+      - name: Run live PostgreSQL schema and API integration tests
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGDATABASE: izakhono_isbn
+          PGUSER: izakhono
+          PGPASSWORD: test-password
+        run: node --experimental-strip-types products/izakhono-isbn/runtime/postgres-integration.test.mjs
+      - name: Check self-hosted runtime server syntax
+        run: node --check products/izakhono-isbn/runtime/server.mjs
+      - name: Build self-hosted registry container image
+        run: docker build -f products/izakhono-isbn/runtime/Dockerfile -t izakhono-isbn-registry:ci .
+      - name: Smoke-test the self-hosted container against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://izakhono:test-password@127.0.0.1:5432/izakhono_isbn
+          ISBN_ADMIN_TOKEN: ci-test-admin-token
+        run: |
+          docker run --rm -d --name izakhono-isbn-runtime-ci --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e ISBN_ADMIN_TOKEN="$ISBN_ADMIN_TOKEN" \
+            izakhono-isbn-registry:ci
+          trap 'docker stop izakhono-isbn-runtime-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/api/health >/tmp/izakhono-health.json; then break; fi
+            sleep 2
+          done
+          node -e 'const h=require("/tmp/izakhono-health.json"); if(h.ok!==true || h.databaseConfigured!==true) process.exit(1);'
+          curl -fsS -H "Authorization: Bearer $ISBN_ADMIN_TOKEN" http://127.0.0.1:8080/api/dashboard | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(Number(x.works)!==7||Number(x.editions)!==1||Number(x.verifiedIsbns)!==0)process.exit(1);console.log("Self-hosted container HTTP/PostgreSQL smoke test passed.");});'
