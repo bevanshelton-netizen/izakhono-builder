@@ -62,3 +62,9 @@ Migration `migrations/0032_worknow_connector_core.sql` creates tenant-scoped emp
 ## Product blueprint
 
 See [`PRODUCT_BLUEPRINT.md`](./PRODUCT_BLUEPRINT.md) for the Africa-to-world product portfolio, employer and employee journeys, country capability gates, transparent proposal model, controlled AI action workflow, security/privacy requirements, migration approach and phased delivery plan. The blueprint is strategy and specification—not a claim of current service availability or legal readiness.
+
+## Authenticated server adapter contract
+
+`src/server-adapter.ts` defines the next server-side boundary for direct applications, applicant-owned reads and employer receipt acknowledgements. It accepts only trusted middleware-derived actor/tenant context, requires tenant-scoped store methods, checks employer membership and role for employer actions, and requires transactional state-plus-audit persistence for writes. It deliberately does not implement a database driver, HTTP route, authentication provider, CV upload, notification, or production integration. A concrete adapter must implement every store query with tenant and subject predicates, parameterized SQL, and transactionally appended audit records; these requirements must be reviewed before integration.
+
+`src/server-adapter.test.ts` adds focused tests to the `worknow:core:test` script. Tests have been authored but have not been executed in this session; CI and local validation remain required.
