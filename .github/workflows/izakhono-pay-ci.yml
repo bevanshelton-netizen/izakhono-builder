@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: products/izakhono-pay
@@ -31,6 +31,12 @@ jobs:
         run: npm run check
       - name: Verify product layout
         run: node scripts/verify-layout.mjs
+      - name: Install browser regression toolchain
+        run: npm install --no-save playwright@1.58.2 tsx@4.20.3
+      - name: Install Chromium for browser security tests
+        run: npx playwright install --with-deps chromium
+      - name: Run browser security and merchant workflow regressions
+        run: node --import tsx tests/browser-regression.mjs
       - name: Bundle Cloudflare Worker without production bindings
         run: npx wrangler deploy --dry-run --config wrangler.ci.jsonc
       - name: Fail if obvious live secrets were committed

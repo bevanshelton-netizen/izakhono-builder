@@ -3,9 +3,10 @@ import type { PaymentProvider } from './providers/types';
 import { assertPaymentAllowed, selectProvider, type MerchantOnboardingStatus, type ProviderRoute } from './routing';
 import { getMerchantControlCentre } from './merchant-control-centre';
 import { renderMerchantDashboard } from './merchant-dashboard';
-import { authenticateMerchant } from './auth';
+import { authenticateMerchant, generatePayApiKey, sha256 } from './auth';
 import { authenticateSession, createSession, readSessionCookie, sessionCookie, clearSessionCookie } from './session';
 import { invoiceApi, invoicePublicPage, linkInvoicePayment, attachInvoicePayment } from './invoice-api';
+import { renderDeviceDashboard, DEVICE_MANIFEST, DEVICE_ICON, DEVICE_SERVICE_WORKER } from './device-dashboard.js';
 
 export type PaymentStatus = 'initiated'|'pending'|'authorised'|'failed'|'reversed'|'refunded'|'settled'|'disputed';
 export interface Env { DB:D1Database; PAY_API_KEY?:string; PAY_WEBHOOK_SECRET?:string; }
@@ -14,6 +15,8 @@ const json=(data:unknown,status=200,extra:Record<string,string>={})=>new Respons
 const id=(p:string)=>`${p}_${crypto.randomUUID()}`; const now=()=>new Date().toISOString();
 const money=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null};
 const clean=(v:unknown,max=200)=>String(v??'').trim().slice(0,max);
+const pageNonce=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+const pageCsp=(nonce:string)=>`default-src 'none'; script-src 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'`;
 const esc=(v:unknown)=>clean(v,1000).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 async function body(req:Request){try{return await req.json() as Record<string,unknown>}catch{return null}}
 async function auth(req:Request,env:Env){if(env.PAY_API_KEY&&req.headers.get('authorization')===`Bearer ${env.PAY_API_KEY}`)return true;return !!(env.DB&&await authenticateMerchant(req,env.DB))}
@@ -24,6 +27,10 @@ function checkout(title:string,amount:number,currency:string,token:string){retur
 export default {async fetch(req:Request,env:Env):Promise<Response>{
  const url=new URL(req.url),path=url.pathname;
  if(req.method==='GET'&&path==='/health')return json({ok:true,service:'izakhono-pay-v1',ownedFirst:true,providerReplaceable:true,regulatedPartnerBoundary:true});
+ if(req.method==='GET'&&path==='/devices'){const nonce=pageNonce();return new Response(renderDeviceDashboard(nonce),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','permissions-policy':'camera=(), microphone=(), geolocation=()','content-security-policy':pageCsp(nonce)}});}
+ if(req.method==='GET'&&path==='/device.webmanifest')return json(DEVICE_MANIFEST,200,{'content-type':'application/manifest+json; charset=utf-8'});
+ if(req.method==='GET'&&path==='/device-icon.svg')return new Response(DEVICE_ICON,{headers:{'content-type':'image/svg+xml; charset=utf-8','cache-control':'public, max-age=86400','x-content-type-options':'nosniff'}});
+ if(req.method==='GET'&&path==='/device-sw.js')return new Response(DEVICE_SERVICE_WORKER,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-cache','service-worker-allowed':'/','x-content-type-options':'nosniff'}});
  if(!env.DB)return json({error:'database_not_configured'},503);
  const publicInvoice=path.match(/^\/invoice\/([^/]+)$/);
  if(req.method==='GET'&&publicInvoice)return invoicePublicPage(req,env,publicInvoice[1]);
@@ -32,7 +39,7 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  const publicLink=path.match(/^\/pay\/([^/]+)$/);
  if(req.method==='GET'&&publicLink){const r=await env.DB.prepare('SELECT title,amount,currency,status FROM pay_links WHERE token=?').bind(publicLink[1]).first<any>();if(!r||r.status!=='active')return new Response('Payment link unavailable',{status:404});return new Response(checkout(r.title,r.amount,r.currency,publicLink[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}
  const dashboard=path.match(/^\/dashboard\/([^/]+)$/);
- if(req.method==='GET'&&dashboard){const s=await sessionMerchant(req,env);if(!s||s.merchantId!==dashboard[1])return new Response('Merchant sign-in required',{status:401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});return new Response(renderMerchantDashboard(dashboard[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
+ if(req.method==='GET'&&dashboard){const s=await sessionMerchant(req,env);if(!s||s.merchantId!==dashboard[1])return new Response('Merchant sign-in required',{status:401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});const nonce=pageNonce();return new Response(renderMerchantDashboard(dashboard[1],nonce),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':pageCsp(nonce)}})}
  const login=path.match(/^\/dashboard\/([^/]+)\/login$/);
  if(req.method==='POST'&&login){const b=await body(req);const token=clean(b?.api_key,300);if(!token)return json({error:'api_key_required'},400);const a=await authenticateMerchant(new Request(req.url,{headers:{authorization:`Bearer ${token}`}}),env.DB);if(!a||a.merchantId!==login[1])return json({error:'invalid_merchant_credentials'},401);const s=await createSession(env.DB,a.merchantId);return json({ok:true,merchant_id:a.merchantId,expires_at:s.expiresAt},{headers:{'set-cookie':sessionCookie(s.raw)}})}
  const logout=path.match(/^\/dashboard\/([^/]+)\/logout$/);
@@ -40,6 +47,29 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  if(path.startsWith('/v1/webhooks/'))return webhook(req,env,path.split('/').pop()||'unknown');
  const publicIntent=path.match(/^\/v1\/public\/payment-links\/([^/]+)\/intent$/);
  if(req.method==='POST'&&publicIntent){const link=await env.DB.prepare('SELECT merchant_id,amount,currency,title,status FROM pay_links WHERE token=?').bind(publicIntent[1]).first<any>();if(!link||link.status!=='active')return json({error:'payment_link_unavailable'},404);return createIntent(env,link.merchant_id,link.amount,link.currency,link.title,req.headers.get('idempotency-key')||`public-${crypto.randomUUID()}`,{link_token:publicIntent[1]})}
+ const apiKeys=path.match(/^\/v1\/merchants\/([^/]+)\/api-keys(?:\/([^/]+)\/revoke)?$/);
+ if(apiKeys&&['GET','POST'].includes(req.method)){
+  const merchantId=apiKeys[1],session=await sessionMerchant(req,env);
+  if(!session||session.merchantId!==merchantId)return json({error:'merchant_unauthorized'},403);
+  if(req.method==='GET'&&!apiKeys[2]){
+   const rows=await env.DB.prepare('SELECT id,label,key_prefix,status,created_at,last_used_at,revoked_at FROM pay_api_keys WHERE merchant_id=? ORDER BY created_at DESC').bind(merchantId).all();
+   return json({merchant_id:merchantId,data:rows.results||[]});
+  }
+  if(req.method==='POST'&&!apiKeys[2]){
+   const b=await body(req);if(!b)return json({error:'invalid_json'},400);
+   const label=clean(b.label||'Merchant API key',120);if(!label)return json({error:'label_required'},400);
+   const key=generatePayApiKey(),keyId=id('key'),created=now(),hash=await sha256(key.raw);
+   await env.DB.prepare('INSERT INTO pay_api_keys (id,merchant_id,key_hash,key_prefix,label,status,created_at) VALUES (?,?,?,?,?,?,?)').bind(keyId,merchantId,hash,key.prefix,label,'active',created).run();
+   await audit(env,merchantId,'merchant.api_key.created',{key_id:keyId,key_prefix:key.prefix,label});
+   return json({id:keyId,api_key:key.raw,key_prefix:key.prefix,label,status:'active',created_at:created},201);
+  }
+  if(req.method==='POST'&&apiKeys[2]){
+   const result=await env.DB.prepare("UPDATE pay_api_keys SET status='revoked',revoked_at=? WHERE id=? AND merchant_id=? AND status='active'").bind(now(),apiKeys[2],merchantId).run();
+   if(!Number(result.meta?.changes||0))return json({error:'api_key_not_found_or_inactive'},404);
+   await audit(env,merchantId,'merchant.api_key.revoked',{key_id:apiKeys[2]});
+   return json({ok:true,id:apiKeys[2],status:'revoked'});
+  }
+ }
  if(!(await auth(req,env)))return json({error:'unauthorized'},401);
  const invoiceHandled=await invoiceApi(req,env,path);if(invoiceHandled)return invoiceHandled;
  if(req.method==='POST'&&path==='/v1/merchants'){const b=await body(req);if(!b)return json({error:'invalid_json'},400);const name=clean(b.name,160);if(!name)return json({error:'name_required'},400);const merchantId=id('mch');await env.DB.prepare('INSERT INTO pay_merchants (id,name,email,status,created_at) VALUES (?,?,?,?,?)').bind(merchantId,name,clean(b.email,254),'pending_kyb',now()).run();await audit(env,merchantId,'merchant.created',{status:'pending_kyb'});return json({id:merchantId,name,status:'pending_kyb'},201)}
