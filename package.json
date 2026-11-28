@@ -7,7 +7,7 @@
     "mail:plan": "node mail/node01-mail-engine.mjs plan",
     "dev": "wrangler dev",
     "ai-agent:run": "node autonomy/ai-agent-worker.mjs",
-    "ai-agent:test": "node autonomy/ai-agent-worker.test.mjs && node autonomy/ai-agent-planner.test.mjs",
+    "ai-agent:test": "node autonomy/worker-result.test.mjs && node autonomy/ai-agent-worker.test.mjs && node autonomy/ai-agent-planner.test.mjs",
     "credits-free:guard": "node autonomy/credits-free-guard.mjs",
     "software-node:instantiate": "node autonomy/software-node.mjs '{\"operation\":\"instantiate\"}'",
     "software-node:heartbeat": "node autonomy/software-node.mjs '{\"operation\":\"heartbeat\"}'",
