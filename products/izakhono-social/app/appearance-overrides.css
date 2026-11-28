@@ -20,3 +20,428 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(max-width:780px){.topbar{height:62px;grid-template-columns:1fr auto;padding:0 12px}.brandMark{width:38px;height:38px;border-radius:12px}.brand{font-size:12px}.privacyStrip{font-size:10px;padding:7px 10px}.threeColumn{padding:10px 10px 80px}.feed{gap:12px}.heroCard{min-height:200px;padding:22px 20px;border-radius:20px}.heroCard h1{font-size:30px}.composer,.postCard{border-radius:18px}.composer{padding:13px}.postCard{padding:16px}.postText{font-size:14px}.postActions{gap:2px}.postActions button{font-size:11px;padding:7px 4px}.railLinks{padding-left:4px}.sideCard,.safetyCard{padding:16px}}
 @media(max-width:430px){.topActions{gap:5px}.iconButton{width:38px;height:38px}.profileButton{height:38px;padding:0 6px}.avatar{width:38px;height:38px}.heroCard p{font-size:12px}.composerTools button{padding:7px 5px}.postMeta{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* CONNECTA — Global Edition visual system
+   Warm mineral neutrals, deep botanical green and restrained champagne.
+   The visual language is intentionally editorial, calm and premium—not ornamental.
+*/
+.cxApp,.cxLoading,.cxAuth{
+  --cx-bg:#f6f4ee;
+  --cx-panel:#fffefa;
+  --cx-panel2:#f0eee6;
+  --cx-line:#e7e1d5;
+  --cx-text:#1b3028;
+  --cx-muted:#78857d;
+  --cx-soft:#52655b;
+  --cx-accent:#176b54;
+  --cx-accent2:#c4a15a;
+  --cx-blue:#477c92;
+  --cx-pink:#a94d57;
+  --cx-green:#287b5d;
+  color:var(--cx-text);
+  color-scheme:light;
+}
+.cxApp{
+  max-width:1480px;
+  grid-template-columns:250px minmax(0,720px) 330px;
+  gap:0;
+  background:
+    radial-gradient(ellipse at 2% 0%,rgba(196,161,90,.09),transparent 28rem),
+    linear-gradient(180deg,#faf9f5 0%,#f5f3ed 100%);
+}
+.cxLeft{
+  padding:22px 18px 18px 10px;
+  border-right:1px solid rgba(218,211,197,.8);
+  background:rgba(255,254,250,.76);
+  backdrop-filter:blur(18px);
+}
+.cxBrandLockup.compact{padding:4px 10px 24px}
+.cxBrandMark{
+  width:48px;height:48px;border-radius:16px;
+  background:linear-gradient(145deg,#123e31,#1a795c 72%,#c4a15a)!important;
+  color:#fff!important;
+  box-shadow:0 12px 28px rgba(19,74,55,.19),inset 0 1px rgba(255,255,255,.24);
+}
+.cxBrandLockup strong{font-size:14px;letter-spacing:.15em;color:#19392e}
+.cxBrandLockup small,.cxBrandLockup span span{color:#a88748;letter-spacing:.2em}
+.cxNav{gap:5px}
+.cxNav>button{
+  border-radius:13px;padding:12px 13px;gap:13px;
+  color:#52645b;font-size:14px;
+}
+.cxNav>button>span{font-size:20px}
+.cxNav>button:hover{background:#f0f2eb;color:#1d5b46}
+.cxNav>button.active{
+  background:linear-gradient(90deg,#e8f0e9,#f4f4ed);
+  color:#14563f;
+  box-shadow:inset 3px 0 #b99a5b;
+}
+.cxNav>button>b{font-weight:750}
+.cxNav>button>em{background:#c4a15a;color:#fff}
+.cxComposeButton{
+  margin:20px 4px 0;border-radius:12px;padding:14px;
+  background:linear-gradient(120deg,#174d3b,#1c7658)!important;
+  color:#fff!important;font-size:14px;letter-spacing:.02em;
+  box-shadow:0 10px 24px rgba(20,82,59,.17);
+}
+.cxComposeButton:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(20,82,59,.22)}
+.cxAccountButton{border:1px solid transparent;margin-top:auto}
+.cxAccountButton:hover{background:#f0f2ec;border-color:#e5e5d9}
+.cxAccountButton strong{color:#213b30}
+.cxAccountButton small{color:#78857d}
+.cxCenter{border-right:1px solid rgba(218,211,197,.8);background:rgba(255,254,250,.62)}
+.cxTopbar{
+  background:rgba(250,249,245,.92);
+  border-bottom:1px solid var(--cx-line);
+  backdrop-filter:blur(20px);
+  padding:12px 22px;
+}
+.cxTopbar strong{font-size:18px;letter-spacing:-.025em;color:#20372d}
+.cxTopbar span{color:#879188;font-size:10px;letter-spacing:.035em}
+.cxFeedTabs{
+  background:rgba(255,254,250,.82);
+  border-bottom-color:var(--cx-line);
+}
+.cxFeedTabs button{color:#7a867e}
+.cxFeedTabs button:hover{background:#f4f3ed;color:#244b3a}
+.cxFeedTabs button.active{color:#1c5b43}
+.cxFeedTabs button.active:after{background:linear-gradient(90deg,#1a7456,#c4a15a);height:3px}
+.cxAvatar{
+  background:linear-gradient(145deg,#dce9df,#c9d8c8 58%,#e9dfc6);
+  color:#24523d;
+  box-shadow:inset 0 0 0 1px rgba(26,83,59,.08);
+}
+.cxComposer{
+  background:rgba(255,254,250,.9);
+  border-bottom:1px solid var(--cx-line);
+  padding:20px 22px 14px;
+}
+.cxComposer textarea{color:#20372d;font-size:17px}
+.cxComposer textarea::placeholder{color:#98a198}
+.cxComposerMeta{color:#89958c}
+.cxComposerMeta span:first-child{color:#176b54}
+.cxComposerBottom{border-top-color:#ece8dd}
+.cxComposerTools button{color:#a88748!important}
+.cxComposerTools button:hover{background:#f2efe5}
+.cxPrimaryButton{
+  background:linear-gradient(120deg,#174d3b,#1b7958)!important;
+  color:#fff!important;
+  border-radius:11px;
+  box-shadow:0 7px 18px rgba(20,82,59,.15);
+}
+.cxPrimaryButton:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px)}
+.cxFeedNotice{
+  background:#edf3ec;
+  border-bottom:1px solid #e0e9de;
+  color:#476354;
+}
+.cxFeedNotice>span{color:#b18c4c}
+.cxFeedNotice strong{color:#20553e}
+.cxFeedNotice small{color:#748379}
+.cxFeedNotice button{color:#176b54!important}
+.cxPost{
+  background:rgba(255,254,250,.96);
+  border-bottom:1px solid var(--cx-line);
+  padding:20px 22px 13px;
+  transition:background .18s ease;
+}
+.cxPost:hover{background:#fff}
+.cxPostText,.cxPost p{color:#293e34}
+.cxIdentity strong,.cxPost strong{color:#1e382d}
+.cxIdentity span,.cxPost time{color:#89948c}
+.cxPostActions{border-top:1px solid #f0ede5}
+.cxPostActions button{color:#78877e!important;border-radius:9px}
+.cxPostActions button:hover{background:#f0f3ed;color:#176b54!important}
+.cxPostActions button.liked{color:#b45360!important}
+.cxPostActions button.reposted,.cxPostActions button.bookmarked{color:#176b54!important}
+.cxVerified{background:#e5f0e8;color:#176b54;border:1px solid #d3e4d8}
+.cxRight{padding:18px 0 30px 22px}
+.cxSearchBox{
+  background:#fffefa;border:1px solid #e4e0d5;
+  box-shadow:0 4px 18px rgba(38,57,43,.045);
+}
+.cxSearchBox:focus-within{border-color:#9ab8a4;background:#fff}
+.cxSearchBox input{color:#20372d}
+.cxSearchBox input::placeholder{color:#9aa39a}
+.cxSearchBox span,.cxSearchBox button{color:#a88748!important}
+.cxSideCard{
+  background:rgba(255,254,250,.96);
+  border:1px solid #e7e1d5;border-radius:17px;
+  box-shadow:0 8px 24px rgba(41,57,44,.045);
+}
+.cxNetworkCard{
+  position:relative;
+  overflow:hidden;
+  padding:21px;
+  background:
+    radial-gradient(circle at 90% 8%,rgba(219,190,127,.22),transparent 11rem),
+    linear-gradient(145deg,#123d31 0%,#185b43 60%,#1b7052 100%);
+  border:1px solid rgba(196,161,90,.35);
+  box-shadow:0 18px 36px rgba(18,61,47,.15);
+}
+.cxNetworkCard:after{
+  content:"";
+  position:absolute;right:-42px;bottom:-72px;width:190px;height:190px;
+  border:1px solid rgba(231,211,165,.22);border-radius:50%;
+  box-shadow:0 0 0 17px rgba(231,211,165,.035),0 0 0 35px rgba(231,211,165,.025);
+  pointer-events:none;
+}
+.cxNetworkCard .cxEyebrow{color:#e3c98e}
+.cxNetworkCard h2{font-family:Georgia,"Times New Roman",serif;font-size:27px;line-height:1.08;color:#fff9eb;max-width:240px}
+.cxNetworkCard p{color:#d9e7dc;font-size:12px;line-height:1.65}
+.cxNetworkPills span{border-color:rgba(236,226,199,.25);color:#f1e7ce;background:rgba(255,255,255,.055)}
+.cxSideTitle h3{color:#263e32;font-size:14px}
+.cxSideTitle button{color:#176b54!important}
+.cxTrends button:hover,.cxPerson:hover{background:#f4f4ed}
+.cxTrends small,.cxTrends span{color:#8b958c}
+.cxTrends strong{color:#30483a}
+.cxMuted{color:#89948c}
+.cxPersonIdentity strong{color:#263e32}
+.cxPersonIdentity small{color:#8b958c}
+.cxMiniFollow{
+  background:#edf3ed!important;color:#176b54!important;
+  border:1px solid #dce8dc!important;border-radius:9px;
+}
+.cxMiniFollow:hover{background:#e2eee4!important}
+.cxMiniFollow.following{background:#fffefa!important;color:#718078!important}
+.cxFooter{border-top:1px solid #e8e3d8;color:#89948c}
+.cxFooter a,.cxFooter button{color:#6d7d72}
+.cxMobileNav{
+  background:rgba(255,254,250,.96);
+  border-top:1px solid #e5dfd3;
+  box-shadow:0 -8px 28px rgba(30,54,39,.07);
+  backdrop-filter:blur(20px);
+}
+.cxMobileNav button{color:#89948c!important}
+.cxMobileNav button.active{color:#176b54!important}
+.cxMobileNav em{background:#c4a15a;color:#fff}
+.cxMobilePost{background:#e8f0e9;color:#176b54!important}
+.cxModalBackdrop{background:rgba(19,37,29,.42)}
+.cxModalComposer{
+  background:#fffefa;border:1px solid #e7e1d5;
+  box-shadow:0 30px 90px rgba(19,45,33,.22);
+}
+.cxModalHead,.cxModalBottom{color:#263e32}
+.cxModalComposer textarea{color:#263e32}
+.cxModalBottom{border-top-color:#e9e5db}
+.cxModalBottom span{color:#89948c}
+.cxStatus{background:#eaf2eb;border-bottom-color:#dce8dc;color:#24583f}
+.cxStatus button{color:#24583f}
+.cxEmpty,.cxPanel,.cxThread,.cxReplies,.cxMessagesGrid,.cxProfile,.cxCommunityList,.cxInviteList{
+  color:#263e32;
+}
+.cxPanelIntro h2,.cxSectionTitle strong{color:#20392e}
+.cxPanelIntro p,.cxPanelIntro .cxMuted{color:#7b887e}
+.cxPanelIntro{border-bottom-color:#e9e4d9}
+.cxBigSearch,.cxCommunityCreate,.cxInviteCreate,.cxProfileEdit,.cxReplyComposer,.cxMessageComposer{
+  background:#fffefa;border-color:#e7e1d5;
+}
+.cxBigSearch input,.cxCommunityCreate input,.cxInviteCreate input,.cxProfileEdit input,.cxProfileEdit textarea,.cxMessageComposer input{
+  color:#243d31;background:#fbfaf6;border-color:#e4e0d5;
+}
+.cxBigSearch input::placeholder,.cxCommunityCreate input::placeholder,.cxInviteCreate input::placeholder,.cxMessageComposer input::placeholder{color:#9aa39a}
+.cxCommunityList article,.cxInviteList article,.cxReply,.cxConversationList>button,.cxMessageHead{
+  border-color:#e9e4d9;
+}
+.cxCommunityList article:hover,.cxConversationList>button:hover,.cxConversationList>button.active{background:#f5f4ed}
+.cxCommunityList article strong,.cxInviteList article strong,.cxConversationList strong,.cxMessageHead strong{color:#263e32}
+.cxCommunityList article small,.cxCommunityList article p,.cxInviteList article small,.cxInviteList article span,.cxConversationList small,.cxConversationList i,.cxMessageHead small{color:#849087}
+.cxCommunityMark{background:#e9efe6;color:#24583f}
+.cxProfileCover{background:linear-gradient(115deg,#153e31,#24664b 58%,#c4a15a)!important}
+.cxProfileInfo h2,.cxProfileInfo p,.cxProfileStats{color:#263e32}
+.cxHandle,.cxProfileMeta{color:#849087}
+.cxSecondaryButton,.cxFollowButton{
+  border-color:#dce5d9;background:#f0f4ed;color:#176b54;
+}
+.cxBubble{background:#f1f2ec;border-color:#e5e4da;color:#263e32}
+.cxBubble.mine{background:#e6f1e8;border-color:#d4e5d7}
+.cxBubble small{color:#176b54}
+.cxBubble p{color:#263e32}
+.cxBubble i{color:#849087}
+.cxAuth{
+  --cx-bg:#f6f4ee;--cx-panel:#fffefa;--cx-panel2:#f0eee6;
+  --cx-line:#e7e1d5;--cx-text:#1b3028;--cx-muted:#78857d;
+  --cx-soft:#52655b;--cx-accent:#176b54;--cx-accent2:#c4a15a;
+  background:
+    radial-gradient(circle at 8% 12%,rgba(196,161,90,.14),transparent 27rem),
+    radial-gradient(circle at 88% 85%,rgba(23,107,84,.11),transparent 30rem),
+    linear-gradient(135deg,#faf9f5,#f2f0e8);
+}
+.cxAuthCopy h1{font-family:Georgia,"Times New Roman",serif;font-weight:500;letter-spacing:-.055em;color:#19382d}
+.cxAuthCopy h1 em{background:linear-gradient(100deg,#176b54,#a98748);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cxAuthCopy p{color:#617168}
+.cxTrustGrid>div{
+  background:rgba(255,254,250,.78);
+  border-color:rgba(222,216,201,.92);
+  box-shadow:0 12px 30px rgba(39,62,45,.045);
+}
+.cxTrustGrid>div:before{background:#e7efe6;color:#176b54}
+.cxTrustGrid b{color:#254335}
+.cxTrustGrid span{color:#78857d}
+.cxAuthCard{
+  background:rgba(255,254,250,.94);
+  border-color:rgba(221,215,201,.95);
+  box-shadow:0 30px 80px rgba(34,57,41,.12),0 1px 0 rgba(255,255,255,.9) inset;
+}
+.cxAuthCard:before{color:#9b895f}
+.cxAuthTabs{background:#f0eee6;border-color:#e7e1d5}
+.cxAuthTabs button{color:#78857d!important}
+.cxAuthTabs button.active{background:#fffefa;color:#174c39!important;box-shadow:0 4px 15px rgba(34,57,41,.08)}
+.cxAuthCard h2{color:#1c3c2e}
+.cxAuthForm label{color:#6c7b70}
+.cxAuthForm input{background:#fbfaf6;border-color:#e4e0d5;color:#243d31}
+.cxAuthForm input:focus{border-color:#8eaf99;box-shadow:0 0 0 4px rgba(23,107,84,.09)}
+.cxFine{color:#849087}
+.cxError{background:#fbefec;border-color:#ecd2ca;color:#8a3d32}
+.cxAuthLinks a{color:#176b54}
+.cxLoading{background:radial-gradient(circle at 50% 30%,#e8eee4,transparent 30rem),#f6f4ee}
+.cxLoading strong{color:#214333}
+.cxLoading span{color:#7d8b80}
+@media(max-width:1110px){
+  .cxApp{grid-template-columns:78px minmax(0,660px) 330px;max-width:1068px}
+}
+@media(max-width:860px){
+  .cxApp{background:#f7f5ef}
+  .cxMobileNav{background:rgba(255,254,250,.97)}
+  .cxTopbar{background:rgba(250,249,245,.96)}
+}
+@media(max-width:560px){
+  .cxPost{padding:15px 13px 10px}
+  .cxComposer{padding:14px 13px 12px}
+  .cxAuthCopy h1{font-size:clamp(42px,12vw,62px)}
+}
+
+
+/* CONNECTA Global Edition — final interface polish */
+:root{
+  color-scheme:light;
+  --connecta-forest:#153f32;
+  --connecta-emerald:#176b54;
+  --connecta-emerald-deep:#104936;
+  --connecta-ivory:#f7f5ef;
+  --connecta-paper:#fffefa;
+  --connecta-champagne:#c4a15a;
+  --connecta-ink:#20372d;
+  --connecta-muted:#78857d;
+  --connecta-hairline:#e7e1d5;
+  --connecta-shadow:0 14px 38px rgba(25,55,41,.065);
+}
+html:focus-within{scroll-behavior:smooth}
+body{background:var(--connecta-ivory);color:var(--connecta-ink);text-rendering:optimizeLegibility}
+::selection{background:rgba(196,161,90,.28);color:var(--connecta-forest)}
+.cxApp{isolation:isolate;min-height:100vh}
+.cxLeft{position:sticky;top:0;height:100vh;min-height:620px}
+.cxCenter{min-width:0;min-height:100vh}
+.cxTopbar{position:sticky;top:0;z-index:15;min-height:68px}
+.cxTopbar strong{font-family:Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:-.035em}
+.cxTopbar span{letter-spacing:.08em;text-transform:uppercase}
+.cxBrandMark{position:relative;isolation:isolate;overflow:hidden}
+.cxBrandMark:after{content:"";position:absolute;inset:5px;border:1px solid rgba(245,231,196,.38);border-radius:12px;pointer-events:none}
+.cxBrandLockup strong{font-family:Georgia,"Times New Roman",serif;font-size:16px;letter-spacing:.17em}
+.cxNav>button{min-height:46px;transition:background .18s ease,color .18s ease,transform .18s ease}
+.cxNav>button:hover{transform:translateX(2px)}
+.cxComposeButton,.cxPrimaryButton{letter-spacing:.015em}
+.cxComposeButton:focus-visible,.cxPrimaryButton:focus-visible,.cxMiniFollow:focus-visible,.cxPostActions button:focus-visible,.cxMobileNav button:focus-visible{outline:3px solid rgba(196,161,90,.55);outline-offset:3px}
+.cxFeedTabs{position:sticky;top:68px;z-index:10;backdrop-filter:blur(16px)}
+.cxFeedTabs button{min-height:48px;font-weight:650;letter-spacing:.01em}
+.cxFeedTabs button.active{font-weight:800}
+.cxComposer{
+  margin:16px 18px 18px;
+  border:1px solid var(--connecta-hairline);
+  border-radius:20px;
+  box-shadow:var(--connecta-shadow);
+}
+.cxComposer textarea{min-height:88px;line-height:1.55}
+.cxComposer textarea:focus-visible{outline:3px solid rgba(23,107,84,.13);outline-offset:1px}
+.cxComposerBottom{padding-top:12px}
+.cxPost{
+  margin:0 18px 14px;
+  border:1px solid var(--connecta-hairline);
+  border-radius:19px;
+  box-shadow:0 8px 26px rgba(25,55,41,.045);
+  overflow:hidden;
+}
+.cxPost:hover{box-shadow:0 13px 34px rgba(25,55,41,.075);transform:translateY(-1px)}
+.cxPostText{font-size:15px;line-height:1.75;letter-spacing:.002em;overflow-wrap:anywhere}
+.cxIdentity strong{font-size:13px;letter-spacing:-.01em}
+.cxIdentity span,.cxPost time{font-size:11px}
+.cxPostActions{padding-top:9px;margin-top:5px}
+.cxPostActions button{min-height:38px;font-weight:650;transition:background .16s ease,color .16s ease,transform .16s ease}
+.cxPostActions button:active{transform:scale(.97)}
+.cxRight{padding:20px 18px 36px}
+.cxSearchBox{min-height:46px;border-radius:13px}
+.cxSideCard{padding:20px}
+.cxNetworkCard{min-height:224px;border-radius:20px}
+.cxNetworkCard h2{font-weight:500;letter-spacing:-.045em}
+.cxPerson{padding:11px 4px;border-radius:11px;transition:background .16s ease}
+.cxPersonIdentity{min-width:0}
+.cxPersonIdentity strong{font-size:12px}
+.cxMiniFollow{min-width:76px;min-height:32px;font-weight:750;transition:all .16s ease}
+.cxMiniFollow:hover{transform:translateY(-1px)}
+.cxAvatar{border-radius:14px}
+.cxAvatar.small{border-radius:11px}
+.cxVerified{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;font-size:10px;vertical-align:middle}
+.cxFooter{font-size:10px;line-height:1.8}
+.cxStatus{border-radius:0 0 12px 12px}
+.cxModalBackdrop{backdrop-filter:blur(5px)}
+.cxModalComposer{border-radius:22px}
+.cxAuth{min-height:100svh}
+.cxAuthStory{padding-block:clamp(28px,5vw,72px)}
+.cxAuthCopy h1{font-size:clamp(48px,6vw,76px);line-height:.99}
+.cxAuthCopy p{font-size:16px;line-height:1.8;max-width:590px}
+.cxTrustGrid{gap:13px}
+.cxTrustGrid>div{border-radius:16px;padding:17px}
+.cxAuthCard{border-radius:24px;padding:clamp(22px,3vw,34px)}
+.cxAuthCard h2{font-family:Georgia,"Times New Roman",serif;font-size:34px;font-weight:500;letter-spacing:-.045em}
+.cxAuthForm{gap:16px}
+.cxAuthForm label{gap:8px}
+.cxAuthForm input{min-height:48px;border-radius:11px}
+.cxAuthForm input:focus-visible{outline:3px solid rgba(23,107,84,.14);outline-offset:1px}
+.cxAuthForm .cxPrimaryButton{min-height:48px;margin-top:4px}
+.cxFine{line-height:1.7}
+.cxEmpty{border:1px dashed #d9dfd4;border-radius:16px;padding:28px;background:rgba(255,254,250,.65)}
+.cxPanelIntro h2,.cxSectionTitle strong{font-family:Georgia,"Times New Roman",serif;font-weight:500;letter-spacing:-.035em}
+.cxBigSearch,.cxCommunityCreate,.cxInviteCreate,.cxProfileEdit,.cxReplyComposer,.cxMessageComposer{border-radius:16px;box-shadow:0 8px 24px rgba(25,55,41,.04)}
+.cxConversationList>button{border-radius:12px}
+.cxBubble{border-radius:16px}
+.cxBubble.mine{border-bottom-right-radius:5px}
+.cxBubble:not(.mine){border-bottom-left-radius:5px}
+a{ text-underline-offset:3px }
+button:disabled{cursor:not-allowed;filter:saturate(.65)}
+@media(min-width:1440px){
+  .cxApp{max-width:1560px;grid-template-columns:260px minmax(0,760px) 340px}
+  .cxPost,.cxComposer{margin-left:22px;margin-right:22px}
+  .cxRight{padding-left:24px;padding-right:22px}
+}
+@media(max-width:1110px){
+  .cxApp{grid-template-columns:82px minmax(0,1fr) 300px}
+  .cxLeft{padding-inline:9px}
+  .cxBrandLockup.compact{justify-content:center;padding-inline:0}
+  .cxNav>button{justify-content:center;padding-inline:8px}
+}
+@media(max-width:860px){
+  .cxLeft{height:auto;min-height:0}
+  .cxCenter{min-height:100svh}
+  .cxFeedTabs{top:62px}
+  .cxComposer{margin:12px 12px 14px}
+  .cxPost{margin:0 12px 12px}
+  .cxRight{display:none}
+}
+@media(max-width:560px){
+  .cxTopbar{min-height:62px;padding:10px 14px}
+  .cxTopbar strong{font-size:17px}
+  .cxComposer{border-radius:17px}
+  .cxPost{border-radius:16px}
+  .cxPostText{font-size:14px;line-height:1.7}
+  .cxPostActions button{font-size:11px;min-height:36px;padding-inline:3px}
+  .cxAuth{padding:22px 16px}
+  .cxAuthStory{padding:10px 0 24px}
+  .cxAuthCopy h1{font-size:clamp(43px,12vw,60px)}
+  .cxTrustGrid{grid-template-columns:1fr 1fr}
+  .cxAuthCard{padding:21px;border-radius:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  html:focus-within{scroll-behavior:auto}
+  .cxPost:hover,.cxNav>button:hover,.cxMiniFollow:hover{transform:none}
+}
