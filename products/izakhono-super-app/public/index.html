@@ -19,6 +19,8 @@
         <button class="nav active" data-view="home">Overview</button>
         <button class="nav" data-view="ai-command">AI Command</button>
         <button class="nav" data-view="creator">Creator Engine</button>
+        <button class="nav" data-view="growth-engine">Growth Engine</button>
+        <button class="nav" data-view="business-studio">Business Studio</button>
         <button class="nav" data-view="affiliate">Affiliate</button>
         <button class="nav" data-view="finance">Finance Core</button>
         <button class="nav" data-view="automation">Automation</button>
@@ -56,6 +58,7 @@
             <p>The Creator Engine joins ideas, writing, research, design, image, video, audio and automation with Affiliate, CRM, accounting, fraud protection and the FLOW lead-to-cash operating chain.</p>
             <div class="actions">
               <button class="primary" data-jump="creator">Open Creator Engine</button>
+              <button class="secondary" data-jump="growth-engine">Open Growth Engine</button>
               <button class="secondary" data-jump="affiliate">Open Affiliate Engine</button>
               <button class="secondary" data-jump="portfolio">View Portfolio Modules</button>
             </div>
@@ -169,6 +172,138 @@
         </article>
       </section>
 
+
+      <section id="growth-engine" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">GROWTH STRATEGY → CREATIVE → DISTRIBUTION → MEASUREMENT</p>
+            <h2>IZAKHONO Growth Engine</h2>
+            <p>Plan measurable customer acquisition and conversion work across existing IZAKHONO engines. This workspace creates a local plan only; connected advertising, publishing and spend remain disabled.</p>
+          </div>
+          <span class="badge gold">PLANNING WORKSPACE · NOT LIVE MEDIA</span>
+        </div>
+
+        <div class="metrics">
+          <article><span>Meta Ads</span><strong>OFF</strong><small>Not connected</small></article>
+          <article><span>Google Ads</span><strong>OFF</strong><small>Not connected</small></article>
+          <article><span>Campaign execution</span><strong>PAUSED</strong><small>Approval and adapters required</small></article>
+          <article><span>Paid spend</span><strong>LOCKED</strong><small>Owner/client authorisation required</small></article>
+        </div>
+
+        <div class="grid two">
+          <article class="creator-command panel">
+            <div class="command-copy">
+              <span class="kicker">GROWTH PLAN BUILDER</span>
+              <h3>What are we growing?</h3>
+              <p>Create a structured plan for an IZAKHONO brand or an approved client engagement.</p>
+            </div>
+            <label>Brand or business
+              <input id="growthBusiness" type="text" maxlength="120" placeholder="Enter brand or business name">
+            </label>
+            <div class="command-row">
+              <label>Primary objective
+                <select id="growthObjective">
+                  <option value="sales">Increase sales</option>
+                  <option value="leads">Generate qualified leads</option>
+                  <option value="awareness">Build awareness</option>
+                  <option value="launch">Launch a product</option>
+                  <option value="retention">Improve retention</option>
+                </select>
+              </label>
+              <label>Channel focus
+                <select id="growthChannels">
+                  <option value="both">Meta + Google (planning only)</option>
+                  <option value="meta">Meta (planning only)</option>
+                  <option value="google">Google (planning only)</option>
+                  <option value="organic">Organic + owned channels</option>
+                </select>
+              </label>
+              <label>Planning horizon
+                <select id="growthWindow">
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30" selected>30 days</option>
+                  <option value="90">90 days</option>
+                </select>
+              </label>
+            </div>
+            <div class="actions">
+              <button id="buildGrowthPlan" class="primary" type="button">Build growth plan</button>
+              <button id="clearGrowthPlan" class="secondary" type="button">Clear</button>
+            </div>
+            <p id="growthStatus" class="status-line" role="status">Planning is available locally. No account is connected, no campaign is created and no money can be spent from this workspace.</p>
+          </article>
+
+          <article class="panel creator-plan-panel">
+            <div class="panel-head"><h3>Growth execution map</h3><span class="badge gold">PREVIEW ONLY</span></div>
+            <div id="growthPlan" class="creator-plan-empty">Enter a brand or business and build a plan. The preview is not an advertisement, campaign, forecast or performance guarantee.</div>
+          </article>
+        </div>
+
+        <div class="grid three">
+          <article class="panel mini"><span class="kicker">CREATIVE</span><h3>IZAKHONO CREATE</h3><p>Creative briefs, original assets, variants, approvals and rights tracking.</p></article>
+          <article class="panel mini"><span class="kicker">DISTRIBUTION</span><h3>IZAKHONO ADS</h3><p>Campaign planning and distribution controls. External publishing remains disabled.</p></article>
+          <article class="panel mini"><span class="kicker">CONVERSION</span><h3>BUILDER + ANALYTICS</h3><p>Landing-page, funnel and checkout optimisation with evidence-based measurement.</p></article>
+        </div>
+      </section>
+
+
+      <section id="business-studio" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">BRAND · DIGITAL · SYSTEMS · AI · LEADERSHIP</p>
+            <h2>IZAKHONO Business Studio</h2>
+            <p>One accountable partner for shaping, building and sustaining the capability behind a stronger business. Services are coordinated through IZAKHONO's independent engines, not duplicated inside a parallel agency stack.</p>
+          </div>
+          <span class="badge gold">PLANNING WORKSPACE · NOT PUBLIC-LIVE</span>
+        </div>
+        <div class="metrics">
+          <article><span>Service capabilities</span><strong>10</strong><small>Connected disciplines</small></article>
+          <article><span>Delivery model</span><strong>BUILD</strong><small>Design and implement</small></article>
+          <article><span>Continuity model</span><strong>SUSTAIN</strong><small>Operate and improve</small></article>
+          <article><span>Leadership model</span><strong>ALIGN</strong><small>Govern and guide</small></article>
+        </div>
+        <div class="grid three">
+          <article class="panel mini"><span class="kicker">01 · BUILD</span><h3>Design the capability</h3><p>Brand foundations, digital experiences, software, integrations, AI and automation built around defined business outcomes.</p></article>
+          <article class="panel mini"><span class="kicker">02 · SUSTAIN</span><h3>Keep it performing</h3><p>Managed services, support, SEO, growth optimisation, AI oversight, monitoring and continuous improvement.</p></article>
+          <article class="panel mini"><span class="kicker">03 · ALIGN</span><h3>Lead with direction</h3><p>Fractional CIO, architecture governance, technology roadmaps, vendor oversight, risk and investment prioritisation.</p></article>
+        </div>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">INTEGRATED SERVICE CATALOGUE</span><h3>Ten capabilities. One coordinated ecosystem.</h3></div><span class="badge">ENGINE-LED DELIVERY</span></div>
+          <div class="grid two">
+            <article class="mini"><h3>Brand strategy & identity</h3><p>Positioning, research, messaging, visual identity systems and brand governance.</p><small>IZAKHONO CREATE</small></article>
+            <article class="mini"><h3>Websites, platforms & UX</h3><p>Discovery, information architecture, conversion-led UX, accessible websites and scalable platforms.</p><small>IZAKHONO BUILDER</small></article>
+            <article class="mini"><h3>Strategic communications</h3><p>Audience frameworks, campaign strategy, storytelling, content direction and channel coordination.</p><small>CREATE + SOCIAL</small></article>
+            <article class="mini"><h3>Digital marketing, SEO & AEO</h3><p>Technical and content SEO, answer visibility, campaign planning, measurement and optimisation.</p><small>GROWTH ENGINE</small></article>
+            <article class="mini"><h3>Software & IT solutions</h3><p>Custom platforms, APIs, backend systems, integrations and operational software.</p><small>BUILDER + ENGINEERING</small></article>
+            <article class="mini"><h3>AI development & automation</h3><p>Purpose-built assistants, intelligent workflows, data integration, evaluation and governance.</p><small>SUPER AI + FLOW</small></article>
+            <article class="mini"><h3>Systems & integrations</h3><p>System mapping, secure APIs, identity boundaries, orchestration and resilient operations.</p><small>FLOW + FORTRESS</small></article>
+            <article class="mini"><h3>Managed AI subscriptions</h3><p>Runtime oversight, quality monitoring, cost control, model optimisation and support.</p><small>SUPER AI + RUNTIME FABRIC</small></article>
+            <article class="mini"><h3>Fractional CIO</h3><p>Technology strategy, architecture oversight, vendor governance, risk and investment planning.</p><small>IZAKHONO GOVERNANCE</small></article>
+            <article class="mini"><h3>Venture design & venture lab</h3><p>Opportunity discovery, validation, prototyping, product architecture and commercialisation.</p><small>VENTURE FACTORY</small></article>
+          </div>
+        </article>
+        <div class="grid two">
+          <article class="panel">
+            <span class="kicker">ENGAGEMENT DESIGNER</span><h3>Shape a client engagement</h3>
+            <label>Client or business<input id="studioClient" type="text" maxlength="120" placeholder="Business or venture name"></label>
+            <div class="command-row">
+              <label>Primary need<select id="studioNeed"><option value="brand">Brand & identity</option><option value="digital">Website & digital platform</option><option value="software">Software & systems</option><option value="ai">AI & automation</option><option value="growth">Marketing & growth</option><option value="leadership">Technology leadership</option><option value="venture">New venture or product</option><option value="integrated">Integrated transformation</option></select></label>
+              <label>Engagement model<select id="studioModel"><option value="project">Project-based</option><option value="retainer">Ongoing retainer</option><option value="subscription">Managed AI subscription</option><option value="fractional-cio">Fractional CIO</option><option value="venture">Venture partnership</option></select></label>
+            </div>
+            <div class="actions"><button id="buildStudioPlan" class="primary" type="button">Create engagement blueprint</button><button id="clearStudioPlan" class="secondary" type="button">Clear</button></div>
+            <p id="studioStatus" class="status-line" role="status">This creates a local scope outline only. It does not create a client record, quote, contract, invoice or production task.</p>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h3>Engagement blueprint</h3><span class="badge gold">LOCAL PREVIEW</span></div>
+            <div id="studioPlan" class="creator-plan-empty">Choose a client, need and engagement model to generate a structured delivery blueprint.</div>
+          </article>
+        </div>
+        <article class="panel">
+          <span class="kicker">OPERATING PRINCIPLE</span><h3>One relationship. One governed plan. Many specialist engines.</h3>
+          <p>IZAKHONO CRM owns the client relationship; FORTRESS owns identity, permissions and audit; I-PAY owns approved commercial payment flows; specialist engines perform their respective work. Business Studio coordinates the engagement without creating duplicate systems of record.</p>
+        </article>
+      </section>
       <section id="affiliate" class="view">
         <div class="section-head">
           <div><p class="eyebrow">REVENUE + PARTNER ENGINE</p><h2>IZAKHONO Affiliate</h2><p>Two-way affiliate operation embedded directly in the SUPER APP.</p></div>

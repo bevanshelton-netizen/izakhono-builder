@@ -1,0 +1,181 @@
+{
+  "schema": "izakhono.growth-engine.v1",
+  "product": "IZAKHONO SUPER APP",
+  "module": "IZAKHONO Growth Engine",
+  "version": "1.0.0",
+  "status": "architecture-ready",
+  "public_live": false,
+  "objective": "Coordinate approved customer-acquisition, creative, paid-media, conversion-optimisation and revenue-measurement workflows across existing IZAKHONO engines.",
+  "lifecycle": [
+    "discover",
+    "qualify",
+    "audit",
+    "propose",
+    "contract",
+    "plan",
+    "approve",
+    "launch",
+    "measure",
+    "optimise",
+    "report",
+    "renew-or-close"
+  ],
+  "capabilities": [
+    {
+      "id": "paid-media-planning",
+      "label": "Paid media planning",
+      "owners": [
+        "IZAKHONO ADS"
+      ],
+      "state": "contract-defined",
+      "mutations_enabled": false
+    },
+    {
+      "id": "creative-operations",
+      "label": "Creative operations",
+      "owners": [
+        "IZAKHONO CREATE",
+        "IZAKHONO Creator Engine"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "growth-intelligence",
+      "label": "Growth intelligence and attribution",
+      "owners": [
+        "IZAKHONO ADS",
+        "approved analytics sources"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "conversion-optimisation",
+      "label": "Conversion-rate optimisation",
+      "owners": [
+        "IZAKHONO BUILDER",
+        "approved analytics sources"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "client-service",
+      "label": "Client onboarding and account operations",
+      "owners": [
+        "IZAKHONO CRM",
+        "IZAKHONO FLOW"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "strategy",
+      "label": "Growth strategy and consultancy",
+      "owners": [
+        "IZAKHONO SUPER AI",
+        "IZAKHONO CRM"
+      ],
+      "state": "contract-defined"
+    }
+  ],
+  "integrations": {
+    "intelligence": "IZAKHONO SUPER AI",
+    "creative": "IZAKHONO CREATE",
+    "distribution": "products/izakhono-ads",
+    "customer_relationships": "products/izakhono-crm",
+    "workflow": "products/izakhono-flow",
+    "payments": "I-PAY",
+    "security": "FORTRESS",
+    "landing_pages": "IZAKHONO BUILDER",
+    "service_discovery": "products/izakhono-one/public/registry.json"
+  },
+  "provider_adapters": {
+    "meta": {
+      "provider": "Meta Ads",
+      "connected": false,
+      "enabled": false,
+      "mode": "not-configured"
+    },
+    "google": {
+      "provider": "Google Ads",
+      "connected": false,
+      "enabled": false,
+      "mode": "not-configured"
+    }
+  },
+  "policy": {
+    "owned_first": true,
+    "external_adapters_replaceable": true,
+    "tenant_isolation_required": true,
+    "behavioural_tracking": false,
+    "advertising_ids": false,
+    "sensitive_trait_targeting": false,
+    "provider_credentials_server_side": true,
+    "client_account_authorisation_required": true,
+    "campaign_mutations_require_explicit_approval": true,
+    "paid_spend_requires_explicit_owner_or_client_authorisation": true,
+    "budget_caps_required": true,
+    "publish_requires_content_and_channel_approval": true,
+    "metrics_require_source_and_attribution_provenance": true,
+    "finance_confirmed_revenue_distinct_from_platform_attribution": true,
+    "public_case_studies_require_evidence_and_publication_approval": true
+  },
+  "launch_truth": {
+    "registry_status": "architecture-ready",
+    "integration_status": "planning-workspace-and-registry-installed",
+    "user_interface_route_implemented": true,
+    "provider_connections_live": false,
+    "campaign_execution_enabled": false,
+    "paid_spend_enabled": false,
+    "public_live": false,
+    "note": "The SUPER APP provides a local planning workspace and read-only status descriptor. Meta/Google provider accounts remain disconnected; campaign execution, publishing and paid spend remain disabled. Existing independent engines remain authoritative.",
+    "workspace_view_implemented": true,
+    "registry_registered": true,
+    "independent_engines_connected": false,
+    "client_data_persistence_enabled": false,
+    "production_deployment_authorised": false
+  },
+  "integration_contracts": {
+    "crm": {
+      "system_of_record": "products/izakhono-crm",
+      "inbound_route": "POST /api/flow",
+      "caller": "IZAKHONO FLOW adapter only",
+      "authentication": "Bearer CRM_INGEST_TOKEN",
+      "required_scope_headers": [
+        "X-Entity-ID",
+        "X-Platform-ID"
+      ],
+      "accepted_actions": [
+        "crm.intake.requested",
+        "crm.payment.confirmed",
+        "crm.fulfilment.completed"
+      ],
+      "isolation": "entity_id + platform_id",
+      "state": "not-connected"
+    },
+    "flow": {
+      "orchestrator": "products/izakhono-flow",
+      "event_route": "POST /api/events",
+      "authentication": "Bearer FLOW_INGEST_TOKEN",
+      "required_scope_headers": [
+        "X-Entity-ID",
+        "X-Platform-ID"
+      ],
+      "initial_event_types": [
+        "lead.created",
+        "lead.qualified",
+        "quote.requested",
+        "quote.sent"
+      ],
+      "lead_handoff": "lead.created -> crm.intake.requested -> CRM /api/flow through the FLOW durable action outbox",
+      "payment_confirmation_rule": "Only accept payment.confirmed when source_service is izakhono-pay, verification.status is verified, and a payment reference is present.",
+      "state": "not-connected"
+    },
+    "ads": {
+      "distribution_engine": "products/izakhono-ads",
+      "creative_source_of_truth": "IZAKHONO CREATE",
+      "required_creative_package_schema": "izakhono.marketing.package.v1",
+      "external_ad_accounts_connected": false,
+      "campaign_mutations_enabled": false,
+      "external_publishing_enabled": false
+    }
+  }
+}

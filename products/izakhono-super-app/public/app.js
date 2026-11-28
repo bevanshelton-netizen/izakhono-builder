@@ -9,6 +9,8 @@
       {id:"affiliate",name:"IZAKHONO Affiliate",category:"Revenue + Partnerships",route:"/affiliate",status:"integrated",engine:"independent",description:"Publisher income, partner commissions, attribution and external-network adapters."},
       {id:"create",name:"IZAKHONO CREATE",category:"Creative",route:"/create",status:"available",engine:"independent",description:"Portfolio creative system of record."},
       {id:"ads",name:"IZAKHONO ADS",category:"Distribution",route:"/ads",status:"available",engine:"independent",description:"Campaign distribution and performance command centre."},
+      {id:"growth-engine",name:"IZAKHONO Growth Engine",category:"Growth & Marketing",route:"/growth-engine",route_status:"workspace-view",status:"architecture-ready",engine:"orchestrated-independent-engines",description:"Coordinates approved growth strategy, creative, paid-media planning, CRO, client operations and evidence-based measurement across existing IZAKHONO engines."},
+      {id:"business-studio",name:"IZAKHONO Business Studio",category:"Business Transformation",route:"/business-studio",route_status:"workspace-view",status:"planning-workspace",engine:"orchestrated-independent-engines",description:"Coordinates brand, digital, software, AI, automation, growth, managed services, technology leadership and venture design."},
       {id:"crm",name:"IZAKHONO CRM",category:"Relationships",route:"/crm",status:"architecture-ready",engine:"independent",description:"Portfolio-wide CRM with legal-entity isolation."},
       {id:"flow",name:"IZAKHONO FLOW",category:"Operations + Automation",route:"/flow",status:"integrated",engine:"independent",description:"Lead-to-cash orchestration across CRM, REVENUE, PAY, TASKS, SUPER AI and fulfilment."},
       {id:"finance-core",name:"IZAKHONO FINANCE CORE",category:"Financial Infrastructure",route:"/finance-core",status:"integrated",engine:"independent",description:"White-label lending, savings/member administration, payments references, collections, reporting, approvals and audit."},
@@ -157,6 +159,75 @@
     toast("Creator workflow built.");
   }
 
+
+  function buildGrowthPlan(){
+    const business=($("growthBusiness")?.value||"").trim();
+    if(!business){toast("Enter a brand or business name first.");$("growthBusiness")?.focus();return;}
+    const objective=$("growthObjective")?.value||"sales";
+    const channel=$("growthChannels")?.value||"both";
+    const days=Number($("growthWindow")?.value||30);
+    const objectives={sales:"Increase sales",leads:"Generate qualified leads",awareness:"Build awareness",launch:"Launch a product",retention:"Improve retention"};
+    const channels={both:"Meta + Google planning",meta:"Meta planning",google:"Google planning",organic:"Organic + owned channels"};
+    const stages=[
+      ["01","DISCOVERY + BASELINE","Confirm the offer, target market, customer journey, current conversion baseline and available first-party evidence."],
+      ["02","STRATEGY + ECONOMICS","Define the audience, positioning, value proposition, target outcomes and budget assumptions. No spend is authorised."],
+      ["03","CREATIVE BRIEF","Route original creative requirements to IZAKHONO CREATE for review, rights checks and approval."],
+      ["04","CONVERSION EXPERIENCE","Review the landing page, product page, checkout, accessibility and page performance before buying traffic."],
+      ["05","CHANNEL PLAN",channels[channel]+" through IZAKHONO ADS. Provider connections and campaign publishing are currently disabled."],
+      ["06","MEASUREMENT DESIGN","Define conversion events, attribution windows, source provenance, reporting cadence and finance reconciliation."],
+      ["07","CLIENT + OWNER APPROVAL","Confirm scope, creative, destination URLs, account permissions, spend caps and accountable approvers."],
+      ["08","CONTROLLED LAUNCH GATE","Launch remains blocked until provider access, FORTRESS authorisation, audit and end-to-end acceptance are verified."],
+      ["09","OPTIMISE + REPORT","Review validated delivery, conversion quality, CAC, ROAS and contribution margin without confusing platform attribution with confirmed revenue."]
+    ];
+    const host=$("growthPlan");host.replaceChildren();
+    const summary=document.createElement("div");summary.className="creator-plan-summary";
+    [["BRAND",business],["OBJECTIVE",objectives[objective]||objective],["CHANNEL",channels[channel]||channel],["HORIZON",days+" days"]].forEach(([label,value])=>{
+      const cell=document.createElement("div");const kicker=document.createElement("span");kicker.className="kicker";kicker.textContent=label;
+      const strong=document.createElement("strong");strong.textContent=value;cell.append(kicker,strong);summary.append(cell);
+    });
+    const list=document.createElement("div");list.className="creator-plan-list";
+    stages.forEach(([number,title,description])=>{
+      const step=document.createElement("div");step.className="creator-plan-step";
+      const index=document.createElement("span");index.textContent=number;
+      const body=document.createElement("div");const heading=document.createElement("strong");heading.textContent=title;
+      const detail=document.createElement("small");detail.textContent=description;body.append(heading,detail);step.append(index,body);list.append(step);
+    });
+    host.append(summary,list);
+    $("growthStatus").textContent="Local growth plan created for "+business+". This is planning output only: no provider account was accessed, no advertisement was created or published, and no spend was authorised.";
+    toast("Growth plan preview created. No spend or publishing.");
+  }
+
+
+  function buildStudioPlan(){
+    const client=$("studioClient")?.value.trim()||"";
+    if(!client){toast("Enter a client or business name first.");$("studioClient")?.focus();return;}
+    const need=$("studioNeed")?.value||"integrated";
+    const model=$("studioModel")?.value||"project";
+    const needLabels={brand:"Brand & identity",digital:"Website & digital platform",software:"Software & systems",ai:"AI & automation",growth:"Marketing & growth",leadership:"Technology leadership",venture:"New venture or product",integrated:"Integrated transformation"};
+    const modelLabels={project:"Project-based",retainer:"Ongoing capability retainer",subscription:"Managed AI capability subscription","fractional-cio":"Fractional CIO",venture:"Venture partnership"};
+    const streams={
+      brand:["Brand discovery, stakeholder interviews and positioning","Audience, competitor and category research","Messaging, identity system and brand standards","Creative production, review and handover"],
+      digital:["Business goals, user research and information architecture","UX/UI design, content structure and accessibility criteria","Responsive platform build, integrations and CMS","Performance, SEO/AEO, security and acceptance testing"],
+      software:["Process and systems discovery; requirements and architecture","Data boundaries, API contracts and security design","Incremental implementation, integration and automated tests","Operational handover, monitoring and support model"],
+      ai:["Use-case selection, risk assessment and workflow mapping","Data permissions, model selection and evaluation design","Controlled prototype, integration and human approval paths","Quality, cost, security monitoring and ongoing governance"],
+      growth:["Market, audience, offer and channel audit","SEO/AEO, content, campaign and creative strategy","Landing-page and conversion optimisation plan","Measurement, attribution and evidence-led optimisation"],
+      leadership:["Technology estate, risk and capability assessment","Target architecture and prioritised roadmap","Vendor, investment, security and governance review","Executive reporting and ongoing decision support"],
+      venture:["Opportunity framing, user discovery and validation","Business model, product scope and technical feasibility","Prototype, test programme and launch-readiness gates","Commercialisation, operating model and venture governance"],
+      integrated:["Business model, brand, customer journey and systems diagnosis","Prioritised brand, digital, software, AI and growth architecture","Coordinated delivery across approved specialist engines","Measurement, adoption, operational handover and continuous improvement"]
+    };
+    const stages=[["01","DISCOVER","Goals, stakeholders, current state, constraints and success measures."],["02","DIAGNOSE","Evidence-led audit of brand, customer experience, technology, data, operations and risks."],["03","ALIGN","Agree outcomes, scope, ownership, budget assumptions, dependencies and decision rights."],["04","DESIGN","Approve the service blueprint, architecture, delivery plan and acceptance criteria."],["05","BUILD","Deliver through the relevant independent IZAKHONO engines with versioned handoffs."],["06","VERIFY","Test functionality, accessibility, performance, security, privacy and business acceptance."],["07","LAUNCH","Release only through authorised HOST/runtime, owner approvals and verified operational gates."],["08","SUSTAIN + ALIGN","Support, measure, optimise and maintain strategic technology oversight."]];
+    const host=$("studioPlan");host.replaceChildren();
+    const summary=document.createElement("div");summary.className="creator-plan-summary";
+    [[ "CLIENT",client ],[ "NEED",needLabels[need] ],[ "MODEL",modelLabels[model] ]].forEach(([label,value])=>{const cell=document.createElement("div");const k=document.createElement("span");k.className="kicker";k.textContent=label;const strong=document.createElement("strong");strong.textContent=value;cell.append(k,strong);summary.append(cell);});
+    const heading=document.createElement("h4");heading.textContent="Recommended workstreams";
+    const work=document.createElement("ul");(streams[need]||streams.integrated).forEach(item=>{const li=document.createElement("li");li.textContent=item;work.append(li);});
+    const list=document.createElement("div");list.className="creator-plan-list";
+    stages.forEach(([n,title,description])=>{const step=document.createElement("div");step.className="creator-plan-step";const num=document.createElement("span");num.textContent=n;const body=document.createElement("div");const h=document.createElement("strong");h.textContent=title;const p=document.createElement("small");p.textContent=description;body.append(h,p);step.append(num,body);list.append(step);});
+    host.append(summary,heading,work,list);
+    $("studioStatus").textContent="Local blueprint created for "+client+". No client record, quote, contract, task, invoice, integration or production change was created.";
+    toast("Engagement blueprint created locally.");
+  }
+
   function switchView(id){
     $$(".view").forEach(v=>v.classList.toggle("active",v.id===id));
     $$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
@@ -200,6 +271,10 @@
     $$(".nav").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
     $$("[data-jump]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.jump)));
     $("planCreator")?.addEventListener("click",buildCreatorPlan);
+    $("buildGrowthPlan")?.addEventListener("click",buildGrowthPlan);
+    $("buildStudioPlan")?.addEventListener("click",buildStudioPlan);
+    $("clearStudioPlan")?.addEventListener("click",()=>{if($("studioClient"))$("studioClient").value="";$("studioPlan")?.replaceChildren(Object.assign(document.createElement("div"),{className:"creator-plan-empty",textContent:"Choose a client, need and engagement model to generate a structured delivery blueprint."}));if($("studioStatus"))$("studioStatus").textContent="This creates a local scope outline only. It does not create a client record, quote, contract, invoice or production task.";});
+    $("clearGrowthPlan")?.addEventListener("click",()=>{if($("growthBusiness"))$("growthBusiness").value="";$("growthPlan")?.replaceChildren(Object.assign(document.createElement("div"),{className:"creator-plan-empty",textContent:"Enter a brand or business and build a plan. The preview is not an advertisement, campaign, forecast or performance guarantee."}));if($("growthStatus"))$("growthStatus").textContent="Planning is available locally. No account is connected, no campaign is created and no money can be spent from this workspace.";});
     $("clearCreator")?.addEventListener("click",()=>{
       if($("creatorBrief")) $("creatorBrief").value="";
       const plan=$("creatorPlan");

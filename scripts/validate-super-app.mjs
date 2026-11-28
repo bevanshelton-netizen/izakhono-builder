@@ -5,11 +5,19 @@ const affiliatePath='products/izakhono-affiliate/affiliate-engine.v1.json';
 const flowPath='products/izakhono-flow/.izakhono.json';
 const financePath='products/izakhono-finance-core/finance-core.v1.json';
 const creatorPath='products/izakhono-super-app/creator-engine.v1.json';
+const growthPath='products/izakhono-super-app/growth-engine.v1.json';
+const businessStudioPath='products/izakhono-super-app/business-studio.v1.json';
+const oneRegistryPath='products/izakhono-one/public/registry.json';
+const superAppHtmlPath='products/izakhono-super-app/public/index.html';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
 const affiliate=JSON.parse(fs.readFileSync(affiliatePath,'utf8'));
 const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
 const finance=JSON.parse(fs.readFileSync(financePath,'utf8'));
 const creator=JSON.parse(fs.readFileSync(creatorPath,'utf8'));
+const growth=JSON.parse(fs.readFileSync(growthPath,'utf8'));
+const businessStudio=JSON.parse(fs.readFileSync(businessStudioPath,'utf8'));
+const oneRegistry=JSON.parse(fs.readFileSync(oneRegistryPath,'utf8'));
+const superAppHtml=fs.readFileSync(superAppHtmlPath,'utf8');
 const errors=[];
 
 if(registry.schema!=='izakhono.super-app.module-registry.v1') errors.push('unexpected SUPER APP registry schema');
@@ -47,6 +55,71 @@ for(const required of ['ideas','writing','research','design','video','audio','au
 }
 if(registry.creator_engine?.route!=='/creator') errors.push('SUPER APP creator_engine registry route drift');
 if(registry.creator_engine?.public_live!==false) errors.push('SUPER APP registry must not claim Creator Engine public-live');
+
+
+
+
+const businessStudioModule=modules.get('business-studio');
+if(!businessStudioModule) errors.push('Business Studio module missing from SUPER APP');
+else {
+ if(businessStudioModule.route!=='/business-studio') errors.push('Business Studio route drift');
+ if(businessStudioModule.status!=='planning-workspace') errors.push('Business Studio must remain a planning workspace');
+ if(businessStudioModule.engine!=='orchestrated-independent-engines') errors.push('Business Studio must reuse independent engines');
+}
+if(!superAppHtml.includes('id="business-studio"')) errors.push('Business Studio workspace view missing');
+if(!superAppHtml.includes('data-view="business-studio"')) errors.push('Business Studio navigation missing');
+if(businessStudio.schema!=='izakhono.business-studio.v1') errors.push('Business Studio contract schema drift');
+if(businessStudio.public_live!==false || businessStudio.launch_truth?.public_live!==false) errors.push('Business Studio cannot claim public-live');
+if(businessStudio.launch_truth?.workspace_view_implemented!==true || businessStudio.launch_truth?.registry_registered!==true) errors.push('Business Studio workspace/registry state drift');
+if(businessStudioModule.route_status!=='workspace-view') errors.push('Business Studio workspace route status drift');
+if(businessStudio.capabilities?.length!==10) errors.push('Business Studio capability catalogue must contain ten capabilities');
+if(businessStudio.governance?.fortress_authorisation_required!==true || businessStudio.governance?.client_scope_and_approval_required!==true) errors.push('Business Studio governance controls missing');
+if(businessStudio.launch_truth?.production_deployment_authorised!==false) errors.push('Business Studio production deployment must remain gated');
+const oneBusinessStudio=(oneRegistry.services||[]).find(service=>service.slug==='izakhono-business-studio');
+if(!oneBusinessStudio) errors.push('IZAKHONO ONE service registry missing Business Studio');
+else if(oneBusinessStudio.status!=='gated' || oneBusinessStudio.publicUrl!==null) errors.push('Business Studio public service must remain gated without URL');
+
+const oneGrowthService=(oneRegistry.services||[]).find(service=>service.slug==='izakhono-growth-engine');
+if(!oneGrowthService) errors.push('IZAKHONO ONE canonical service registry missing Growth Engine');
+else {
+  if(oneGrowthService.status!=='gated') errors.push('IZAKHONO ONE Growth Engine service must remain gated');
+  if(oneGrowthService.publicUrl!==null) errors.push('IZAKHONO ONE Growth Engine must not expose a public URL');
+  if(oneGrowthService.integration?.capabilityStatus!=='architecture-ready') errors.push('IZAKHONO ONE Growth Engine capability status drift');
+  if(oneGrowthService.integration?.publicRouteStatus!=='not-yet-verified') errors.push('IZAKHONO ONE Growth Engine public route must remain unverified');
+}
+
+if(!superAppHtml.includes('id="growth-engine"')) errors.push('Growth Engine planning workspace view missing');
+if(!superAppHtml.includes('data-view="growth-engine"')) errors.push('Growth Engine navigation entry missing');
+
+const growthModule=modules.get('growth-engine');
+if(!growthModule) errors.push('Growth Engine module missing from SUPER APP');
+else {
+  if(growthModule.route!=='/growth-engine') errors.push('Growth Engine reserved route drift');
+  if(growthModule.route_status!=='workspace-view') errors.push('Growth Engine workspace route status drift');
+  if(growthModule.status!=='architecture-ready') errors.push('Growth Engine must remain architecture-ready');
+  if(growthModule.engine!=='orchestrated-independent-engines') errors.push('Growth Engine must preserve independent underlying engines');
+}
+if(growth.schema!=='izakhono.growth-engine.v1') errors.push('unexpected Growth Engine contract schema');
+if(growth.status!=='architecture-ready' || growth.public_live!==false || growth.launch_truth?.user_interface_route_implemented!==true) errors.push('Growth Engine must remain non-live with a planning-only workspace');
+if(growth.policy?.owned_first!==true) errors.push('Growth Engine must remain owned-first');
+if(growth.policy?.behavioural_tracking!==false || growth.policy?.advertising_ids!==false) errors.push('Growth Engine privacy contract drift');
+if(growth.policy?.paid_spend_requires_explicit_owner_or_client_authorisation!==true) errors.push('Growth Engine paid spend must remain owner/client authorised');
+if(growth.policy?.campaign_mutations_require_explicit_approval!==true) errors.push('Growth Engine campaign mutations must remain approval-gated');
+if(growth.provider_adapters?.meta?.connected!==false || growth.provider_adapters?.google?.connected!==false) errors.push('Growth Engine providers cannot be marked connected without authenticated evidence');
+if(registry.growth_engine?.public_live!==false || registry.growth_engine?.embedded!==true) errors.push('SUPER APP Growth Engine registry must remain embedded but non-live');
+if(registry.growth_engine?.route_status!=='workspace-view') errors.push('Growth Engine workspace route status drift');
+
+if(growth.integration_contracts?.crm?.inbound_route!=='POST /api/flow' || growth.integration_contracts?.crm?.authentication!=='Bearer CRM_INGEST_TOKEN') errors.push('Growth Engine CRM handoff contract drift');
+if(JSON.stringify(growth.integration_contracts?.crm?.required_scope_headers||[])!==JSON.stringify(['X-Entity-ID','X-Platform-ID'])) errors.push('Growth Engine CRM scope headers drift');
+if(growth.integration_contracts?.flow?.event_route!=='POST /api/events' || growth.integration_contracts?.flow?.authentication!=='Bearer FLOW_INGEST_TOKEN') errors.push('Growth Engine FLOW event contract drift');
+if(!growth.integration_contracts?.flow?.initial_event_types?.includes('lead.created')) errors.push('Growth Engine FLOW lead event missing');
+if(!String(growth.integration_contracts?.flow?.payment_confirmation_rule||'').includes('verification.status is verified')) errors.push('Growth Engine verified-payment gate missing');
+if(growth.integration_contracts?.ads?.creative_source_of_truth!=='IZAKHONO CREATE' || growth.integration_contracts?.ads?.external_ad_accounts_connected!==false) errors.push('Growth Engine ADS/CREATE source or account gate drift');
+
+const growthCapabilityIds=new Set((growth.capabilities||[]).map(x=>x.id));
+for(const required of ['paid-media-planning','creative-operations','growth-intelligence','conversion-optimisation','client-service','strategy']){
+  if(!growthCapabilityIds.has(required)) errors.push('Growth Engine capability missing: '+required);
+}
 
 const flowModule=modules.get('flow');
 if(!flowModule) errors.push('IZAKHONO FLOW module missing from SUPER APP');
@@ -101,6 +174,10 @@ console.log(JSON.stringify({
   modules:registry.modules.length,
   affiliate_embedded:true,
   creator_embedded:true,
+  growth_engine_registered:true,
+  growth_engine_live:false,
+  business_studio_registered:true,
+  business_studio_public_live:false,
   creator_route:'/creator',
   creator_capabilities:creator.capabilities.length,
   flow_embedded:true,
