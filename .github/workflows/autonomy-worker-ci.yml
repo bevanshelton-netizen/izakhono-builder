@@ -1,0 +1,42 @@
+name: IZAKHONO Autonomous Worker CI
+
+on:
+  pull_request:
+    paths:
+      - 'autonomy/ai-agent-worker.mjs'
+      - 'autonomy/ai-agent-worker.test.mjs'
+      - 'autonomy/ai-agent.mjs'
+      - 'autonomy/runner.mjs'
+      - 'autonomy/worker-result.mjs'
+      - 'autonomy/worker-result.test.mjs'
+      - 'autonomy/worker-storage-policy.mjs'
+      - 'autonomy/worker-storage-policy.test.mjs'
+      - '.github/workflows/autonomy-worker-ci.yml'
+  push:
+    paths:
+      - 'autonomy/ai-agent-worker.mjs'
+      - 'autonomy/ai-agent-worker.test.mjs'
+      - 'autonomy/ai-agent.mjs'
+      - 'autonomy/runner.mjs'
+      - 'autonomy/worker-result.mjs'
+      - 'autonomy/worker-result.test.mjs'
+      - '.github/workflows/autonomy-worker-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test worker outcome classification
+        run: node autonomy/worker-result.test.mjs
+      - name: Test persistent worker storage gate
+        run: node autonomy/worker-storage-policy.test.mjs
+      - name: Exercise real worker, storage locks and interrupted-work quarantine
+        run: node autonomy/ai-agent-worker.test.mjs

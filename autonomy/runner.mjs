@@ -3,6 +3,9 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { runAgentWorker } from './ai-agent-worker.mjs';
+import { classifyAgentWorkerResult } from './worker-result.mjs';
+import { hasPersistentAgentStorage } from './worker-storage-policy.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -34,21 +37,33 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+const attemptedThisRun = new Set();
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !attemptedThisRun.has(task.id) && !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
   });
 }
-function executeInternal(task) {
+async function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return { status: 'completed' };
+    if (!hasPersistentAgentStorage(process.env)) {
+      return { status: 'waiting', ownerGate: 'owned-node-runtime', reason: 'persistent-owned-node-agent-storage-not-configured', evidence: [{ name: 'durable-agent-storage', status: 'pending' }] };
+    }
+    let worker;
+    try {
+      worker = await runAgentWorker();
+    } catch (error) {
+      return { status: 'failed', reason: error instanceof Error ? error.message : String(error), evidence: [{ name: 'agent-worker-invoked', status: 'failed' }] };
+    }
+    const outcome = classifyAgentWorkerResult(worker);
+    if (outcome.status === 'failed') return { status: 'failed', reason: outcome.reason, workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-work-completed', status: 'failed' }] };
+    if (outcome.status === 'waiting') return { status: 'waiting', reason: outcome.reason, workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-work-completed', status: 'pending' }] };
+    return { status: 'completed', workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-queue-inspected', status: 'passed' }, { name: 'agent-work-executed', status: outcome.idle ? 'not-required' : 'passed' }] };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
@@ -66,9 +81,10 @@ while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
   const current = taskState(next.id);
+  attemptedThisRun.add(next.id);
   transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
-  let result = executeInternal(next);
+  let result = await executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
   const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule', 'kora-workload-execute', 'kora-routing-acceptance'];
@@ -99,6 +115,7 @@ while (progressed < manifest.queue.length) {
       assignmentId: result.assignmentId ?? null,
       evidenceSource: result.source ?? null,
       acceptance: result.acceptance ?? null,
+      workerResult: result.workerResult ?? null,
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? null;
@@ -110,11 +127,12 @@ while (progressed < manifest.queue.length) {
       evidence: result.evidence ?? evidenceFor(next),
       evidenceSource: result.source ?? null,
       acceptance: result.acceptance ?? null,
+      workerResult: result.workerResult ?? null,
     });
     externalGates.push(next);
   } else {
     const attempts = taskState(next.id).attempts;
-    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', { reason: result.reason ?? 'adapter-failed' });
+    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', { reason: result.reason ?? 'adapter-failed', workerResult: result.workerResult ?? null });
     if (attempts >= manifest.policy.maxRetries) break;
   }
   progressed += 1;
@@ -124,7 +142,9 @@ const remaining = manifest.queue.filter(task => taskState(task.id).status !== 'c
 const status = externalGates.length ? 'waiting_external_capability' : remaining.length ? 'blocked_or_waiting' : 'complete';
 const nextGate = externalGates[0] || null;
 
-fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+const temporaryStatePath = `${statePath}.tmp-${process.pid}`;
+fs.writeFileSync(temporaryStatePath, JSON.stringify(state, null, 2) + '\n');
+fs.renameSync(temporaryStatePath, statePath);
 console.log(JSON.stringify({
   mode: manifest.mode,
   status,
